@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import "./globals.css"
 import ClientLayout from '@/components/ClientLayout'
 
-const SITE_URL = 'https://pointpilot-delta.vercel.app'
+const SITE_URL = 'https://pointtripper.com'
 
 export const metadata: Metadata = {
   title: {

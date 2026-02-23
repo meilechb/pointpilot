@@ -7,6 +7,6 @@ export default function robots(): MetadataRoute.Robots {
       allow: '/',
       disallow: ['/api/', '/trip/'],
     },
-    sitemap: 'https://pointpilot-delta.vercel.app/sitemap.xml',
+    sitemap: 'https://pointtripper.com/sitemap.xml',
   }
 }
