@@ -25,11 +25,7 @@ export default function Nav() {
         letterSpacing: -0.5, textDecoration: 'none',
         display: 'flex', alignItems: 'center', gap: 8,
       }}>
-        <span style={{
-          width: 28, height: 28, borderRadius: 8,
-          background: 'linear-gradient(135deg, var(--accent), #E8C36A)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14,
-        }}>✈</span>
+        <img src="/logo.png" alt="Point Tripper" width={28} height={28} style={{ borderRadius: 8 }} />
         Point Tripper
       </a>
 
