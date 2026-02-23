@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import AirportInput from '@/components/AirportInput'
 
 export default function NewTrip() {
   const router = useRouter()
@@ -39,7 +40,6 @@ export default function NewTrip() {
         { from: destinationCity, to: departureCity },
       ]
     }
-    // multi-city
     const cities = [departureCity, ...stops, destinationCity]
     return cities.slice(0, -1).map((city, i) => ({
       from: city,
@@ -81,7 +81,7 @@ export default function NewTrip() {
         placeholder="Trip name (e.g. Family Israel Trip)"
         value={tripName}
         onChange={(e) => setTripName(e.target.value)}
-        style={{ display: 'block', width: '100%', padding: 10, marginBottom: 10, border: '1px solid #ccc', borderRadius: 4 }}
+        style={{ display: 'block', width: '100%', padding: 10, marginBottom: 10, border: '1px solid #ccc', borderRadius: 4, boxSizing: 'border-box' }}
       />
 
       <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
@@ -107,22 +107,20 @@ export default function NewTrip() {
         ))}
       </div>
 
-      <input
-        type="text"
-        placeholder="Departure city (e.g. EWR)"
+      <AirportInput
         value={departureCity}
-        onChange={(e) => setDepartureCity(e.target.value)}
-        style={{ display: 'block', width: '100%', padding: 10, marginBottom: 10, border: '1px solid #ccc', borderRadius: 4 }}
+        onChange={setDepartureCity}
+        placeholder="Departure airport or city"
+        style={{ marginBottom: 10 }}
       />
 
       {tripType === 'multicity' && stops.map((stop, i) => (
         <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-          <input
-            type="text"
-            placeholder={`Stop ${i + 1} (e.g. DXB)`}
+          <AirportInput
             value={stop}
-            onChange={(e) => updateStop(i, e.target.value)}
-            style={{ flex: 1, padding: 10, border: '1px solid #ccc', borderRadius: 4 }}
+            onChange={(val) => updateStop(i, val)}
+            placeholder={`Stop ${i + 1}`}
+            style={{ flex: 1 }}
           />
           <button
             onClick={() => removeStop(i)}
@@ -142,12 +140,11 @@ export default function NewTrip() {
         </button>
       )}
 
-      <input
-        type="text"
-        placeholder={tripType === 'multicity' ? 'Final destination (e.g. EWR)' : 'Destination (e.g. TLV)'}
+      <AirportInput
         value={destinationCity}
-        onChange={(e) => setDestinationCity(e.target.value)}
-        style={{ display: 'block', width: '100%', padding: 10, marginBottom: 10, border: '1px solid #ccc', borderRadius: 4 }}
+        onChange={setDestinationCity}
+        placeholder={tripType === 'multicity' ? 'Final destination' : 'Destination airport or city'}
+        style={{ marginBottom: 10 }}
       />
 
       <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
@@ -157,7 +154,7 @@ export default function NewTrip() {
             type="date"
             value={departureDate}
             onChange={(e) => setDepartureDate(e.target.value)}
-            style={{ display: 'block', width: '100%', padding: 10, border: '1px solid #ccc', borderRadius: 4 }}
+            style={{ display: 'block', width: '100%', padding: 10, border: '1px solid #ccc', borderRadius: 4, boxSizing: 'border-box' }}
           />
         </div>
         {tripType !== 'oneway' && (
@@ -167,7 +164,7 @@ export default function NewTrip() {
               type="date"
               value={returnDate}
               onChange={(e) => setReturnDate(e.target.value)}
-              style={{ display: 'block', width: '100%', padding: 10, border: '1px solid #ccc', borderRadius: 4 }}
+              style={{ display: 'block', width: '100%', padding: 10, border: '1px solid #ccc', borderRadius: 4, boxSizing: 'border-box' }}
             />
           </div>
         )}
@@ -181,7 +178,7 @@ export default function NewTrip() {
             min={1}
             value={travelers}
             onChange={(e) => setTravelers(Number(e.target.value))}
-            style={{ display: 'block', width: '100%', padding: 10, border: '1px solid #ccc', borderRadius: 4 }}
+            style={{ display: 'block', width: '100%', padding: 10, border: '1px solid #ccc', borderRadius: 4, boxSizing: 'border-box' }}
           />
         </div>
         <div style={{ flex: 1 }}>
@@ -189,7 +186,7 @@ export default function NewTrip() {
           <select
             value={dateFlexibility}
             onChange={(e) => setDateFlexibility(e.target.value)}
-            style={{ display: 'block', width: '100%', padding: 10, border: '1px solid #ccc', borderRadius: 4, backgroundColor: '#fff' }}
+            style={{ display: 'block', width: '100%', padding: 10, border: '1px solid #ccc', borderRadius: 4, backgroundColor: '#fff', boxSizing: 'border-box' }}
           >
             <option value="exact">Exact dates</option>
             <option value="plus_minus_1">± 1 day</option>

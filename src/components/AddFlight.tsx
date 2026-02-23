@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import AirportInput from '@/components/AirportInput'
 
 type Segment = {
   flightCode: string
@@ -22,7 +23,7 @@ type Props = {
 
 export default function AddFlight({ legs, onSave, onCancel, editingFlight }: Props) {
   const [mode, setMode] = useState<'lookup' | 'manual'>('lookup')
-  const [step, setStep] = useState<'flight' | 'booking'>(editingFlight ? 'flight' : 'flight')
+  const [step, setStep] = useState<'flight' | 'booking'>('flight')
   const [segments, setSegments] = useState<Segment[]>(editingFlight?.segments || [])
 
   // Lookup
@@ -122,6 +123,8 @@ export default function AddFlight({ legs, onSave, onCancel, editingFlight }: Pro
       feesAmount: feesAmount ? parseFloat(feesAmount) : null,
     })
   }
+
+  const inputSmall = { padding: 6, border: '1px solid #ddd', borderRadius: 4, fontSize: 13, minWidth: 0, boxSizing: 'border-box' as const }
 
   // Booking step
   if (step === 'booking') {
@@ -236,15 +239,27 @@ export default function AddFlight({ legs, onSave, onCancel, editingFlight }: Pro
                 <button onClick={() => removeSegment(i)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#999', fontSize: 16 }}>✕</button>
               </div>
               <div style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
-                <input value={seg.flightCode} onChange={(e) => updateSegment(i, 'flightCode', e.target.value)} style={{ flex: 1, padding: 6, border: '1px solid #ddd', borderRadius: 4, fontSize: 13, minWidth: 0, boxSizing: 'border-box' as const }} placeholder="Code" />
-                <input value={seg.airlineName} onChange={(e) => updateSegment(i, 'airlineName', e.target.value)} style={{ flex: 2, padding: 6, border: '1px solid #ddd', borderRadius: 4, fontSize: 13, minWidth: 0, boxSizing: 'border-box' as const }} placeholder="Airline" />
-                <input type="date" value={seg.date} onChange={(e) => updateSegment(i, 'date', e.target.value)} style={{ flex: 1, padding: 6, border: '1px solid #ddd', borderRadius: 4, fontSize: 13, minWidth: 0, boxSizing: 'border-box' as const }} />
+                <input value={seg.flightCode} onChange={(e) => updateSegment(i, 'flightCode', e.target.value)} style={{ ...inputSmall, flex: 1 }} placeholder="Code" />
+                <input value={seg.airlineName} onChange={(e) => updateSegment(i, 'airlineName', e.target.value)} style={{ ...inputSmall, flex: 2 }} placeholder="Airline" />
+                <input type="date" value={seg.date} onChange={(e) => updateSegment(i, 'date', e.target.value)} style={{ ...inputSmall, flex: 1 }} />
               </div>
               <div style={{ display: 'flex', gap: 6 }}>
-                <input value={seg.departureAirport} onChange={(e) => updateSegment(i, 'departureAirport', e.target.value)} style={{ width: '22%', padding: 6, border: '1px solid #ddd', borderRadius: 4, fontSize: 13, minWidth: 0, boxSizing: 'border-box' as const }} placeholder="From" />
-                <input value={seg.arrivalAirport} onChange={(e) => updateSegment(i, 'arrivalAirport', e.target.value)} style={{ width: '22%', padding: 6, border: '1px solid #ddd', borderRadius: 4, fontSize: 13, minWidth: 0, boxSizing: 'border-box' as const }} placeholder="To" />
-                <input value={seg.departureTime} onChange={(e) => updateSegment(i, 'departureTime', e.target.value)} style={{ width: '28%', padding: 6, border: '1px solid #ddd', borderRadius: 4, fontSize: 13, minWidth: 0, boxSizing: 'border-box' as const }} placeholder="Depart" />
-                <input value={seg.arrivalTime} onChange={(e) => updateSegment(i, 'arrivalTime', e.target.value)} style={{ width: '28%', padding: 6, border: '1px solid #ddd', borderRadius: 4, fontSize: 13, minWidth: 0, boxSizing: 'border-box' as const }} placeholder="Arrive" />
+                <div style={{ width: '22%' }}>
+                  <AirportInput
+                    value={seg.departureAirport}
+                    onChange={(val) => updateSegment(i, 'departureAirport', val)}
+                    placeholder="From"
+                  />
+                </div>
+                <div style={{ width: '22%' }}>
+                  <AirportInput
+                    value={seg.arrivalAirport}
+                    onChange={(val) => updateSegment(i, 'arrivalAirport', val)}
+                    placeholder="To"
+                  />
+                </div>
+                <input value={seg.departureTime} onChange={(e) => updateSegment(i, 'departureTime', e.target.value)} style={{ ...inputSmall, width: '28%' }} placeholder="Depart" />
+                <input value={seg.arrivalTime} onChange={(e) => updateSegment(i, 'arrivalTime', e.target.value)} style={{ ...inputSmall, width: '28%' }} placeholder="Arrive" />
               </div>
             </div>
           ))}
@@ -291,10 +306,20 @@ export default function AddFlight({ legs, onSave, onCancel, editingFlight }: Pro
             <input type="text" placeholder="Flight code (optional)" value={manualCode} onChange={(e) => setManualCode(e.target.value)} style={{ flex: 1, padding: 10, border: '1px solid #ccc', borderRadius: 4 }} />
             <input type="text" placeholder="Airline" value={manualAirline} onChange={(e) => setManualAirline(e.target.value)} style={{ flex: 1, padding: 10, border: '1px solid #ccc', borderRadius: 4 }} />
           </div>
-          <input type="date" value={manualDate} onChange={(e) => setManualDate(e.target.value)} style={{ display: 'block', width: '100%', padding: 10, marginBottom: 8, border: '1px solid #ccc', borderRadius: 4 }} />
+          <input type="date" value={manualDate} onChange={(e) => setManualDate(e.target.value)} style={{ display: 'block', width: '100%', padding: 10, marginBottom: 8, border: '1px solid #ccc', borderRadius: 4, boxSizing: 'border-box' }} />
           <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-            <input type="text" placeholder="From (e.g. EWR)" value={manualFrom} onChange={(e) => setManualFrom(e.target.value)} style={{ flex: 1, padding: 10, border: '1px solid #ccc', borderRadius: 4 }} />
-            <input type="text" placeholder="To (e.g. TLV)" value={manualTo} onChange={(e) => setManualTo(e.target.value)} style={{ flex: 1, padding: 10, border: '1px solid #ccc', borderRadius: 4 }} />
+            <AirportInput
+              value={manualFrom}
+              onChange={setManualFrom}
+              placeholder="From (e.g. EWR)"
+              style={{ flex: 1 }}
+            />
+            <AirportInput
+              value={manualTo}
+              onChange={setManualTo}
+              placeholder="To (e.g. TLV)"
+              style={{ flex: 1 }}
+            />
           </div>
           <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
             <input type="time" value={manualDepart} onChange={(e) => setManualDepart(e.target.value)} style={{ flex: 1, padding: 10, border: '1px solid #ccc', borderRadius: 4 }} />
