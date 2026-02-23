@@ -13,6 +13,17 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
         crossOrigin="anonymous"
         strategy="afterInteractive"
       />
+      <Script
+        async
+        src="https://www.googletagmanager.com/gtag/js?id=G-4HZ6XF1C20"
+        strategy="afterInteractive"
+      />
+      <Script id="gtag-init" strategy="afterInteractive">
+        {`window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());
+gtag('config', 'G-4HZ6XF1C20');`}
+      </Script>
       <AuthProvider>
         <Nav />
         <main style={{ minHeight: 'calc(100vh - 56px)' }}>
