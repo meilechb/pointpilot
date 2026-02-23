@@ -71,15 +71,21 @@ export default function AdminPage() {
     return <div style={{ maxWidth: 700, margin: '0 auto', padding: '40px 20px', color: 'var(--text-muted)' }}>Loading...</div>
   }
 
-  if (!user) {
+  const ADMIN_EMAIL = 'meilechbiller18@gmail.com'
+
+  if (!user || user.email !== ADMIN_EMAIL) {
     return (
       <div style={{ maxWidth: 700, margin: '0 auto', padding: '40px 20px', textAlign: 'center' }}>
-        <p style={{ color: 'var(--text-muted)', marginBottom: 16 }}>You need to sign in to access the admin panel.</p>
-        <a href="/login" style={{
-          padding: '10px 24px', borderRadius: 'var(--radius-sm)',
-          background: 'linear-gradient(135deg, var(--primary), var(--primary-hover))',
-          color: 'var(--text-inverse)', fontWeight: 600, textDecoration: 'none',
-        }}>Sign In</a>
+        <p style={{ color: 'var(--text-muted)', marginBottom: 16 }}>
+          {!user ? 'You need to sign in to access the admin panel.' : 'You do not have admin access.'}
+        </p>
+        {!user && (
+          <a href="/login" style={{
+            padding: '10px 24px', borderRadius: 'var(--radius-sm)',
+            background: 'linear-gradient(135deg, var(--primary), var(--primary-hover))',
+            color: 'var(--text-inverse)', fontWeight: 600, textDecoration: 'none',
+          }}>Sign In</a>
+        )}
       </div>
     )
   }
