@@ -2,6 +2,19 @@
 
 import { useState, useEffect } from 'react'
 import SavePrompt from '@/components/SavePrompt'
+import ProgramSelect from '@/components/ProgramSelect'
+import WalletCard from '@/components/WalletCard'
+import { bankPointPrograms, airlineMilesPrograms, cashbackPrograms } from '@/data/programOptions'
+import { createClient } from '@/lib/supabase'
+
+type Bonus = {
+  id: string
+  bank_program: string
+  partner: string
+  bonus_percent: number
+  expires_at: string | null
+  notes: string | null
+}
 
 type WalletEntry = {
   id: string
@@ -26,12 +39,6 @@ const typeIcons: Record<string, string> = {
   cash: '💵',
 }
 
-const typeColors: Record<string, { bg: string; text: string }> = {
-  bank_points: { bg: 'var(--primary-light)', text: 'var(--primary)' },
-  airline_miles: { bg: 'var(--accent-light)', text: '#B8860B' },
-  cashback: { bg: 'var(--success-bg)', text: 'var(--success)' },
-  cash: { bg: '#F0F9FF', text: '#0369A1' },
-}
 
 export default function WalletPage() {
   const [entries, setEntries] = useState<WalletEntry[]>([])
@@ -44,10 +51,23 @@ export default function WalletPage() {
   const [redemptionValue, setRedemptionValue] = useState('')
   const [notes, setNotes] = useState('')
   const [savePromptTrigger, setSavePromptTrigger] = useState<'flight' | 'plan' | 'trip' | 'wallet' | null>(null)
+  const [bonuses, setBonuses] = useState<Bonus[]>([])
 
   useEffect(() => {
     const saved = JSON.parse(localStorage.getItem('wallet') || '[]')
     setEntries(saved)
+
+    // Fetch active transfer bonuses from Supabase
+    const fetchBonuses = async () => {
+      const supabase = createClient()
+      const today = new Date().toISOString().split('T')[0]
+      const { data } = await supabase
+        .from('transfer_bonuses')
+        .select('*')
+        .or(`expires_at.is.null,expires_at.gte.${today}`)
+      setBonuses(data || [])
+    }
+    fetchBonuses()
   }, [])
 
   const saveEntries = (updated: WalletEntry[]) => {
@@ -164,84 +184,15 @@ export default function WalletPage() {
       )}
 
       {entries.map(entry => {
-        const colors = typeColors[entry.currency_type]
-        const isEditing = editingId === entry.id
-
-        if (isEditing && showForm) return null
-
+        if (editingId === entry.id && showForm) return null
         return (
-          <div
+          <WalletCard
             key={entry.id}
-            style={{
-              padding: '14px 16px',
-              backgroundColor: 'var(--bg-card)',
-              borderRadius: 'var(--radius)',
-              boxShadow: 'var(--shadow-sm)',
-              border: '1px solid var(--border-light)',
-              marginBottom: 8,
-              transition: 'box-shadow 0.15s',
-            }}
-            onMouseOver={(e) => e.currentTarget.style.boxShadow = 'var(--shadow)'}
-            onMouseOut={(e) => e.currentTarget.style.boxShadow = 'var(--shadow-sm)'}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{
-                  width: 38, height: 38, borderRadius: 'var(--radius-sm)',
-                  backgroundColor: colors.bg,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 18,
-                }}>
-                  {typeIcons[entry.currency_type]}
-                </div>
-                <div>
-                  <div style={{ fontWeight: 600, fontSize: 15 }}>{entry.program}</div>
-                  <div style={{ fontSize: 12, color: colors.text, fontWeight: 500 }}>{typeLabels[entry.currency_type]}</div>
-                </div>
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontWeight: 700, fontSize: 17 }}>
-                  {entry.currency_type === 'cash' ? `$${entry.balance.toLocaleString()}` : entry.balance.toLocaleString()}
-                </div>
-                {entry.currency_type === 'cashback' && entry.redemption_value && (
-                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{entry.redemption_value}¢/pt</div>
-                )}
-              </div>
-            </div>
-            {entry.notes && (
-              <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 8, paddingLeft: 50 }}>{entry.notes}</div>
-            )}
-            <div style={{ display: 'flex', gap: 6, marginTop: 10, paddingLeft: 50 }}>
-              <button
-                onClick={() => handleEdit(entry)}
-                style={{
-                  padding: '4px 12px', border: '1px solid var(--border)',
-                  borderRadius: 'var(--radius-sm)', cursor: 'pointer',
-                  backgroundColor: 'var(--bg-card)', fontSize: 12,
-                  color: 'var(--text-secondary)', fontWeight: 500,
-                  transition: 'border-color 0.15s',
-                }}
-                onMouseOver={(e) => e.currentTarget.style.borderColor = 'var(--primary)'}
-                onMouseOut={(e) => e.currentTarget.style.borderColor = 'var(--border)'}
-              >
-                Edit
-              </button>
-              <button
-                onClick={() => handleDelete(entry.id)}
-                style={{
-                  padding: '4px 12px', border: '1px solid var(--border)',
-                  borderRadius: 'var(--radius-sm)', cursor: 'pointer',
-                  backgroundColor: 'var(--bg-card)', fontSize: 12,
-                  color: 'var(--text-muted)', fontWeight: 500,
-                  transition: 'color 0.15s, border-color 0.15s',
-                }}
-                onMouseOver={(e) => { e.currentTarget.style.color = 'var(--danger)'; e.currentTarget.style.borderColor = 'var(--danger)' }}
-                onMouseOut={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.borderColor = 'var(--border)' }}
-              >
-                Delete
-              </button>
-            </div>
-          </div>
+            entry={entry}
+            bonuses={bonuses}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+          />
         )
       })}
 
@@ -289,13 +240,27 @@ export default function WalletPage() {
           </div>
 
           <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>Program name</label>
-          <input
-            type="text"
-            placeholder={programPlaceholders[currencyType]}
-            value={program}
-            onChange={(e) => setProgram(e.target.value)}
-            style={{ marginBottom: 12 }}
-          />
+          {currencyType === 'cash' ? (
+            <input
+              type="text"
+              placeholder="e.g. Travel budget"
+              value={program}
+              onChange={(e) => setProgram(e.target.value)}
+              style={{ marginBottom: 12 }}
+            />
+          ) : (
+            <ProgramSelect
+              value={program}
+              onChange={setProgram}
+              options={
+                currencyType === 'bank_points' ? bankPointPrograms :
+                currencyType === 'airline_miles' ? airlineMilesPrograms :
+                cashbackPrograms
+              }
+              placeholder={programPlaceholders[currencyType]}
+              style={{ marginBottom: 12 }}
+            />
+          )}
 
           <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>
             {currencyType === 'cash' ? 'Amount ($)' : 'Balance'}

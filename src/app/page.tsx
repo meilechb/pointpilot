@@ -12,7 +12,7 @@ export default function Home() {
     '@type': 'WebApplication',
     name: 'Point Tripper',
     url: 'https://pointtripper.com',
-    description: 'Organize flight options, compare cash vs. points, and get step-by-step booking instructions using your credit card rewards.',
+    description: 'Track your points, discover transfer bonuses, plan trips, and get step-by-step booking instructions to maximize your credit card rewards.',
     applicationCategory: 'TravelApplication',
     operatingSystem: 'Web',
     offers: {
@@ -34,7 +34,7 @@ export default function Home() {
         padding: '80px 20px 60px',
         textAlign: 'center',
       }}>
-        <div style={{ maxWidth: 620, margin: '0 auto' }}>
+        <div style={{ maxWidth: 660, margin: '0 auto' }}>
           <div style={{
             display: 'inline-block',
             padding: '4px 14px',
@@ -46,17 +46,17 @@ export default function Home() {
             marginBottom: 20,
             letterSpacing: 0.5,
           }}>
-            Ditch the spreadsheets
+            Your points command center
           </div>
           <h1 className="hero-title">
-            Finally, one place for all your flight options
+            Stop leaving points on the table
           </h1>
           <p className="hero-subtitle">
-            Stop juggling spreadsheets and browser tabs! Organize all of your booking options, compare cash vs. points, and see exactly which combo saves you the most.
+            Track every point balance, discover transfer bonuses, plan trips with drag-and-drop, and get step-by-step booking playbooks — all in one place.
           </p>
           <div className="hero-buttons">
             <button
-              onClick={() => router.push('/trip/new')}
+              onClick={() => router.push('/wallet')}
               style={{
                 padding: '14px 32px',
                 fontSize: 16,
@@ -72,10 +72,10 @@ export default function Home() {
               onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(212, 168, 71, 0.4)' }}
               onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(212, 168, 71, 0.3)' }}
             >
-              Start a Trip →
+              Track My Points
             </button>
             <button
-              onClick={() => router.push('/wallet')}
+              onClick={() => router.push('/trip/new')}
               style={{
                 padding: '14px 32px',
                 fontSize: 16,
@@ -90,27 +90,62 @@ export default function Home() {
               onMouseOver={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.15)' }}
               onMouseOut={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)' }}
             >
-              My Points
+              Plan a Trip
             </button>
           </div>
         </div>
       </div>
 
       {/* Features */}
-      <div style={{ maxWidth: 800, margin: '0 auto', padding: '56px 20px 40px' }}>
-        <div className="features-grid">
+      <div style={{ maxWidth: 900, margin: '0 auto', padding: '56px 20px 40px' }}>
+        <h2 style={{ fontSize: 22, fontWeight: 700, textAlign: 'center', marginBottom: 8 }}>
+          Everything you need to maximize rewards
+        </h2>
+        <p style={{ fontSize: 14, color: 'var(--text-secondary)', textAlign: 'center', marginBottom: 32, maxWidth: 500, margin: '0 auto 32px' }}>
+          From tracking balances to booking flights — one app replaces your spreadsheets, browser tabs, and guesswork.
+        </p>
+        <div className="features-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
           {[
-            { icon: '📋', title: 'Organize options', desc: 'Log every flight you find — cash price, points cost, airline, routing. All in one place instead of scattered notes.' },
-            { icon: '⚖️', title: 'Compare everything', desc: 'See all your options side by side. Drag flights into plans and instantly see total costs across points and cash.' },
-            { icon: '🗺️', title: 'Get the playbook', desc: 'We know every transfer partner. Once you pick a plan, we tell you exactly which points to transfer and where.' },
+            {
+              icon: '💳',
+              title: 'Points Wallet',
+              desc: 'Track balances across Chase, Amex, Citi, Capital One, Bilt, and 90+ airline programs. All in one dashboard.',
+              link: '/wallet',
+            },
+            {
+              icon: '🔥',
+              title: 'Travel Hacks',
+              desc: 'See every transfer partner, ratio, and active bonus. Calculate exactly how many miles you\'ll get with bonus transfers.',
+              link: '/wallet',
+            },
+            {
+              icon: '✈️',
+              title: 'Trip Planner',
+              desc: 'Log every flight option you find — cash, points, or both. Drag and drop to build the perfect itinerary.',
+              link: '/trip/new',
+            },
+            {
+              icon: '📰',
+              title: 'Points News',
+              desc: 'Stay on top of transfer bonuses, new routes, and deals. Never miss a limited-time points promotion.',
+              link: '/news',
+            },
           ].map((item) => (
-            <div key={item.title} style={{
-              padding: 24,
-              backgroundColor: 'var(--bg-card)',
-              borderRadius: 'var(--radius-lg)',
-              boxShadow: 'var(--shadow)',
-              border: '1px solid var(--border-light)',
-            }}>
+            <div
+              key={item.title}
+              onClick={() => router.push(item.link)}
+              style={{
+                padding: 24,
+                backgroundColor: 'var(--bg-card)',
+                borderRadius: 'var(--radius-lg)',
+                boxShadow: 'var(--shadow)',
+                border: '1px solid var(--border-light)',
+                cursor: 'pointer',
+                transition: 'transform 0.15s, box-shadow 0.15s',
+              }}
+              onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = 'var(--shadow-lg)' }}
+              onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'var(--shadow)' }}
+            >
               <div style={{ fontSize: 28, marginBottom: 14 }}>{item.icon}</div>
               <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 8 }}>{item.title}</div>
               <div style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.55 }}>{item.desc}</div>
@@ -133,10 +168,10 @@ export default function Home() {
           <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 24, textAlign: 'center' }}>How it works</h2>
           <div className="how-it-works-steps">
             {[
-              { step: '1', title: 'Create a trip', desc: 'Set your route — round trip, one-way, or multi-city' },
-              { step: '2', title: 'Add every option', desc: 'Log flights with cash prices, points costs, or both' },
-              { step: '3', title: 'Enter your balances', desc: 'Add your points across all banks and airlines' },
-              { step: '4', title: 'Build your plan', desc: 'Assign the best flights and get step-by-step booking instructions' },
+              { step: '1', title: 'Add your points', desc: 'Enter balances from every bank and airline program you have' },
+              { step: '2', title: 'Check Travel Hacks', desc: 'See transfer partners, active bonuses, and calculate your best options' },
+              { step: '3', title: 'Plan a trip', desc: 'Create a trip, log every flight option, and drag-drop your favorites into a plan' },
+              { step: '4', title: 'Get the playbook', desc: 'See exactly which points to transfer, where to book, and step-by-step instructions' },
             ].map((item, i) => (
               <div key={item.step} className="how-it-works-step">
                 <div style={{
@@ -156,6 +191,30 @@ export default function Home() {
               </div>
             ))}
           </div>
+        </div>
+      </div>
+
+      {/* Stats bar */}
+      <div style={{ maxWidth: 800, margin: '0 auto', padding: '0 20px 40px' }}>
+        <div style={{
+          display: 'flex', justifyContent: 'center', gap: 40, flexWrap: 'wrap',
+          padding: '24px 20px',
+          backgroundColor: 'var(--bg-card)',
+          borderRadius: 'var(--radius-lg)',
+          boxShadow: 'var(--shadow)',
+          border: '1px solid var(--border-light)',
+        }}>
+          {[
+            { num: '5', label: 'Bank Programs' },
+            { num: '90+', label: 'Airline Programs' },
+            { num: '78', label: 'Transfer Partners' },
+            { num: '100%', label: 'Free' },
+          ].map((item) => (
+            <div key={item.label} style={{ textAlign: 'center', minWidth: 100 }}>
+              <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--accent)' }}>{item.num}</div>
+              <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>{item.label}</div>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -188,14 +247,16 @@ export default function Home() {
             overflow: 'hidden',
           }}>
             {[
-              { q: 'Is this free?', a: 'Yes, completely free.' },
-              { q: 'Do I need an account?', a: "Not to get started — just dive in. Sign up for free whenever you're ready to save your work." },              { q: 'Which points programs do you support?', a: 'Chase, Amex, Citi, Capital One, Bilt, and all major airline programs. We know every transfer partner and ratio.' },
-              { q: "How is this different from a spreadsheet?", a: "It's built for this. Auto-lookup flights by code, drag-and-drop trip planning, transfer partner logic built in, and step-by-step booking instructions you'd never get from a spreadsheet." },
-              { q: 'Do you book flights for me?', a: "No — we tell you exactly what to do and you book it yourself. That way you keep full control and earn any booking bonuses." },
+              { q: 'Is this free?', a: 'Yes, completely free. No hidden fees, no premium tier.' },
+              { q: 'Do I need an account?', a: "Not to get started — your points are saved locally. Sign up for free whenever you want to sync across devices." },
+              { q: 'Which points programs do you support?', a: 'Chase Ultimate Rewards, Amex Membership Rewards, Citi ThankYou Points, Capital One Miles, Bilt Rewards, plus 90+ airline frequent flyer programs.' },
+              { q: 'What are Travel Hacks?', a: 'Every wallet entry has a Travel Hacks popup showing transfer partners, ratios, active bonuses, and a calculator to see exactly how many miles your points are worth with bonus transfers.' },
+              { q: "How is this different from a spreadsheet?", a: "Built-in transfer partner data, bonus tracking, drag-and-drop trip planning, flight lookup by code, and step-by-step booking playbooks. It knows things a spreadsheet can't." },
+              { q: 'Do you book flights for me?', a: "No — we tell you exactly what to do and you book it yourself. You keep full control and earn any booking bonuses." },
             ].map((item, i) => (
               <div key={i} style={{
                 padding: '16px 20px',
-                borderBottom: i < 4 ? '1px solid var(--border-light)' : 'none',
+                borderBottom: i < 5 ? '1px solid var(--border-light)' : 'none',
               }}>
                 <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>{item.q}</div>
                 <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{item.a}</div>

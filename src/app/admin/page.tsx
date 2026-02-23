@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/components/AuthProvider'
 import { createClient } from '@/lib/supabase'
+import ProgramSelect from '@/components/ProgramSelect'
+import { transferPartners } from '@/data/transferPartners'
 
 type Article = {
   id: string
@@ -264,7 +266,7 @@ export default function AdminPage() {
           <label style={fieldLabel}>Bank Program</label>
           <div style={{ display: 'flex', gap: 6, marginBottom: 14, flexWrap: 'wrap' }}>
             {['Chase Ultimate Rewards', 'Amex Membership Rewards', 'Citi ThankYou Points', 'Capital One Miles', 'Bilt Rewards'].map(prog => (
-              <button key={prog} onClick={() => setBankProgram(prog)} style={{
+              <button key={prog} onClick={() => { setBankProgram(prog); if (prog !== bankProgram) setPartner('') }} style={{
                 padding: '8px 14px',
                 border: bankProgram === prog ? '2px solid var(--primary)' : '1px solid var(--border)',
                 borderRadius: 'var(--radius-sm)',
@@ -277,8 +279,18 @@ export default function AdminPage() {
             ))}
           </div>
 
-          <label style={fieldLabel}>Transfer Partner</label>
-          <input type="text" value={partner} onChange={(e) => setPartner(e.target.value)} placeholder="e.g. United MileagePlus, British Airways" style={{ marginBottom: 14 }} />
+          <label style={fieldLabel}>Transfer Partner {bankProgram ? `(${transferPartners.find(p => p.name === bankProgram)?.partners.length || 0} airlines)` : ''}</label>
+          <ProgramSelect
+            value={partner}
+            onChange={setPartner}
+            options={
+              transferPartners
+                .find(p => p.name === bankProgram)
+                ?.partners.map(p => ({ value: p.partner, label: p.partner })) || []
+            }
+            placeholder={bankProgram ? 'Select transfer partner' : 'Select a bank program first'}
+            style={{ marginBottom: 14 }}
+          />
 
           <label style={fieldLabel}>Bonus Percentage (%)</label>
           <input type="number" value={bonusPercent} onChange={(e) => setBonusPercent(e.target.value)} placeholder="e.g. 25, 30, 50" style={{ marginBottom: 14 }} />

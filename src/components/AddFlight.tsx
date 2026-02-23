@@ -5,6 +5,8 @@ import DatePicker from 'react-datepicker'
 import 'react-datepicker/dist/react-datepicker.css'
 import AirportInput from '@/components/AirportInput'
 import CustomSelect from '@/components/CustomSelect'
+import ProgramSelect from '@/components/ProgramSelect'
+import { airlines, bookingSites } from '@/data/programOptions'
 
 type Segment = {
   flightCode: string
@@ -230,11 +232,11 @@ export default function AddFlight({ legs, onSave, onCancel, editingFlight }: Pro
         </div>
 
         <label style={fieldLabel}>Booking site</label>
-        <input
-          type="text"
-          placeholder="e.g. United, Virgin Atlantic, Chase Travel"
+        <ProgramSelect
           value={bookingSite}
-          onChange={(e) => setBookingSite(e.target.value)}
+          onChange={setBookingSite}
+          options={bookingSites}
+          placeholder="e.g. United.com, Chase Travel Portal"
           style={{ marginBottom: 14 }}
         />
 
@@ -336,7 +338,7 @@ export default function AddFlight({ legs, onSave, onCancel, editingFlight }: Pro
                 </div>
                 <div>
                   <label style={fieldLabel}>Airline</label>
-                  <input type="text" value={seg.airlineName} onChange={(e) => updateSegment(i, 'airlineName', e.target.value)} placeholder="United Airlines" style={fieldInput} />
+                  <ProgramSelect value={seg.airlineName} onChange={(val) => updateSegment(i, 'airlineName', val)} options={airlines} placeholder="United Airlines" />
                 </div>
                 <div>
                   <label style={fieldLabel}>Date</label>
@@ -467,7 +469,7 @@ export default function AddFlight({ legs, onSave, onCancel, editingFlight }: Pro
             </div>
             <div>
               <label style={fieldLabel}>Airline</label>
-              <input type="text" placeholder="e.g. United Airlines" value={manualAirline} onChange={(e) => setManualAirline(e.target.value)} style={fieldInput} />
+              <ProgramSelect value={manualAirline} onChange={setManualAirline} options={airlines} placeholder="e.g. United Airlines" />
             </div>
           </div>
 
