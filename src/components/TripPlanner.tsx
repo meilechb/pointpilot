@@ -51,10 +51,13 @@ type Segment = {
   flightCode: string
   airlineName: string
   date: string
+  arrivalDate: string
   departureAirport: string
   arrivalAirport: string
   departureTime: string
   arrivalTime: string
+  departureTimeUtc: string
+  arrivalTimeUtc: string
   duration: number | null
 }
 
