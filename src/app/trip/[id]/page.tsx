@@ -15,7 +15,7 @@ export default function TripDetail() {
   const [showAddFlight, setShowAddFlight] = useState(false)
   const [editingFlightId, setEditingFlightId] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'flights' | 'plan' | 'itineraries'>('flights')
-  const [savePromptTrigger, setSavePromptTrigger] = useState<'flight' | 'plan' | null>(null)
+  const [savePromptTrigger, setSavePromptTrigger] = useState<'flight' | 'plan' | 'trip' | 'wallet' | null>(null)
 
   useEffect(() => {
     const trips = JSON.parse(localStorage.getItem('trips') || '[]')

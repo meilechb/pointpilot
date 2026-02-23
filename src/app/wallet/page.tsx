@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import SavePrompt from '@/components/SavePrompt'
 
 type WalletEntry = {
   id: string
@@ -42,6 +43,7 @@ export default function WalletPage() {
   const [balance, setBalance] = useState('')
   const [redemptionValue, setRedemptionValue] = useState('')
   const [notes, setNotes] = useState('')
+  const [savePromptTrigger, setSavePromptTrigger] = useState<'flight' | 'plan' | 'trip' | 'wallet' | null>(null)
 
   useEffect(() => {
     const saved = JSON.parse(localStorage.getItem('wallet') || '[]')
@@ -79,6 +81,9 @@ export default function WalletPage() {
       updated = [...entries, entry]
     }
     saveEntries(updated)
+    if (!editingId && updated.length === 1) {
+      setSavePromptTrigger('wallet')
+    }
     resetForm()
   }
 
@@ -371,6 +376,8 @@ export default function WalletPage() {
           + Add Entry
         </button>
       )}
+
+      <SavePrompt trigger={savePromptTrigger} />
     </div>
   )
 }

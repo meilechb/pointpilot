@@ -7,13 +7,13 @@ import SavePrompt from '@/components/SavePrompt'
 export default function TripsPage() {
   const router = useRouter()
   const [trips, setTrips] = useState<any[]>([])
-  const [savePromptTrigger, setSavePromptTrigger] = useState<'flight' | 'plan' | null>(null)
+  const [savePromptTrigger, setSavePromptTrigger] = useState<'flight' | 'plan' | 'trip' | 'wallet' | null>(null)
 
   useEffect(() => {
     const saved = JSON.parse(localStorage.getItem('trips') || '[]')
     setTrips(saved)
     if (saved.length === 1) {
-      setSavePromptTrigger('flight')
+      setSavePromptTrigger('trip')
     }
   }, [])
 
