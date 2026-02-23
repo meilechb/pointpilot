@@ -60,6 +60,11 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <head>
         <title>Point Tripper — Maximize Your Points & Miles</title>
         <meta name="description" content="Find the best way to use your credit card points and airline miles for flights." />
+        <script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5751210990513261"
+          crossOrigin="anonymous"
+        />
       </head>
       <body>
         <AuthProvider>
