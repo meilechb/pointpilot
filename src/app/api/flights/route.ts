@@ -65,6 +65,8 @@ export async function GET(request: NextRequest) {
       arrivalAirport: flight.arr_iata,
       departureTime: flight.dep_time,
       arrivalTime: flight.arr_time,
+      departureTimeUtc: flight.dep_time_utc,
+      arrivalTimeUtc: flight.arr_time_utc,
       departureTerminal: flight.dep_terminal,
       arrivalTerminal: flight.arr_terminal,
       duration: flight.duration,

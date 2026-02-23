@@ -7,10 +7,13 @@ type Segment = {
   flightCode: string
   airlineName: string
   date: string
+  arrivalDate: string
   departureAirport: string
   arrivalAirport: string
   departureTime: string
   arrivalTime: string
+  departureTimeUtc: string
+  arrivalTimeUtc: string
   duration: number | null
 }
 
@@ -26,22 +29,20 @@ export default function AddFlight({ legs, onSave, onCancel, editingFlight }: Pro
   const [step, setStep] = useState<'flight' | 'booking'>('flight')
   const [segments, setSegments] = useState<Segment[]>(editingFlight?.segments || [])
 
-  // Lookup
   const [lookupCode, setLookupCode] = useState('')
   const [lookupDate, setLookupDate] = useState('')
   const [lookupLoading, setLookupLoading] = useState(false)
   const [lookupError, setLookupError] = useState('')
 
-  // Manual
   const [manualCode, setManualCode] = useState('')
   const [manualAirline, setManualAirline] = useState('')
   const [manualDate, setManualDate] = useState('')
+  const [manualArrivalDate, setManualArrivalDate] = useState('')
   const [manualFrom, setManualFrom] = useState('')
   const [manualTo, setManualTo] = useState('')
   const [manualDepart, setManualDepart] = useState('')
   const [manualArrive, setManualArrive] = useState('')
 
-  // Booking
   const [selectedLeg, setSelectedLeg] = useState(editingFlight?.legIndex || 0)
   const [bookingSite, setBookingSite] = useState(editingFlight?.bookingSite || '')
   const [paymentType, setPaymentType] = useState(editingFlight?.paymentType || 'cash')
@@ -60,14 +61,22 @@ export default function AddFlight({ legs, onSave, onCancel, editingFlight }: Pro
         setLookupLoading(false)
         return
       }
+      const depDate = data.departureTime?.split(' ')[0] || ''
+      const arrDate = data.arrivalTime?.split(' ')[0] || ''
+      const depTime = data.departureTime?.split(' ')[1] || ''
+      const arrTime = data.arrivalTime?.split(' ')[1] || ''
+
       const newSegment: Segment = {
         flightCode: data.flightCode || lookupCode.toUpperCase(),
         airlineName: data.airlineName || '',
-        date: lookupDate || data.departureTime?.split(' ')[0] || '',
+        date: depDate,
+        arrivalDate: arrDate,
         departureAirport: data.departureAirport || '',
         arrivalAirport: data.arrivalAirport || '',
-        departureTime: data.departureTime?.split(' ')[1] || '',
-        arrivalTime: data.arrivalTime?.split(' ')[1] || '',
+        departureTime: depTime,
+        arrivalTime: arrTime,
+        departureTimeUtc: data.departureTimeUtc || '',
+        arrivalTimeUtc: data.arrivalTimeUtc || '',
         duration: data.duration || null,
       }
       setSegments([...segments, newSegment])
@@ -85,16 +94,20 @@ export default function AddFlight({ legs, onSave, onCancel, editingFlight }: Pro
       flightCode: manualCode.toUpperCase(),
       airlineName: manualAirline,
       date: manualDate,
+      arrivalDate: manualArrivalDate || manualDate,
       departureAirport: manualFrom.toUpperCase(),
       arrivalAirport: manualTo.toUpperCase(),
       departureTime: manualDepart,
       arrivalTime: manualArrive,
+      departureTimeUtc: '',
+      arrivalTimeUtc: '',
       duration: null,
     }
     setSegments([...segments, newSegment])
     setManualCode('')
     setManualAirline('')
     setManualDate('')
+    setManualArrivalDate('')
     setManualFrom('')
     setManualTo('')
     setManualDepart('')
@@ -126,10 +139,19 @@ export default function AddFlight({ legs, onSave, onCancel, editingFlight }: Pro
 
   const inputSmall = { padding: 6, border: '1px solid #ddd', borderRadius: 4, fontSize: 13, minWidth: 0, boxSizing: 'border-box' as const }
 
-  // Booking step
+  const editingBanner = editingFlight && (
+    <div style={{
+      padding: '6px 12px', backgroundColor: '#E3F2FD', color: '#1565C0',
+      borderRadius: 4, marginBottom: 12, fontSize: 13, fontWeight: 600,
+    }}>
+      ✎ Editing flight — {editingFlight.segments?.map((s: any) => s.flightCode).filter(Boolean).join(', ') || 'flight'}
+    </div>
+  )
+
   if (step === 'booking') {
     return (
-      <div style={{ border: '1px solid #e0e0e0', borderRadius: 6, padding: 16, marginTop: 8 }}>
+      <div style={{ border: editingFlight ? '2px solid #2196F3' : '1px solid #e0e0e0', borderRadius: 6, padding: 16, marginTop: 8 }}>
+        {editingBanner}
         <p style={{ marginBottom: 4, fontWeight: 'bold' }}>Booking details</p>
         <p style={{ fontSize: 13, color: '#666', marginBottom: 12 }}>
           {segments.map(s => `${s.flightCode} ${s.departureAirport}→${s.arrivalAirport}`).join(' · ')}
@@ -211,7 +233,7 @@ export default function AddFlight({ legs, onSave, onCancel, editingFlight }: Pro
         <div style={{ display: 'flex', gap: 10 }}>
           <button
             onClick={handleSave}
-            style={{ flex: 1, padding: 10, backgroundColor: '#000', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+            style={{ flex: 1, padding: 10, backgroundColor: editingFlight ? '#2196F3' : '#000', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}
           >
             {editingFlight ? 'Update Flight' : 'Save Flight'}
           </button>
@@ -226,9 +248,9 @@ export default function AddFlight({ legs, onSave, onCancel, editingFlight }: Pro
     )
   }
 
-  // Flight entry step
   return (
-    <div style={{ border: '1px solid #e0e0e0', borderRadius: 6, padding: 16, marginTop: 8 }}>
+    <div style={{ border: editingFlight ? '2px solid #2196F3' : '1px solid #e0e0e0', borderRadius: 6, padding: 16, marginTop: 8 }}>
+      {editingBanner}
 
       {segments.length > 0 && (
         <div style={{ marginBottom: 12 }}>
@@ -245,18 +267,10 @@ export default function AddFlight({ legs, onSave, onCancel, editingFlight }: Pro
               </div>
               <div style={{ display: 'flex', gap: 6 }}>
                 <div style={{ width: '22%' }}>
-                  <AirportInput
-                    value={seg.departureAirport}
-                    onChange={(val) => updateSegment(i, 'departureAirport', val)}
-                    placeholder="From"
-                  />
+                  <AirportInput value={seg.departureAirport} onChange={(val) => updateSegment(i, 'departureAirport', val)} placeholder="From" />
                 </div>
                 <div style={{ width: '22%' }}>
-                  <AirportInput
-                    value={seg.arrivalAirport}
-                    onChange={(val) => updateSegment(i, 'arrivalAirport', val)}
-                    placeholder="To"
-                  />
+                  <AirportInput value={seg.arrivalAirport} onChange={(val) => updateSegment(i, 'arrivalAirport', val)} placeholder="To" />
                 </div>
                 <input value={seg.departureTime} onChange={(e) => updateSegment(i, 'departureTime', e.target.value)} style={{ ...inputSmall, width: '28%' }} placeholder="Depart" />
                 <input value={seg.arrivalTime} onChange={(e) => updateSegment(i, 'arrivalTime', e.target.value)} style={{ ...inputSmall, width: '28%' }} placeholder="Arrive" />
@@ -291,10 +305,7 @@ export default function AddFlight({ legs, onSave, onCancel, editingFlight }: Pro
             </button>
           </div>
           {lookupError && <p style={{ color: 'red', fontSize: 13, marginBottom: 8 }}>{lookupError}</p>}
-          <span
-            onClick={() => setMode('manual')}
-            style={{ fontSize: 13, color: '#999', cursor: 'pointer', textDecoration: 'underline' }}
-          >
+          <span onClick={() => setMode('manual')} style={{ fontSize: 13, color: '#999', cursor: 'pointer', textDecoration: 'underline' }}>
             Enter manually instead
           </span>
         </>
@@ -306,20 +317,19 @@ export default function AddFlight({ legs, onSave, onCancel, editingFlight }: Pro
             <input type="text" placeholder="Flight code (optional)" value={manualCode} onChange={(e) => setManualCode(e.target.value)} style={{ flex: 1, padding: 10, border: '1px solid #ccc', borderRadius: 4 }} />
             <input type="text" placeholder="Airline" value={manualAirline} onChange={(e) => setManualAirline(e.target.value)} style={{ flex: 1, padding: 10, border: '1px solid #ccc', borderRadius: 4 }} />
           </div>
-          <input type="date" value={manualDate} onChange={(e) => setManualDate(e.target.value)} style={{ display: 'block', width: '100%', padding: 10, marginBottom: 8, border: '1px solid #ccc', borderRadius: 4, boxSizing: 'border-box' }} />
           <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-            <AirportInput
-              value={manualFrom}
-              onChange={setManualFrom}
-              placeholder="From (e.g. EWR)"
-              style={{ flex: 1 }}
-            />
-            <AirportInput
-              value={manualTo}
-              onChange={setManualTo}
-              placeholder="To (e.g. TLV)"
-              style={{ flex: 1 }}
-            />
+            <div style={{ flex: 1 }}>
+              <label style={{ fontSize: 11, color: '#999' }}>Departure date</label>
+              <input type="date" value={manualDate} onChange={(e) => { setManualDate(e.target.value); if (!manualArrivalDate) setManualArrivalDate(e.target.value) }} style={{ display: 'block', width: '100%', padding: 10, border: '1px solid #ccc', borderRadius: 4, boxSizing: 'border-box' }} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={{ fontSize: 11, color: '#999' }}>Arrival date</label>
+              <input type="date" value={manualArrivalDate} onChange={(e) => setManualArrivalDate(e.target.value)} style={{ display: 'block', width: '100%', padding: 10, border: '1px solid #ccc', borderRadius: 4, boxSizing: 'border-box' }} />
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+            <AirportInput value={manualFrom} onChange={setManualFrom} placeholder="From (e.g. EWR)" style={{ flex: 1 }} />
+            <AirportInput value={manualTo} onChange={setManualTo} placeholder="To (e.g. TLV)" style={{ flex: 1 }} />
           </div>
           <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
             <input type="time" value={manualDepart} onChange={(e) => setManualDepart(e.target.value)} style={{ flex: 1, padding: 10, border: '1px solid #ccc', borderRadius: 4 }} />
@@ -332,10 +342,7 @@ export default function AddFlight({ legs, onSave, onCancel, editingFlight }: Pro
           >
             Add
           </button>
-          <span
-            onClick={() => setMode('lookup')}
-            style={{ fontSize: 13, color: '#999', cursor: 'pointer', textDecoration: 'underline' }}
-          >
+          <span onClick={() => setMode('lookup')} style={{ fontSize: 13, color: '#999', cursor: 'pointer', textDecoration: 'underline' }}>
             Look up by flight code instead
           </span>
         </>

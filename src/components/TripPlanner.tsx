@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import FlightCard from '@/components/FlightCard'
 
 const CITY_AIRPORTS: Record<string, string[]> = {
   NYC: ['JFK', 'EWR', 'LGA', 'SWF', 'ISP', 'HPN'],
@@ -29,7 +30,6 @@ const CITY_AIRPORTS: Record<string, string[]> = {
   YTO: ['YYZ', 'YTZ'],
   YMQ: ['YUL', 'YMX'],
   MEL: ['MEL', 'AVV'],
-  TLV: ['TLV'],
 }
 
 const AIRPORT_TO_CITY: Record<string, string> = {}
@@ -83,10 +83,6 @@ type Props = {
   onSave: (assignments: LegAssignment) => void
 }
 
-function getFlightSummary(flight: Flight): string {
-  return flight.segments.map(s => s.flightCode || s.airlineName).filter(Boolean).join(' + ') || 'Unknown'
-}
-
 function getFlightRoute(flight: Flight): { from: string; to: string } {
   return {
     from: flight.segments[0]?.departureAirport || '???',
@@ -100,14 +96,6 @@ function getFlightPrice(flight: Flight): { cash: number; points: number; fees: n
     points: flight.paymentType === 'points' ? (flight.pointsAmount || 0) : 0,
     fees: flight.paymentType === 'points' ? (flight.feesAmount || 0) : 0,
   }
-}
-
-function getFlightPriceLabel(flight: Flight): string {
-  if (flight.paymentType === 'cash' && flight.cashAmount) return `$${flight.cashAmount}`
-  if (flight.paymentType === 'points' && flight.pointsAmount) {
-    return `${flight.pointsAmount.toLocaleString()} pts${flight.feesAmount ? ` + $${flight.feesAmount}` : ''}`
-  }
-  return ''
 }
 
 function canFlightGoInLeg(flight: Flight, leg: Leg): boolean {
@@ -134,9 +122,8 @@ function validateLeg(leg: Leg, flights: Flight[]): { complete: boolean; warnings
   for (let i = 0; i < flights.length - 1; i++) {
     const currentTo = getFlightRoute(flights[i]).to
     const nextFrom = getFlightRoute(flights[i + 1]).from
-   if (!airportsMatch(currentTo, nextFrom)) {
+    if (!airportsMatch(currentTo, nextFrom)) {
       warnings.push({ type: 'route_gap', message: `Flight ${i + 1} arrives at ${currentTo} but flight ${i + 2} departs from ${nextFrom}` })
-      
     }
 
     const seg1 = flights[i].segments[flights[i].segments.length - 1]
@@ -258,47 +245,6 @@ export default function TripPlanner({ legs, flights, travelers, onSave }: Props)
     return validateLeg(leg, lf).complete
   })
 
-  const flightCard = (flight: Flight) => {
-    const route = getFlightRoute(flight)
-    const price = getFlightPriceLabel(flight)
-    const isDragging = draggedFlight === flight.id
-    return (
-      <div
-        draggable
-        onDragStart={() => handleDragStart(flight.id)}
-        onDragEnd={handleDragEnd}
-        style={{
-          padding: '10px 12px',
-          backgroundColor: isDragging ? '#f0f0f0' : '#fff',
-          border: isDragging ? '2px dashed #999' : '1px solid #e0e0e0',
-          borderRadius: 8,
-          cursor: 'grab',
-          opacity: isDragging ? 0.4 : 1,
-          transition: 'all 0.15s ease',
-          boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
-          userSelect: 'none' as const,
-        }}
-      >
-        <div style={{ fontWeight: 600, fontSize: 14 }}>{getFlightSummary(flight)}</div>
-        <div style={{ fontSize: 13, color: '#555', marginTop: 2 }}>
-          {route.from} → {route.to}
-          {flight.segments[0]?.date && <span style={{ color: '#aaa', marginLeft: 8 }}>{flight.segments[0].date}</span>}
-        </div>
-        {flight.segments[0]?.departureTime && (
-          <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>
-            {flight.segments[0].departureTime} – {flight.segments[flight.segments.length - 1]?.arrivalTime}
-            {flight.segments.length > 1 && ` · ${flight.segments.length} segments`}
-          </div>
-        )}
-        {price && (
-          <div style={{ fontSize: 12, color: '#666', marginTop: 2 }}>
-            {price}{flight.bookingSite ? ` · ${flight.bookingSite}` : ''}
-          </div>
-        )}
-      </div>
-    )
-  }
-
   return (
     <div>
       {bounceMessage && (
@@ -321,7 +267,16 @@ export default function TripPlanner({ legs, flights, travelers, onSave }: Props)
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           {unassigned.map(f => (
-            <div key={f.id} style={{ flex: '1 1 calc(50% - 4px)', minWidth: 200 }}>{flightCard(f)}</div>
+            <div key={f.id} style={{ flex: '1 1 calc(50% - 4px)', minWidth: 200 }}>
+              <FlightCard
+                flight={f}
+                compact
+                draggable
+                onDragStart={() => handleDragStart(f.id)}
+                onDragEnd={handleDragEnd}
+                style={{ opacity: draggedFlight === f.id ? 0.4 : 1 }}
+              />
+            </div>
           ))}
         </div>
       </div>
@@ -332,9 +287,6 @@ export default function TripPlanner({ legs, flights, travelers, onSave }: Props)
           const legFlights = legFlightIds.map(id => flightMap[id]).filter(Boolean)
           const validation = validateLeg(leg, legFlights)
           const isOver = dragOverLeg === i
-          const legCash = legFlights.reduce((s, f) => s + getFlightPrice(f).cash, 0)
-          const legPoints = legFlights.reduce((s, f) => s + getFlightPrice(f).points, 0)
-          const legFees = legFlights.reduce((s, f) => s + getFlightPrice(f).fees, 0)
 
           return (
             <div key={i}
@@ -376,7 +328,14 @@ export default function TripPlanner({ legs, flights, travelers, onSave }: Props)
                         <div style={{ height: 3, backgroundColor: '#2196F3', borderRadius: 2, marginBottom: 4 }} />
                       )}
                       <div onDragOver={(e) => handleDragOverCard(e, i, pos)} style={{ marginBottom: 6 }}>
-                        {flightCard(f)}
+                        <FlightCard
+                          flight={f}
+                          compact
+                          draggable
+                          onDragStart={() => handleDragStart(f.id)}
+                          onDragEnd={handleDragEnd}
+                          style={{ opacity: draggedFlight === f.id ? 0.4 : 1 }}
+                        />
                       </div>
                       {pos < legFlights.length - 1 && (
                         <div style={{ textAlign: 'center', padding: '2px 0 6px', fontSize: 12 }}>
@@ -386,7 +345,7 @@ export default function TripPlanner({ legs, flights, travelers, onSave }: Props)
                             if (cTo === nFrom) {
                               return <span style={{ color: '#4CAF50' }}>↓ via {cTo}</span>
                             }
-                           if (airportsMatch(cTo, nFrom)) {
+                            if (airportsMatch(cTo, nFrom)) {
                               return <div style={{ padding: '6px 10px', backgroundColor: '#FFF3E0', borderRadius: 6, fontSize: 12, color: '#E65100', margin: '4px 0' }}>⚠ Airport change: {cTo} → {nFrom} — allow extra transfer time</div>
                             }
                             return <span style={{ color: '#f44336', fontWeight: 500 }}>⚠ {cTo} ✕ {nFrom}</span>
@@ -401,7 +360,7 @@ export default function TripPlanner({ legs, flights, travelers, onSave }: Props)
                 </div>
               )}
 
-              {validation.warnings.length > 0 && (
+             {validation.warnings.length > 0 && (
                 <div style={{ marginTop: 8 }}>
                   {validation.warnings.map((w, wi) => (
                     <div key={wi} style={{
@@ -414,6 +373,54 @@ export default function TripPlanner({ legs, flights, travelers, onSave }: Props)
                   ))}
                 </div>
               )}
+
+              {legFlights.length > 1 && (() => {
+                const firstSeg = legFlights[0].segments[0]
+                const lastFlight = legFlights[legFlights.length - 1]
+                const lastSeg = lastFlight.segments[lastFlight.segments.length - 1]
+                if (!firstSeg?.date || !firstSeg?.departureTime || !lastSeg?.date || !lastSeg?.arrivalTime) return null
+
+                // Use UTC if available, else local
+                let totalMin = 0
+                if (firstSeg.departureTimeUtc && lastSeg.arrivalTimeUtc) {
+                  const dep = new Date(firstSeg.departureTimeUtc.replace(' ', 'T') + 'Z')
+                  const arr = new Date(lastSeg.arrivalTimeUtc.replace(' ', 'T') + 'Z')
+                  totalMin = (arr.getTime() - dep.getTime()) / 60000
+                } else {
+                  // Sum individual durations + layovers as fallback
+                  legFlights.forEach(f => {
+                    f.segments.forEach(s => { if (s.duration) totalMin += s.duration })
+                  })
+                  // Add inter-flight layovers
+                  for (let li = 0; li < legFlights.length - 1; li++) {
+                    const aLast = legFlights[li].segments[legFlights[li].segments.length - 1]
+                    const bFirst = legFlights[li + 1].segments[0]
+                    if (aLast.arrivalTime && bFirst.departureTime && aLast.date && bFirst.date) {
+                      const a = new Date(`${aLast.date}T${aLast.arrivalTime}`)
+                      const b = new Date(`${bFirst.date}T${bFirst.departureTime}`)
+                      let diff = (b.getTime() - a.getTime()) / 60000
+                      if (diff < 0) diff += 24 * 60
+                      totalMin += diff
+                    }
+                  }
+                }
+
+                if (totalMin <= 0) return null
+                const h = Math.floor(totalMin / 60)
+                const m = Math.round(totalMin % 60)
+                const timeStr = h > 0 ? (m > 0 ? `${h}h ${m}m` : `${h}h`) : `${m}m`
+
+                return (
+                  <div style={{
+                    marginTop: 10, padding: '8px 12px', backgroundColor: '#fff',
+                    borderRadius: 6, border: '1px solid #e0e0e0', fontSize: 13, color: '#555',
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  }}>
+                    <span>Total leg time</span>
+                    <span style={{ fontWeight: 600 }}>{timeStr}</span>
+                  </div>
+                )
+              })()}
             </div>
           )
         })}
@@ -428,7 +435,7 @@ export default function TripPlanner({ legs, flights, travelers, onSave }: Props)
         </div>
       )}
 
-     <div style={{ marginTop: 16 }}>
+      <div style={{ marginTop: 16 }}>
         <button onClick={() => onSave(assignments)} style={{
           width: '100%', padding: 12, backgroundColor: allLegsComplete ? '#4CAF50' : '#000',
           color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 15, fontWeight: 600,
