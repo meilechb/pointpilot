@@ -66,20 +66,21 @@ export default function FlightCard({ flight, compact = false, draggable = false,
   const bookingLabel = [
     ...(airlines.length > 0 ? [airlines.join(', ')] : []),
     ...(flight.bookingSite && !airlines.includes(flight.bookingSite) ? [`via ${flight.bookingSite}`] : []),
-  ].join(' • ')
+  ].join(' · ')
 
   const actionButtons = (onEdit || onDelete) && (
-    <div style={{ display: 'flex', gap: 4 }}>
+    <div style={{ display: 'flex', gap: 2 }}>
       {onEdit && (
         <button
           onClick={(e) => { e.stopPropagation(); onEdit() }}
           title="Edit"
           style={{
             border: 'none', background: 'none', cursor: 'pointer',
-            fontSize: 15, color: '#999', padding: '2px 6px', borderRadius: 4,
+            fontSize: 14, color: 'var(--text-muted)', padding: '4px 6px',
+            borderRadius: 'var(--radius-sm)', transition: 'color 0.15s, background-color 0.15s',
           }}
-          onMouseOver={(e) => (e.currentTarget.style.color = '#444')}
-          onMouseOut={(e) => (e.currentTarget.style.color = '#999')}
+          onMouseOver={(e) => { e.currentTarget.style.color = 'var(--primary)'; e.currentTarget.style.backgroundColor = 'var(--primary-light)' }}
+          onMouseOut={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.backgroundColor = 'transparent' }}
         >
           ✎
         </button>
@@ -90,10 +91,11 @@ export default function FlightCard({ flight, compact = false, draggable = false,
           title="Delete"
           style={{
             border: 'none', background: 'none', cursor: 'pointer',
-            fontSize: 15, color: '#999', padding: '2px 6px', borderRadius: 4,
+            fontSize: 14, color: 'var(--text-muted)', padding: '4px 6px',
+            borderRadius: 'var(--radius-sm)', transition: 'color 0.15s, background-color 0.15s',
           }}
-          onMouseOver={(e) => (e.currentTarget.style.color = '#cc0000')}
-          onMouseOut={(e) => (e.currentTarget.style.color = '#999')}
+          onMouseOver={(e) => { e.currentTarget.style.color = 'var(--danger)'; e.currentTarget.style.backgroundColor = 'var(--danger-bg)' }}
+          onMouseOut={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.backgroundColor = 'transparent' }}
         >
           ✕
         </button>
@@ -108,31 +110,37 @@ export default function FlightCard({ flight, compact = false, draggable = false,
         onDragStart={onDragStart}
         onDragEnd={onDragEnd}
         style={{
-          padding: '10px 12px',
-          backgroundColor: '#fff',
-          border: '1px solid #e0e0e0',
-          borderRadius: 8,
+          padding: '10px 14px',
+          backgroundColor: 'var(--bg-card)',
+          border: '1px solid var(--border-light)',
+          borderRadius: 'var(--radius)',
           cursor: draggable ? 'grab' : 'default',
-          boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+          boxShadow: 'var(--shadow-sm)',
           userSelect: 'none' as const,
+          transition: 'box-shadow 0.15s',
           ...style,
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 600, fontSize: 14 }}>{originCity} to {destCity}</div>
-            <div style={{ fontSize: 12, color: '#777', marginTop: 2 }}>
+            <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text)' }}>{originCity} to {destCity}</div>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
               {airportChain}
-              {flightCodes && <span style={{ color: '#999', marginLeft: 6 }}>{flightCodes}</span>}
+              {flightCodes && <span style={{ color: 'var(--text-muted)', marginLeft: 6 }}>{flightCodes}</span>}
             </div>
-            <div style={{ fontSize: 12, color: '#999', marginTop: 2 }}>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3 }}>
               {departDate && `${departDate}`}{departTime && `, ${departTime}`}
-              {totalTime && ` · ${totalTime}`}
-              {isNextDay && <span style={{ color: '#E65100' }}> +1</span>}
+              {totalTime && <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}> · {totalTime}</span>}
+              {isNextDay && <span style={{
+                fontSize: 10, fontWeight: 700, color: 'var(--warning)',
+                backgroundColor: 'var(--warning-bg)', padding: '1px 5px',
+                borderRadius: 4, marginLeft: 4,
+              }}>+1</span>}
             </div>
             {priceDisplay && (
-              <div style={{ fontSize: 12, color: '#555', fontWeight: 500, marginTop: 2 }}>
-                {bookingLabel && `${bookingLabel} · `}{priceDisplay}
+              <div style={{ fontSize: 12, color: 'var(--text)', fontWeight: 600, marginTop: 3 }}>
+                {priceDisplay}
+                {bookingLabel && <span style={{ fontWeight: 400, color: 'var(--text-muted)', marginLeft: 6 }}>{bookingLabel}</span>}
               </div>
             )}
           </div>
@@ -148,65 +156,86 @@ export default function FlightCard({ flight, compact = false, draggable = false,
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
       style={{
-        padding: 16,
-        backgroundColor: '#fff',
-        border: '1px solid #e0e0e0',
-        borderRadius: 10,
+        padding: 18,
+        backgroundColor: 'var(--bg-card)',
+        border: '1px solid var(--border-light)',
+        borderRadius: 'var(--radius)',
         cursor: draggable ? 'grab' : 'default',
-        boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
+        boxShadow: 'var(--shadow-sm)',
         userSelect: 'none' as const,
+        transition: 'box-shadow 0.15s',
         ...style,
       }}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+      {/* Top: route + actions */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
         <div>
-          <div style={{ fontWeight: 700, fontSize: 16 }}>{originCity} to {destCity}</div>
-          <div style={{ fontSize: 13, color: '#777', marginTop: 2 }}>
+          <div style={{ fontWeight: 700, fontSize: 17, color: 'var(--text)' }}>{originCity} to {destCity}</div>
+          <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}>
             {airportChain}
-            {flightCodes && <span style={{ marginLeft: 8, color: '#999' }}>{flightCodes}</span>}
+            {flightCodes && <span style={{ marginLeft: 8, color: 'var(--text-muted)' }}>{flightCodes}</span>}
           </div>
         </div>
         {actionButtons}
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+      {/* Middle: times + total */}
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        padding: '12px 14px', backgroundColor: 'var(--bg)', borderRadius: 'var(--radius-sm)',
+        marginBottom: 12,
+      }}>
         <div>
-          <div style={{ fontSize: 13, color: '#555' }}>
-            Depart: {departDate}{departTime && `, ${departTime}`}
+          <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+            <span style={{ fontWeight: 500, color: 'var(--text)' }}>{departTime || '—'}</span>
+            <span style={{ margin: '0 4px', color: 'var(--text-muted)' }}>{departDate}</span>
           </div>
-          <div style={{ fontSize: 13, color: '#555', marginTop: 2 }}>
-            Arrive: {arriveDate}{arriveTime && `, ${arriveTime}`}
-            {isNextDay && <span style={{ fontSize: 11, color: '#E65100', marginLeft: 4 }}>+1 day</span>}
+          <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4 }}>
+            <span style={{ fontWeight: 500, color: 'var(--text)' }}>{arriveTime || '—'}</span>
+            <span style={{ margin: '0 4px', color: 'var(--text-muted)' }}>{arriveDate}</span>
+            {isNextDay && <span style={{
+              fontSize: 10, fontWeight: 700, color: 'var(--warning)',
+              backgroundColor: 'var(--warning-bg)', padding: '1px 6px',
+              borderRadius: 4, marginLeft: 2,
+            }}>+1 day</span>}
           </div>
         </div>
         {totalTime && (
           <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: 12, color: '#999' }}>Total Time</div>
-            <div style={{ fontSize: 15, fontWeight: 600 }}>{totalTime}</div>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>Total Time</div>
+            <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>{totalTime}</div>
           </div>
         )}
       </div>
 
+      {/* Layovers */}
       {layovers.length > 0 && (
-        <div style={{ marginBottom: 8 }}>
+        <div style={{ marginBottom: 12, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           {layovers.map((l, i) => (
-            <span key={i} style={{ fontSize: 12, color: '#888', marginRight: 12 }}>
-              Layover in {getCityName(l.airport)} ({l.airport}): {l.duration}
+            <span key={i} style={{
+              fontSize: 12, color: 'var(--text-secondary)',
+              padding: '3px 10px', backgroundColor: 'var(--bg)',
+              borderRadius: 20, border: '1px solid var(--border-light)',
+            }}>
+              {getCityName(l.airport)} ({l.airport}) · {l.duration}
             </span>
           ))}
         </div>
       )}
 
+      {/* Bottom: booking + price */}
       <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingTop: 8,
-        borderTop: '1px solid #f0f0f0',
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        paddingTop: 12, borderTop: '1px solid var(--border-light)',
       }}>
-        <div style={{ fontSize: 13, color: '#888' }}>{bookingLabel}</div>
+        <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{bookingLabel}</div>
         {priceDisplay && (
-          <div style={{ fontSize: 14, fontWeight: 600, color: '#333' }}>{priceDisplay}</div>
+          <div style={{
+            fontSize: 15, fontWeight: 700,
+            color: flight.paymentType === 'points' ? 'var(--primary)' : 'var(--text)',
+          }}>
+            {priceDisplay}
+          </div>
         )}
       </div>
     </div>

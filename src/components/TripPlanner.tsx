@@ -80,7 +80,7 @@ type Props = {
   legs: Leg[]
   flights: Flight[]
   travelers: number
-  onSave: (assignments: LegAssignment) => void
+  onSave: (assignments: LegAssignment, name: string) => void
 }
 
 function getFlightRoute(flight: Flight): { from: string; to: string } {
@@ -152,6 +152,7 @@ export default function TripPlanner({ legs, flights, travelers, onSave }: Props)
   const [dragOverLeg, setDragOverLeg] = useState<number | null>(null)
   const [dropPosition, setDropPosition] = useState<{ leg: number; index: number } | null>(null)
   const [bounceMessage, setBounceMessage] = useState<string | null>(null)
+  const [planName, setPlanName] = useState('')
 
   const flightMap: Record<string, Flight> = {}
   flights.forEach(f => { flightMap[f.id] = f })
@@ -360,7 +361,7 @@ export default function TripPlanner({ legs, flights, travelers, onSave }: Props)
                 </div>
               )}
 
-             {validation.warnings.length > 0 && (
+              {validation.warnings.length > 0 && (
                 <div style={{ marginTop: 8 }}>
                   {validation.warnings.map((w, wi) => (
                     <div key={wi} style={{
@@ -380,18 +381,15 @@ export default function TripPlanner({ legs, flights, travelers, onSave }: Props)
                 const lastSeg = lastFlight.segments[lastFlight.segments.length - 1]
                 if (!firstSeg?.date || !firstSeg?.departureTime || !lastSeg?.date || !lastSeg?.arrivalTime) return null
 
-                // Use UTC if available, else local
                 let totalMin = 0
                 if (firstSeg.departureTimeUtc && lastSeg.arrivalTimeUtc) {
                   const dep = new Date(firstSeg.departureTimeUtc.replace(' ', 'T') + 'Z')
                   const arr = new Date(lastSeg.arrivalTimeUtc.replace(' ', 'T') + 'Z')
                   totalMin = (arr.getTime() - dep.getTime()) / 60000
                 } else {
-                  // Sum individual durations + layovers as fallback
                   legFlights.forEach(f => {
                     f.segments.forEach(s => { if (s.duration) totalMin += s.duration })
                   })
-                  // Add inter-flight layovers
                   for (let li = 0; li < legFlights.length - 1; li++) {
                     const aLast = legFlights[li].segments[legFlights[li].segments.length - 1]
                     const bFirst = legFlights[li + 1].segments[0]
@@ -436,7 +434,17 @@ export default function TripPlanner({ legs, flights, travelers, onSave }: Props)
       )}
 
       <div style={{ marginTop: 16 }}>
-        <button onClick={() => onSave(assignments)} style={{
+        <input
+          type="text"
+          placeholder="Name this plan (e.g. Points Option, Budget Option)"
+          value={planName}
+          onChange={(e) => setPlanName(e.target.value)}
+          style={{
+            width: '100%', padding: 12, border: '1px solid #ddd', borderRadius: 6,
+            fontSize: 14, marginBottom: 8, boxSizing: 'border-box',
+          }}
+        />
+        <button onClick={() => onSave(assignments, planName || `Plan ${(new Date()).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`)} style={{
           width: '100%', padding: 12, backgroundColor: allLegsComplete ? '#4CAF50' : '#000',
           color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 15, fontWeight: 600,
         }}>

@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 
 type WalletEntry = {
   id: string
@@ -19,13 +18,25 @@ const typeLabels: Record<string, string> = {
   cash: 'Cash',
 }
 
+const typeIcons: Record<string, string> = {
+  bank_points: '💳',
+  airline_miles: '✈️',
+  cashback: '💰',
+  cash: '💵',
+}
+
+const typeColors: Record<string, { bg: string; text: string }> = {
+  bank_points: { bg: 'var(--primary-light)', text: 'var(--primary)' },
+  airline_miles: { bg: 'var(--accent-light)', text: '#B8860B' },
+  cashback: { bg: 'var(--success-bg)', text: 'var(--success)' },
+  cash: { bg: '#F0F9FF', text: '#0369A1' },
+}
+
 export default function WalletPage() {
-  const router = useRouter()
   const [entries, setEntries] = useState<WalletEntry[]>([])
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
 
-  // Form fields
   const [currencyType, setCurrencyType] = useState<WalletEntry['currency_type']>('bank_points')
   const [program, setProgram] = useState('')
   const [balance, setBalance] = useState('')
@@ -61,14 +72,12 @@ export default function WalletPage() {
       redemption_value: currencyType === 'cashback' ? (parseFloat(redemptionValue) || null) : null,
       notes,
     }
-
     let updated: WalletEntry[]
     if (editingId) {
       updated = entries.map(e => e.id === editingId ? entry : e)
     } else {
       updated = [...entries, entry]
     }
-
     saveEntries(updated)
     resetForm()
   }
@@ -85,6 +94,7 @@ export default function WalletPage() {
 
   const handleDelete = (id: string) => {
     saveEntries(entries.filter(e => e.id !== id))
+    if (editingId === id) resetForm()
   }
 
   const programPlaceholders: Record<string, string> = {
@@ -94,105 +104,195 @@ export default function WalletPage() {
     cash: 'e.g. Travel budget',
   }
 
+  const totalPoints = entries.filter(e => e.currency_type !== 'cash').reduce((s, e) => s + e.balance, 0)
+  const totalCash = entries.filter(e => e.currency_type === 'cash').reduce((s, e) => s + e.balance, 0)
+
   return (
-    <div style={{ maxWidth: 600, margin: '40px auto', padding: 20 }}>
-      <button
-        onClick={() => router.push('/')}
-        style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#666', fontSize: 14, marginBottom: 16, padding: 0 }}
-      >
-        ← Back
-      </button>
+    <div style={{ maxWidth: 600, margin: '0 auto', padding: '40px 20px' }}>
+      <div style={{ marginBottom: 28 }}>
+        <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 4 }}>My Points & Miles</h1>
+        <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>
+          Add all your balances so we can find the best way to book your flights.
+        </p>
+      </div>
 
-      <h1 style={{ fontSize: 24, marginBottom: 4 }}>My Points & Miles</h1>
-      <p style={{ color: '#666', marginBottom: 24 }}>
-        Add all your points, miles, and cashback balances so we can find the best way to book.
-      </p>
-
-      {entries.length === 0 && !showForm && (
-        <p style={{ color: '#999', marginBottom: 16 }}>No entries yet — add your first one below.</p>
+      {/* Summary cards */}
+      {entries.length > 0 && (
+        <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
+          <div style={{
+            flex: 1, padding: '16px 18px',
+            backgroundColor: 'var(--bg-card)',
+            borderRadius: 'var(--radius)',
+            boxShadow: 'var(--shadow-sm)',
+            border: '1px solid var(--border-light)',
+          }}>
+            <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-muted)', marginBottom: 4 }}>Total Points & Miles</div>
+            <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--primary)' }}>{totalPoints.toLocaleString()}</div>
+          </div>
+          {totalCash > 0 && (
+            <div style={{
+              flex: 1, padding: '16px 18px',
+              backgroundColor: 'var(--bg-card)',
+              borderRadius: 'var(--radius)',
+              boxShadow: 'var(--shadow-sm)',
+              border: '1px solid var(--border-light)',
+            }}>
+              <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-muted)', marginBottom: 4 }}>Cash Budget</div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--success)' }}>${totalCash.toLocaleString()}</div>
+            </div>
+          )}
+        </div>
       )}
 
-      {entries.map(entry => (
-        <div
-          key={entry.id}
-          style={{
-            padding: 12,
-            border: '1px solid #e0e0e0',
-            borderRadius: 6,
-            marginBottom: 8,
-          }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <span style={{ fontWeight: 'bold' }}>{entry.program}</span>
-              <span style={{ color: '#999', fontSize: 13, marginLeft: 8 }}>{typeLabels[entry.currency_type]}</span>
-            </div>
-            <span style={{ fontWeight: 'bold', fontSize: 16 }}>
-              {entry.currency_type === 'cash'
-                ? `$${entry.balance.toLocaleString()}`
-                : entry.balance.toLocaleString()}
-            </span>
-          </div>
-          {entry.currency_type === 'cashback' && entry.redemption_value && (
-            <div style={{ color: '#666', fontSize: 13, marginTop: 4 }}>
-              {entry.redemption_value} cents per point
-            </div>
-          )}
-          {entry.notes && (
-            <div style={{ color: '#888', fontSize: 13, marginTop: 4 }}>{entry.notes}</div>
-          )}
-          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-            <button
-              onClick={() => handleEdit(entry)}
-              style={{ padding: '4px 12px', border: '1px solid #ccc', borderRadius: 4, cursor: 'pointer', backgroundColor: '#fff', fontSize: 13, color: '#444' }}
-            >
-              Edit
-            </button>
-            <button
-              onClick={() => handleDelete(entry.id)}
-              style={{ padding: '4px 12px', border: '1px solid #ccc', borderRadius: 4, cursor: 'pointer', backgroundColor: '#fff', fontSize: 13, color: '#cc0000' }}
-            >
-              Delete
-            </button>
-          </div>
+      {/* Entries */}
+      {entries.length === 0 && !showForm && (
+        <div style={{
+          textAlign: 'center', padding: 40,
+          backgroundColor: 'var(--bg-card)',
+          borderRadius: 'var(--radius)',
+          border: '1px dashed var(--border)',
+          marginBottom: 16,
+        }}>
+          <div style={{ fontSize: 32, marginBottom: 8 }}>💳</div>
+          <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>No entries yet — add your first points balance below.</p>
         </div>
-      ))}
+      )}
 
+      {entries.map(entry => {
+        const colors = typeColors[entry.currency_type]
+        const isEditing = editingId === entry.id
+
+        if (isEditing && showForm) return null
+
+        return (
+          <div
+            key={entry.id}
+            style={{
+              padding: '14px 16px',
+              backgroundColor: 'var(--bg-card)',
+              borderRadius: 'var(--radius)',
+              boxShadow: 'var(--shadow-sm)',
+              border: '1px solid var(--border-light)',
+              marginBottom: 8,
+              transition: 'box-shadow 0.15s',
+            }}
+            onMouseOver={(e) => e.currentTarget.style.boxShadow = 'var(--shadow)'}
+            onMouseOut={(e) => e.currentTarget.style.boxShadow = 'var(--shadow-sm)'}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{
+                  width: 38, height: 38, borderRadius: 'var(--radius-sm)',
+                  backgroundColor: colors.bg,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 18,
+                }}>
+                  {typeIcons[entry.currency_type]}
+                </div>
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: 15 }}>{entry.program}</div>
+                  <div style={{ fontSize: 12, color: colors.text, fontWeight: 500 }}>{typeLabels[entry.currency_type]}</div>
+                </div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontWeight: 700, fontSize: 17 }}>
+                  {entry.currency_type === 'cash' ? `$${entry.balance.toLocaleString()}` : entry.balance.toLocaleString()}
+                </div>
+                {entry.currency_type === 'cashback' && entry.redemption_value && (
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{entry.redemption_value}¢/pt</div>
+                )}
+              </div>
+            </div>
+            {entry.notes && (
+              <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 8, paddingLeft: 50 }}>{entry.notes}</div>
+            )}
+            <div style={{ display: 'flex', gap: 6, marginTop: 10, paddingLeft: 50 }}>
+              <button
+                onClick={() => handleEdit(entry)}
+                style={{
+                  padding: '4px 12px', border: '1px solid var(--border)',
+                  borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+                  backgroundColor: 'var(--bg-card)', fontSize: 12,
+                  color: 'var(--text-secondary)', fontWeight: 500,
+                  transition: 'border-color 0.15s',
+                }}
+                onMouseOver={(e) => e.currentTarget.style.borderColor = 'var(--primary)'}
+                onMouseOut={(e) => e.currentTarget.style.borderColor = 'var(--border)'}
+              >
+                Edit
+              </button>
+              <button
+                onClick={() => handleDelete(entry.id)}
+                style={{
+                  padding: '4px 12px', border: '1px solid var(--border)',
+                  borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+                  backgroundColor: 'var(--bg-card)', fontSize: 12,
+                  color: 'var(--text-muted)', fontWeight: 500,
+                  transition: 'color 0.15s, border-color 0.15s',
+                }}
+                onMouseOver={(e) => { e.currentTarget.style.color = 'var(--danger)'; e.currentTarget.style.borderColor = 'var(--danger)' }}
+                onMouseOut={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.borderColor = 'var(--border)' }}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        )
+      })}
+
+      {/* Form */}
       {showForm ? (
-        <div style={{ border: '1px solid #e0e0e0', borderRadius: 6, padding: 16, marginTop: 8 }}>
-          <p style={{ fontWeight: 'bold', marginBottom: 12 }}>{editingId ? 'Edit Entry' : 'Add Entry'}</p>
+        <div style={{
+          backgroundColor: 'var(--bg-card)',
+          borderRadius: 'var(--radius)',
+          boxShadow: 'var(--shadow)',
+          border: editingId ? '2px solid var(--primary)' : '1px solid var(--border-light)',
+          padding: 20,
+          marginTop: 8,
+        }}>
+          {editingId && (
+            <div style={{
+              padding: '6px 12px', backgroundColor: 'var(--primary-light)', color: 'var(--primary)',
+              borderRadius: 'var(--radius-sm)', marginBottom: 14, fontSize: 13, fontWeight: 600,
+            }}>
+              ✎ Editing {entries.find(e => e.id === editingId)?.program || 'entry'}
+            </div>
+          )}
+          <p style={{ fontWeight: 600, fontSize: 15, marginBottom: 14 }}>{editingId ? 'Edit Entry' : 'Add Entry'}</p>
 
-          <label style={{ fontSize: 13, color: '#666' }}>Type</label>
-          <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
+          <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6, display: 'block' }}>Type</label>
+          <div style={{ display: 'flex', gap: 6, marginBottom: 14, flexWrap: 'wrap' }}>
             {(['bank_points', 'airline_miles', 'cashback', 'cash'] as const).map(type => (
               <button
                 key={type}
                 onClick={() => setCurrencyType(type)}
                 style={{
                   padding: '8px 14px',
-                  border: currencyType === type ? '2px solid #000' : '1px solid #ccc',
-                  borderRadius: 4,
-                  backgroundColor: currencyType === type ? '#f0f0f0' : '#fff',
+                  border: currencyType === type ? '2px solid var(--primary)' : '1px solid var(--border)',
+                  borderRadius: 'var(--radius-sm)',
+                  backgroundColor: currencyType === type ? 'var(--primary-light)' : 'var(--bg-card)',
                   cursor: 'pointer',
-                  fontWeight: currencyType === type ? 'bold' : 'normal',
+                  fontWeight: currencyType === type ? 600 : 400,
                   fontSize: 13,
+                  color: currencyType === type ? 'var(--primary)' : 'var(--text)',
+                  transition: 'all 0.15s',
                 }}
               >
-                {typeLabels[type]}
+                {typeIcons[type]} {typeLabels[type]}
               </button>
             ))}
           </div>
 
-          <label style={{ fontSize: 13, color: '#666' }}>Program name</label>
+          <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>Program name</label>
           <input
             type="text"
             placeholder={programPlaceholders[currencyType]}
             value={program}
             onChange={(e) => setProgram(e.target.value)}
-            style={{ display: 'block', width: '100%', padding: 10, marginBottom: 10, border: '1px solid #ccc', borderRadius: 4, boxSizing: 'border-box' }}
+            style={{ marginBottom: 12 }}
           />
 
-          <label style={{ fontSize: 13, color: '#666' }}>
+          <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>
             {currencyType === 'cash' ? 'Amount ($)' : 'Balance'}
           </label>
           <input
@@ -200,30 +300,30 @@ export default function WalletPage() {
             placeholder={currencyType === 'cash' ? 'e.g. 500' : 'e.g. 80000'}
             value={balance}
             onChange={(e) => setBalance(e.target.value)}
-            style={{ display: 'block', width: '100%', padding: 10, marginBottom: 10, border: '1px solid #ccc', borderRadius: 4, boxSizing: 'border-box' }}
+            style={{ marginBottom: 12 }}
           />
 
           {currencyType === 'cashback' && (
             <>
-              <label style={{ fontSize: 13, color: '#666' }}>Redemption rate (cents per point)</label>
+              <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>Redemption rate (cents per point)</label>
               <input
                 type="number"
                 step="0.1"
                 placeholder="e.g. 1.0"
                 value={redemptionValue}
                 onChange={(e) => setRedemptionValue(e.target.value)}
-                style={{ display: 'block', width: '100%', padding: 10, marginBottom: 10, border: '1px solid #ccc', borderRadius: 4, boxSizing: 'border-box' }}
+                style={{ marginBottom: 12 }}
               />
             </>
           )}
 
-          <label style={{ fontSize: 13, color: '#666' }}>Notes (optional)</label>
+          <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>Notes (optional)</label>
           <input
             type="text"
             placeholder="e.g. Annual fee coming up in March"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            style={{ display: 'block', width: '100%', padding: 10, marginBottom: 12, border: '1px solid #ccc', borderRadius: 4, boxSizing: 'border-box' }}
+            style={{ marginBottom: 16 }}
           />
 
           <div style={{ display: 'flex', gap: 10 }}>
@@ -231,16 +331,23 @@ export default function WalletPage() {
               onClick={handleSave}
               disabled={!program || !balance}
               style={{
-                flex: 1, padding: 10, backgroundColor: !program || !balance ? '#ccc' : '#000',
-                color: '#fff', border: 'none', borderRadius: 4,
+                flex: 1, padding: 12,
+                background: !program || !balance ? 'var(--border)' : 'linear-gradient(135deg, var(--primary), var(--primary-hover))',
+                color: !program || !balance ? 'var(--text-muted)' : 'var(--text-inverse)',
+                border: 'none', borderRadius: 'var(--radius-sm)',
                 cursor: !program || !balance ? 'default' : 'pointer',
+                fontWeight: 600, fontSize: 14,
               }}
             >
               {editingId ? 'Update' : 'Add'}
             </button>
             <button
               onClick={resetForm}
-              style={{ padding: '10px 16px', border: '1px solid #ccc', borderRadius: 4, cursor: 'pointer', backgroundColor: '#fff' }}
+              style={{
+                padding: '12px 20px', border: '1px solid var(--border)',
+                borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+                backgroundColor: 'var(--bg-card)', fontSize: 14, color: 'var(--text-secondary)',
+              }}
             >
               Cancel
             </button>
@@ -250,15 +357,16 @@ export default function WalletPage() {
         <button
           onClick={() => setShowForm(true)}
           style={{
-            padding: '10px 20px',
-            backgroundColor: '#000',
-            color: '#fff',
-            border: 'none',
-            borderRadius: 4,
-            cursor: 'pointer',
-            fontSize: 15,
-            marginTop: 4,
+            width: '100%', padding: 14, marginTop: 8,
+            background: 'linear-gradient(135deg, var(--primary), var(--primary-hover))',
+            color: 'var(--text-inverse)',
+            border: 'none', borderRadius: 'var(--radius)',
+            cursor: 'pointer', fontSize: 15, fontWeight: 600,
+            boxShadow: '0 2px 8px rgba(67, 56, 202, 0.3)',
+            transition: 'transform 0.15s, box-shadow 0.15s',
           }}
+          onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(67, 56, 202, 0.4)' }}
+          onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(67, 56, 202, 0.3)' }}
         >
           + Add Entry
         </button>

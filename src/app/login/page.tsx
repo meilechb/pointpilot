@@ -1,0 +1,178 @@
+'use client'
+
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase'
+
+const fieldLabel: React.CSSProperties = {
+  fontSize: 12, fontWeight: 500, color: 'var(--text-muted)', marginBottom: 4, display: 'block',
+}
+const fieldInput: React.CSSProperties = {
+  width: '100%', height: 42, padding: '10px 12px', fontSize: 14,
+  color: 'var(--text)', backgroundColor: 'var(--bg-input)',
+  border: '1.5px solid var(--border)', borderRadius: 'var(--radius-sm)',
+  outline: 'none',
+}
+
+export default function LoginPage() {
+  const router = useRouter()
+  const supabase = createClient()
+  const [mode, setMode] = useState<'login' | 'signup'>('login')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [fullName, setFullName] = useState('')
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [message, setMessage] = useState('')
+
+  const handleEmailAuth = async () => {
+    setError('')
+    setMessage('')
+    setLoading(true)
+
+    if (mode === 'signup') {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { full_name: fullName },
+        },
+      })
+      if (error) { setError(error.message); setLoading(false); return }
+      setMessage('Check your email for a confirmation link.')
+      setLoading(false)
+    } else {
+      const { error } = await supabase.auth.signInWithPassword({ email, password })
+      if (error) { setError(error.message); setLoading(false); return }
+      router.push('/')
+    }
+  }
+
+  const handleGoogleLogin = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
+    })
+    if (error) setError(error.message)
+  }
+
+  return (
+    <div style={{ maxWidth: 400, margin: '0 auto', padding: '60px 20px' }}>
+      <div style={{
+        backgroundColor: 'var(--bg-card)', borderRadius: 'var(--radius-lg)',
+        boxShadow: 'var(--shadow)', border: '1px solid var(--border-light)', padding: 28,
+      }}>
+        <div style={{ textAlign: 'center', marginBottom: 24 }}>
+          <div style={{
+            width: 48, height: 48, borderRadius: 14, margin: '0 auto 12px',
+            background: 'linear-gradient(135deg, var(--accent), #E8C36A)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24,
+          }}>✈</div>
+          <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 4 }}>
+            {mode === 'login' ? 'Welcome back' : 'Create your account'}
+          </h1>
+          <p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>
+            {mode === 'login' ? 'Sign in to Point Tripper' : 'Start maximizing your points'}
+          </p>
+        </div>
+
+        <button
+          onClick={handleGoogleLogin}
+          style={{
+            width: '100%', height: 44, padding: '10px 16px', marginBottom: 20,
+            border: '1.5px solid var(--border)', borderRadius: 'var(--radius-sm)',
+            backgroundColor: 'var(--bg-card)', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            fontSize: 14, fontWeight: 500, color: 'var(--text)',
+          }}
+        >
+          <svg width="18" height="18" viewBox="0 0 18 18">
+            <path d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 01-1.8 2.72v2.26h2.92a8.78 8.78 0 002.68-6.62z" fill="#4285F4"/>
+            <path d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.8.54-1.83.86-3.04.86-2.34 0-4.32-1.58-5.03-3.71H.96v2.33A8.99 8.99 0 009 18z" fill="#34A853"/>
+            <path d="M3.97 10.71A5.41 5.41 0 013.68 9c0-.6.1-1.18.28-1.71V4.96H.96A8.99 8.99 0 000 9c0 1.45.35 2.82.96 4.04l3.01-2.33z" fill="#FBBC05"/>
+            <path d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.59C13.46.89 11.43 0 9 0A8.99 8.99 0 00.96 4.96l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z" fill="#EA4335"/>
+          </svg>
+          Continue with Google
+        </button>
+
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20,
+        }}>
+          <div style={{ flex: 1, height: 1, backgroundColor: 'var(--border)' }} />
+          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>or</span>
+          <div style={{ flex: 1, height: 1, backgroundColor: 'var(--border)' }} />
+        </div>
+
+        {mode === 'signup' && (
+          <>
+            <label style={fieldLabel}>Full name</label>
+            <input
+              type="text" placeholder="John Doe" value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              style={{ ...fieldInput, marginBottom: 12 }}
+            />
+          </>
+        )}
+
+        <label style={fieldLabel}>Email</label>
+        <input
+          type="email" placeholder="you@email.com" value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          style={{ ...fieldInput, marginBottom: 12 }}
+        />
+
+        <label style={fieldLabel}>Password</label>
+        <input
+          type="password" placeholder={mode === 'signup' ? 'Min 6 characters' : 'Your password'}
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') handleEmailAuth() }}
+          style={{ ...fieldInput, marginBottom: 16 }}
+        />
+
+        {error && (
+          <div style={{
+            padding: '8px 12px', backgroundColor: 'var(--danger-bg)', borderRadius: 'var(--radius-sm)',
+            border: '1px solid #FECACA', fontSize: 13, color: 'var(--danger)', marginBottom: 12,
+          }}>
+            {error}
+          </div>
+        )}
+
+        {message && (
+          <div style={{
+            padding: '8px 12px', backgroundColor: 'var(--success-bg)', borderRadius: 'var(--radius-sm)',
+            border: '1px solid #A7F3D0', fontSize: 13, color: 'var(--success)', marginBottom: 12,
+          }}>
+            {message}
+          </div>
+        )}
+
+        <button
+          onClick={handleEmailAuth}
+          disabled={loading || !email || !password}
+          style={{
+            width: '100%', height: 44, padding: 12,
+            background: !email || !password ? 'var(--border)' : 'linear-gradient(135deg, var(--primary), var(--primary-hover))',
+            color: !email || !password ? 'var(--text-muted)' : 'var(--text-inverse)',
+            border: 'none', borderRadius: 'var(--radius-sm)',
+            cursor: !email || !password ? 'default' : 'pointer',
+            fontSize: 14, fontWeight: 600,
+          }}
+        >
+          {loading ? '...' : mode === 'login' ? 'Sign In' : 'Create Account'}
+        </button>
+
+        <p style={{ textAlign: 'center', marginTop: 16, fontSize: 13, color: 'var(--text-secondary)' }}>
+          {mode === 'login' ? "Don't have an account? " : "Already have an account? "}
+          <span
+            onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); setError(''); setMessage('') }}
+            style={{ color: 'var(--primary)', cursor: 'pointer', fontWeight: 600 }}
+          >
+            {mode === 'login' ? 'Sign up' : 'Sign in'}
+          </span>
+        </p>
+      </div>
+    </div>
+  )
+}
