@@ -7,25 +7,9 @@ type Article = {
   id: string
   slug: string
   title: string
-  category: string
   summary: string
   body: string
-  tags: string[]
   created_at: string
-}
-
-const categoryColors: Record<string, { bg: string; text: string }> = {
-  'transfer-bonus': { bg: 'var(--accent-light)', text: '#B8860B' },
-  'sweet-spot': { bg: 'var(--primary-light)', text: 'var(--primary)' },
-  'tips': { bg: 'var(--success-bg)', text: 'var(--success)' },
-  'news': { bg: '#F0F9FF', text: '#0369A1' },
-}
-
-const categoryLabels: Record<string, string> = {
-  'transfer-bonus': 'Transfer Bonus',
-  'sweet-spot': 'Sweet Spot',
-  'tips': 'Tip',
-  'news': 'News',
 }
 
 function formatDate(dateStr: string) {
@@ -70,7 +54,6 @@ export default function ArticlePage() {
     )
   }
 
-  const colors = categoryColors[article.category] || categoryColors['news']
   const paragraphs = article.body.split('\n\n').filter(p => p.trim())
 
   return (
@@ -83,18 +66,9 @@ export default function ArticlePage() {
       </a>
 
       <div style={{ marginBottom: 16 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-          <span style={{
-            padding: '3px 10px', borderRadius: 12,
-            backgroundColor: colors.bg, color: colors.text,
-            fontSize: 11, fontWeight: 600,
-          }}>
-            {categoryLabels[article.category] || article.category}
-          </span>
-          <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-            {formatDate(article.created_at)}
-          </span>
-        </div>
+        <span style={{ fontSize: 13, color: 'var(--text-muted)', display: 'block', marginBottom: 10 }}>
+          {formatDate(article.created_at)}
+        </span>
         <h1 style={{ fontSize: 26, fontWeight: 700, lineHeight: 1.3, marginBottom: 8 }}>
           {article.title}
         </h1>
@@ -115,22 +89,6 @@ export default function ArticlePage() {
           </p>
         ))}
       </div>
-
-      {article.tags.length > 0 && (
-        <div style={{ marginTop: 32, paddingTop: 20, borderTop: '1px solid var(--border-light)' }}>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {article.tags.map(tag => (
-              <span key={tag} style={{
-                padding: '4px 10px', borderRadius: 12,
-                backgroundColor: 'var(--bg-accent)', color: 'var(--text-secondary)',
-                fontSize: 12, fontWeight: 500,
-              }}>
-                {tag}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   )
 }
