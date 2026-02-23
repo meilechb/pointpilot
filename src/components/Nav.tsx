@@ -34,6 +34,7 @@ export default function Nav() {
         <a href="/trip/new" className="nav-link">New Trip</a>
         <a href="/trips" className="nav-link">My Trips</a>
         <a href="/wallet" className="nav-link">My Points</a>
+        <a href="/news" className="nav-link">News</a>
         {!loading && (
           user ? (
             <button
@@ -83,6 +84,7 @@ export default function Nav() {
         <a href="/trip/new" style={mobileLinkStyle} onClick={() => setMenuOpen(false)}>New Trip</a>
         <a href="/trips" style={mobileLinkStyle} onClick={() => setMenuOpen(false)}>My Trips</a>
         <a href="/wallet" style={mobileLinkStyle} onClick={() => setMenuOpen(false)}>My Points</a>
+        <a href="/news" style={mobileLinkStyle} onClick={() => setMenuOpen(false)}>News</a>
         {!loading && (
           user ? (
             <button

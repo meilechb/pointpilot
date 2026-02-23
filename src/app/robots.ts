@@ -5,7 +5,7 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: '*',
       allow: '/',
-      disallow: ['/api/', '/trip/'],
+      disallow: ['/api/', '/trip/', '/admin/'],
     },
     sitemap: 'https://pointtripper.com/sitemap.xml',
   }
