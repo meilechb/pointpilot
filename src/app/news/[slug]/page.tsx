@@ -38,7 +38,7 @@ export default function ArticlePage() {
 
   if (loading) {
     return (
-      <div style={{ maxWidth: 680, margin: '0 auto', padding: '40px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>
+      <div style={{ maxWidth: 740, margin: '0 auto', padding: '60px 20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 16 }}>
         Loading...
       </div>
     )
@@ -46,10 +46,10 @@ export default function ArticlePage() {
 
   if (notFound || !article) {
     return (
-      <div style={{ maxWidth: 680, margin: '0 auto', padding: '40px 20px', textAlign: 'center' }}>
-        <div style={{ fontSize: 32, marginBottom: 8 }}>📰</div>
-        <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 16 }}>Article not found.</p>
-        <a href="/news" style={{ color: 'var(--primary)', fontSize: 14, fontWeight: 500 }}>← Back to News</a>
+      <div style={{ maxWidth: 740, margin: '0 auto', padding: '60px 20px', textAlign: 'center' }}>
+        <div style={{ fontSize: 48, marginBottom: 12 }}>📰</div>
+        <p style={{ color: 'var(--text-muted)', fontSize: 18, marginBottom: 20 }}>Article not found.</p>
+        <a href="/news" style={{ color: 'var(--primary)', fontSize: 16, fontWeight: 600 }}>← Back to News</a>
       </div>
     )
   }
@@ -57,37 +57,77 @@ export default function ArticlePage() {
   const paragraphs = article.body.split('\n\n').filter(p => p.trim())
 
   return (
-    <div style={{ maxWidth: 680, margin: '0 auto', padding: '40px 20px' }}>
-      <a href="/news" style={{
-        color: 'var(--text-muted)', fontSize: 13, fontWeight: 500,
-        textDecoration: 'none', display: 'inline-block', marginBottom: 24,
+    <div>
+      {/* Article header */}
+      <div style={{
+        background: 'linear-gradient(135deg, var(--bg-nav) 0%, #2D2B55 100%)',
+        padding: '48px 20px 44px',
       }}>
-        ← Back to News
-      </a>
-
-      <div style={{ marginBottom: 16 }}>
-        <span style={{ fontSize: 13, color: 'var(--text-muted)', display: 'block', marginBottom: 10 }}>
-          {formatDate(article.created_at)}
-        </span>
-        <h1 style={{ fontSize: 26, fontWeight: 700, lineHeight: 1.3, marginBottom: 8 }}>
-          {article.title}
-        </h1>
-        <p style={{ fontSize: 15, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-          {article.summary}
-        </p>
+        <div style={{ maxWidth: 740, margin: '0 auto' }}>
+          <a href="/news" style={{
+            color: 'rgba(255,255,255,0.5)', fontSize: 14, fontWeight: 500,
+            textDecoration: 'none', display: 'inline-block', marginBottom: 24,
+            transition: 'color 0.15s',
+          }}>
+            ← Back to News
+          </a>
+          <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, marginBottom: 14 }}>
+            {formatDate(article.created_at)}
+          </div>
+          <h1 style={{
+            fontSize: 36, fontWeight: 800, lineHeight: 1.2,
+            color: 'var(--text-inverse)', letterSpacing: -0.5,
+            marginBottom: 14,
+          }}>
+            {article.title}
+          </h1>
+          <p style={{
+            fontSize: 19, color: 'rgba(255,255,255,0.7)', lineHeight: 1.5,
+            maxWidth: 620,
+          }}>
+            {article.summary}
+          </p>
+        </div>
       </div>
 
-      <hr style={{ border: 'none', borderTop: '1px solid var(--border-light)', margin: '24px 0' }} />
+      {/* Article body */}
+      <div style={{ maxWidth: 740, margin: '0 auto', padding: '40px 20px 60px' }}>
+        <div style={{
+          backgroundColor: 'var(--bg-card)',
+          borderRadius: 'var(--radius-xl)',
+          boxShadow: 'var(--shadow)',
+          border: '1px solid var(--border-light)',
+          padding: '40px 36px',
+          marginTop: -24,
+          position: 'relative',
+          zIndex: 1,
+        }}>
+          {paragraphs.map((paragraph, i) => (
+            <p key={i} style={{
+              fontSize: 17, lineHeight: 1.8, color: 'var(--text)',
+              marginBottom: 22,
+            }}>
+              {paragraph}
+            </p>
+          ))}
+        </div>
 
-      <div>
-        {paragraphs.map((paragraph, i) => (
-          <p key={i} style={{
-            fontSize: 15, lineHeight: 1.7, color: 'var(--text)',
-            marginBottom: 18,
+        {/* Bottom nav */}
+        <div style={{ textAlign: 'center', marginTop: 40 }}>
+          <a href="/news" style={{
+            display: 'inline-block',
+            padding: '12px 28px',
+            backgroundColor: 'var(--bg-card)',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--radius)',
+            color: 'var(--primary)',
+            fontWeight: 600, fontSize: 15,
+            textDecoration: 'none',
+            transition: 'box-shadow 0.15s',
           }}>
-            {paragraph}
-          </p>
-        ))}
+            ← More articles
+          </a>
+        </div>
       </div>
     </div>
   )

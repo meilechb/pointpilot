@@ -382,6 +382,9 @@ html, body {
 
 /* Date picker responsive */
 @media (max-width: 640px) {
+  .news-grid {
+    grid-template-columns: 1fr !important;
+  }
   .react-datepicker {
     font-size: 12px !important;
   }
