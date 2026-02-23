@@ -114,6 +114,15 @@ export default function Nav() {
         )}
       </div>
 
+      {/* Mobile sign in (visible without opening menu) */}
+      {!loading && !user && (
+        <a href="/login" className="mobile-signin" style={{
+          display: 'none', padding: '5px 14px', borderRadius: 6,
+          background: 'linear-gradient(135deg, var(--accent), #E8C36A)',
+          color: '#1A1A2E', fontSize: 13, fontWeight: 700, textDecoration: 'none',
+        }}>Sign In</a>
+      )}
+
       {/* Hamburger button */}
       <button
         className="hamburger"

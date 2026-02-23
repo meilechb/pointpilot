@@ -129,6 +129,7 @@ export default function Home() {
               placeholder="Trip name"
               value={tripName}
               onChange={(e) => setTripName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleStartTrip() }}
               style={{ ...fieldInput, flex: 1, borderRadius: '10px 0 0 10px', borderRight: 'none' }}
             />
             <button

@@ -410,6 +410,10 @@ html, body {
     display: none;
   }
 
+  .mobile-signin {
+    display: inline-block !important;
+  }
+
   .hero-title {
     font-size: 28px !important;
     letter-spacing: -0.5px;
