@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:www.bankrate.com)",
+      "WebFetch(domain:www.thankyou.com)",
+      "WebFetch(domain:wtop.com)",
+      "WebFetch(domain:thepointsparty.com)",
+      "WebFetch(domain:frequentmiler.com)"
+    ]
+  }
+}

@@ -15,20 +15,36 @@ export default function Home() {
         Your points are worth more than you think. We'll show you how to use them.
       </p>
 
-      <button
-        onClick={() => router.push('/trip/new')}
-        style={{
-          padding: '14px 32px',
-          fontSize: 18,
-          backgroundColor: '#000',
-          color: '#fff',
-          border: 'none',
-          borderRadius: 6,
-          cursor: 'pointer',
-        }}
-      >
-        Start a Trip →
-      </button>
+      <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+        <button
+          onClick={() => router.push('/trip/new')}
+          style={{
+            padding: '14px 32px',
+            fontSize: 18,
+            backgroundColor: '#000',
+            color: '#fff',
+            border: 'none',
+            borderRadius: 6,
+            cursor: 'pointer',
+          }}
+        >
+          Start a Trip →
+        </button>
+        <button
+          onClick={() => router.push('/wallet')}
+          style={{
+            padding: '14px 32px',
+            fontSize: 18,
+            backgroundColor: '#fff',
+            color: '#000',
+            border: '2px solid #000',
+            borderRadius: 6,
+            cursor: 'pointer',
+          }}
+        >
+          My Points
+        </button>
+      </div>
 
       <div style={{ marginTop: 60, display: 'flex', justifyContent: 'center', gap: 20 }}>
         <span
