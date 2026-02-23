@@ -15,7 +15,7 @@ import { optimizeTrip, getRelevantSweetSpots, type BookingStrategy } from '@/uti
 import SavePrompt from '@/components/SavePrompt'
 
 const fieldLabel: React.CSSProperties = {
-  fontSize: 12, fontWeight: 500, color: 'var(--text-muted)', marginBottom: 4, display: 'block',
+  fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 4, display: 'block',
 }
 const fieldInput: React.CSSProperties = {
   width: '100%', height: 42, padding: '10px 12px', fontSize: 14,
@@ -250,7 +250,7 @@ export default function TripDetail() {
               Edit
             </button>
           </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, fontSize: 13, color: 'var(--text-secondary)' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, fontSize: 14, color: 'var(--text-secondary)' }}>
             <span>{trip.travelers} traveler{trip.travelers > 1 ? 's' : ''}</span>
             <span style={{ color: 'var(--border)' }}>·</span>
             <span>{trip.departureDate}{trip.returnDate ? ` → ${trip.returnDate}` : ''}</span>
@@ -263,7 +263,7 @@ export default function TripDetail() {
                 padding: '4px 10px',
                 backgroundColor: 'var(--bg-accent)',
                 borderRadius: 20,
-                fontSize: 12,
+                fontSize: 13,
                 fontWeight: 600,
                 color: 'var(--primary)',
               }}>
@@ -495,7 +495,7 @@ export default function TripDetail() {
             {tab.label}
             {tab.count !== null && tab.count > 0 && (
               <span style={{
-                fontSize: 11, fontWeight: 700,
+                fontSize: 13, fontWeight: 700,
                 padding: '1px 6px', borderRadius: 10,
                 backgroundColor: activeTab === tab.key ? 'rgba(255,255,255,0.25)' : 'var(--border-light)',
                 color: activeTab === tab.key ? 'var(--text-inverse)' : 'var(--text-muted)',
@@ -797,7 +797,7 @@ function OptimizerPanel({ trip }: { trip: any }) {
                 <span style={{ fontWeight: 700, fontSize: 16 }}>{strategy.name}</span>
                 {idx === 0 && (
                   <span style={{
-                    fontSize: 10, fontWeight: 700, padding: '2px 8px',
+                    fontSize: 13, fontWeight: 700, padding: '2px 8px',
                     borderRadius: 10, backgroundColor: 'var(--primary-light)',
                     color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: 0.5,
                   }}>
@@ -806,7 +806,7 @@ function OptimizerPanel({ trip }: { trip: any }) {
                 )}
                 {strategy.tags.map(tag => (
                   <span key={tag} style={{
-                    fontSize: 10, fontWeight: 600, padding: '2px 8px',
+                    fontSize: 13, fontWeight: 600, padding: '2px 8px',
                     borderRadius: 10, backgroundColor: 'var(--bg-accent)',
                     color: 'var(--text-secondary)',
                   }}>
@@ -814,7 +814,7 @@ function OptimizerPanel({ trip }: { trip: any }) {
                   </span>
                 ))}
               </div>
-              <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+              <div style={{ fontSize: 14, color: 'var(--text-secondary)' }}>
                 {strategy.description}
               </div>
             </div>
@@ -830,12 +830,12 @@ function OptimizerPanel({ trip }: { trip: any }) {
                 </div>
               )}
               {strategy.estimatedCpp > 0 && (
-                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
                   {strategy.estimatedCpp} cpp
                 </div>
               )}
               <span style={{
-                fontSize: 12, color: 'var(--text-muted)',
+                fontSize: 13, color: 'var(--text-muted)',
                 display: 'inline-block',
                 transition: 'transform 0.2s',
                 transform: expandedId === strategy.id ? 'rotate(180deg)' : 'rotate(0deg)',
@@ -884,14 +884,14 @@ function OptimizerPanel({ trip }: { trip: any }) {
                     {i + 1}
                   </div>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 3 }}>
+                    <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 3 }}>
                       Leg {booking.legIndex + 1}: {trip.legs[booking.legIndex]?.from} → {trip.legs[booking.legIndex]?.to}
                       <span style={{ marginLeft: 8, color: 'var(--text-muted)' }}>— {booking.flightLabel}</span>
                     </div>
                     <div style={{ fontSize: 13, fontWeight: 500 }}>
                       {booking.description}
                     </div>
-                    <div style={{ display: 'flex', gap: 12, marginTop: 6, fontSize: 12 }}>
+                    <div style={{ display: 'flex', gap: 12, marginTop: 6, fontSize: 13 }}>
                       {booking.cashCost > 0 && (
                         <span style={{ color: 'var(--text-secondary)' }}>
                           💵 ${booking.cashCost.toLocaleString()}
@@ -946,7 +946,7 @@ function OptimizerPanel({ trip }: { trip: any }) {
                   )}
                 </div>
                 {(trip.travelers || 1) > 1 && (
-                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6 }}>
+                  <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 6 }}>
                     Totals for {trip.travelers} travelers
                   </div>
                 )}
@@ -978,9 +978,9 @@ function OptimizerPanel({ trip }: { trip: any }) {
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                 <span style={{ fontWeight: 600, fontSize: 13 }}>{spot.title}</span>
-                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--success)' }}>{spot.estimatedValue}</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--success)' }}>{spot.estimatedValue}</span>
               </div>
-              <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{spot.description}</div>
+              <div style={{ fontSize: 14, color: 'var(--text-secondary)' }}>{spot.description}</div>
             </div>
           ))}
         </div>
@@ -1046,16 +1046,16 @@ function ItineraryCard({ itinerary, trip, onDelete, onRename }: {
           ) : (
             <div style={{ fontWeight: 700, fontSize: 16 }}>{itinerary.name}</div>
           )}
-          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>Saved {dateStr}</div>
+          <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>Saved {dateStr}</div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           <div style={{ textAlign: 'right' }}>
             {totals.cash > 0 && <div style={{ fontSize: 14, fontWeight: 700 }}>${(totals.cash * travelers).toLocaleString()}</div>}
             {totals.points > 0 && <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--primary)' }}>{(totals.points * travelers).toLocaleString()} pts</div>}
-            {totals.fees > 0 && <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>+ ${(totals.fees * travelers).toLocaleString()} fees</div>}
+            {totals.fees > 0 && <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>+ ${(totals.fees * travelers).toLocaleString()} fees</div>}
           </div>
           <span style={{
-            fontSize: 12, color: 'var(--text-muted)',
+            fontSize: 13, color: 'var(--text-muted)',
             transition: 'transform 0.2s',
             display: 'inline-block',
             transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)',
@@ -1074,7 +1074,7 @@ function ItineraryCard({ itinerary, trip, onDelete, onRename }: {
             return (
               <div key={i} style={{ marginTop: 16 }}>
                 <div style={{
-                  fontSize: 11, fontWeight: 700, color: 'var(--text-muted)',
+                  fontSize: 13, fontWeight: 700, color: 'var(--text-muted)',
                   textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8,
                 }}>
                   Leg {i + 1}: {getCityName(leg.from)} → {getCityName(leg.to)}
@@ -1140,7 +1140,7 @@ function ItineraryCard({ itinerary, trip, onDelete, onRename }: {
                 <div style={{
                   width: 24, height: 24, borderRadius: '50%', flexShrink: 0,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 12, fontWeight: 700, marginTop: 1,
+                  fontSize: 13, fontWeight: 700, marginTop: 1,
                   backgroundColor: step.type === 'shortfall' ? 'var(--danger-bg)'
                     : step.type === 'cash' ? 'var(--success-bg)'
                     : 'var(--primary-light)',
@@ -1151,17 +1151,17 @@ function ItineraryCard({ itinerary, trip, onDelete, onRename }: {
                   {i + 1}
                 </div>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 2 }}>{step.flightLabel}</div>
+                  <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 2 }}>{step.flightLabel}</div>
                   <div style={{ fontSize: 13, color: step.type === 'shortfall' ? 'var(--danger)' : 'var(--text)' }}>
                     {step.message}
                   </div>
                   {step.type === 'transfer' && step.walletBalance !== undefined && (
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3 }}>
+                    <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 3 }}>
                       Remaining: {(step.walletBalance - (step.bankPointsNeeded || 0)).toLocaleString()} {step.walletProgram}
                     </div>
                   )}
                   {step.type === 'direct_miles' && step.walletBalance !== undefined && (
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3 }}>
+                    <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 3 }}>
                       Remaining: {(step.walletBalance - step.pointsNeeded).toLocaleString()} {step.walletProgram}
                     </div>
                   )}

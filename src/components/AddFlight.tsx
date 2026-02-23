@@ -57,9 +57,9 @@ function fromTimeStr(s: string): Date | null {
 }
 
 const fieldLabel: React.CSSProperties = {
-  fontSize: 12,
+  fontSize: 13,
   fontWeight: 500,
-  color: 'var(--text-muted)',
+  color: 'var(--text-secondary)',
   marginBottom: 4,
   display: 'block',
 }
@@ -215,7 +215,7 @@ export default function AddFlight({ legs, onSave, onCancel, editingFlight }: Pro
       <div style={cardStyle}>
         {editingBanner}
         <p style={{ fontWeight: 600, fontSize: 15, marginBottom: 4 }}>Booking details</p>
-        <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 18 }}>
+        <p style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 18 }}>
           {segments.map(s => `${s.flightCode} ${s.departureAirport}→${s.arrivalAirport}`).join(' · ')}
         </p>
 

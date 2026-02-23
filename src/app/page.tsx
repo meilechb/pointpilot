@@ -1,18 +1,68 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+
+type Article = {
+  id: string
+  slug: string
+  title: string
+  summary: string
+  created_at: string
+}
 
 export default function Home() {
   const router = useRouter()
   const [showFaq, setShowFaq] = useState(false)
+
+  // Mini trip form state
+  const [tripName, setTripName] = useState('')
+
+  // News articles
+  const [articles, setArticles] = useState<Article[]>([])
+  const [carouselIndex, setCarouselIndex] = useState(0)
+
+  useEffect(() => {
+    fetch('/api/articles')
+      .then(r => r.json())
+      .then(data => setArticles(Array.isArray(data) ? data.slice(0, 6) : []))
+      .catch(() => setArticles([]))
+  }, [])
+
+  const handleStartTrip = () => {
+    const trip = {
+      id: crypto.randomUUID(),
+      tripName: tripName || 'My Trip',
+      tripType: 'roundtrip',
+      departureCity: '',
+      destinationCity: '',
+      stops: [],
+      legs: [],
+      departureDate: '',
+      returnDate: '',
+      travelers: 1,
+      dateFlexibility: 'exact',
+      flights: [],
+      itineraries: [],
+      createdAt: new Date().toISOString(),
+    }
+    const existing = JSON.parse(localStorage.getItem('trips') || '[]')
+    existing.push(trip)
+    localStorage.setItem('trips', JSON.stringify(existing))
+    router.push(`/trip/${trip.id}`)
+  }
+
+  // Carousel: show 3 articles at a time on desktop
+  const visibleArticles = articles.slice(carouselIndex, carouselIndex + 3)
+  const canPrev = carouselIndex > 0
+  const canNext = carouselIndex + 3 < articles.length
 
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'WebApplication',
     name: 'Point Tripper',
     url: 'https://pointtripper.com',
-    description: 'Track your points, discover transfer bonuses, plan trips, and get step-by-step booking instructions to maximize your credit card rewards.',
+    description: 'Organize flight options, compare cash vs. points, and get step-by-step booking instructions using your credit card rewards.',
     applicationCategory: 'TravelApplication',
     operatingSystem: 'Web',
     offers: {
@@ -20,6 +70,18 @@ export default function Home() {
       price: '0',
       priceCurrency: 'USD',
     },
+  }
+
+  const fieldInput: React.CSSProperties = {
+    width: '100%',
+    height: 42,
+    padding: '10px 12px',
+    fontSize: 14,
+    color: 'var(--text)',
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    border: '1.5px solid rgba(255,255,255,0.3)',
+    borderRadius: 'var(--radius-sm)',
+    outline: 'none',
   }
 
   return (
@@ -46,51 +108,60 @@ export default function Home() {
             marginBottom: 20,
             letterSpacing: 0.5,
           }}>
-            Your points command center
+            Ditch the spreadsheets
           </div>
           <h1 className="hero-title">
-            Stop leaving points on the table
+            Finally, one place for all your flight options
           </h1>
           <p className="hero-subtitle">
-            Track every point balance, discover transfer bonuses, plan trips with drag-and-drop, and get step-by-step booking playbooks — all in one place.
+            Stop juggling spreadsheets and browser tabs! Organize all of your booking options, compare cash vs. points, and see exactly which combo saves you the most.
           </p>
-          <div className="hero-buttons">
+
+          {/* Mini trip form */}
+          <div style={{
+            maxWidth: 340,
+            margin: '28px auto 0',
+            display: 'flex',
+            gap: 0,
+          }}>
+            <input
+              type="text"
+              placeholder="Trip name"
+              value={tripName}
+              onChange={(e) => setTripName(e.target.value)}
+              style={{ ...fieldInput, flex: 1, borderRadius: '10px 0 0 10px', borderRight: 'none' }}
+            />
             <button
-              onClick={() => router.push('/wallet')}
+              onClick={handleStartTrip}
               style={{
-                padding: '14px 32px',
-                fontSize: 16,
-                fontWeight: 600,
+                padding: '0 24px',
+                height: 42,
+                fontSize: 15,
+                fontWeight: 700,
                 background: 'linear-gradient(135deg, var(--accent), #E8C36A)',
                 color: '#1A1A2E',
                 border: 'none',
-                borderRadius: 10,
+                borderRadius: '0 10px 10px 0',
                 cursor: 'pointer',
                 boxShadow: '0 2px 8px rgba(212, 168, 71, 0.3)',
                 transition: 'transform 0.15s, box-shadow 0.15s',
+                whiteSpace: 'nowrap',
               }}
               onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(212, 168, 71, 0.4)' }}
               onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(212, 168, 71, 0.3)' }}
             >
-              Track My Points
+              Create Trip
             </button>
+          </div>
+          <div style={{ textAlign: 'center', marginTop: 10 }}>
             <button
-              onClick={() => router.push('/trip/new')}
+              onClick={() => router.push(tripName ? `/trip/new?name=${encodeURIComponent(tripName)}` : '/trip/new')}
               style={{
-                padding: '14px 32px',
-                fontSize: 16,
-                fontWeight: 600,
-                backgroundColor: 'rgba(255,255,255,0.1)',
-                color: 'var(--text-inverse)',
-                border: '1px solid rgba(255,255,255,0.2)',
-                borderRadius: 10,
-                cursor: 'pointer',
-                transition: 'background-color 0.15s',
+                background: 'none', border: 'none', cursor: 'pointer',
+                color: 'rgba(255,255,255,0.55)', fontSize: 13, fontWeight: 500,
               }}
-              onMouseOver={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.15)' }}
-              onMouseOut={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)' }}
             >
-              Plan a Trip
+              More options →
             </button>
           </div>
         </div>
@@ -104,18 +175,12 @@ export default function Home() {
         <p style={{ fontSize: 14, color: 'var(--text-secondary)', textAlign: 'center', marginBottom: 32, maxWidth: 500, margin: '0 auto 32px' }}>
           From tracking balances to booking flights — one app replaces your spreadsheets, browser tabs, and guesswork.
         </p>
-        <div className="features-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
+        <div className="features-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
           {[
             {
               icon: '💳',
-              title: 'Points Wallet',
-              desc: 'Track balances across Chase, Amex, Citi, Capital One, Bilt, and 90+ airline programs. All in one dashboard.',
-              link: '/wallet',
-            },
-            {
-              icon: '🔥',
-              title: 'Travel Hacks',
-              desc: 'See every transfer partner, ratio, and active bonus. Calculate exactly how many miles you\'ll get with bonus transfers.',
+              title: 'Rewards Tracker',
+              desc: 'Track balances across Chase, Amex, Citi, Capital One, Bilt, and 90+ airline programs. See transfer partners and bonuses.',
               link: '/wallet',
             },
             {
@@ -169,7 +234,7 @@ export default function Home() {
           <div className="how-it-works-steps">
             {[
               { step: '1', title: 'Add your points', desc: 'Enter balances from every bank and airline program you have' },
-              { step: '2', title: 'Check Travel Hacks', desc: 'See transfer partners, active bonuses, and calculate your best options' },
+              { step: '2', title: 'Check Transfer Partners', desc: 'See transfer partners, active bonuses, and calculate your best options' },
               { step: '3', title: 'Plan a trip', desc: 'Create a trip, log every flight option, and drag-drop your favorites into a plan' },
               { step: '4', title: 'Get the playbook', desc: 'See exactly which points to transfer, where to book, and step-by-step instructions' },
             ].map((item, i) => (
@@ -186,7 +251,7 @@ export default function Home() {
                 {i < 3 && <div className="how-it-works-connector" />}
                 <div>
                   <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>{item.title}</div>
-                  <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{item.desc}</div>
+                  <div style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{item.desc}</div>
                 </div>
               </div>
             ))}
@@ -194,29 +259,111 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Stats bar */}
-      <div style={{ maxWidth: 800, margin: '0 auto', padding: '0 20px 40px' }}>
-        <div style={{
-          display: 'flex', justifyContent: 'center', gap: 40, flexWrap: 'wrap',
-          padding: '24px 20px',
-          backgroundColor: 'var(--bg-card)',
-          borderRadius: 'var(--radius-lg)',
-          boxShadow: 'var(--shadow)',
-          border: '1px solid var(--border-light)',
-        }}>
-          {[
-            { num: '5', label: 'Bank Programs' },
-            { num: '90+', label: 'Airline Programs' },
-            { num: '78', label: 'Transfer Partners' },
-            { num: '100%', label: 'Free' },
-          ].map((item) => (
-            <div key={item.label} style={{ textAlign: 'center', minWidth: 100 }}>
-              <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--accent)' }}>{item.num}</div>
-              <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>{item.label}</div>
+      {/* News Carousel */}
+      {articles.length > 0 && (
+        <div style={{ maxWidth: 900, margin: '0 auto', padding: '0 20px 40px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <h2 style={{ fontSize: 20, fontWeight: 700 }}>Latest News</h2>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              {articles.length > 3 && (
+                <>
+                  <button
+                    onClick={() => setCarouselIndex(Math.max(0, carouselIndex - 3))}
+                    disabled={!canPrev}
+                    style={{
+                      width: 32, height: 32, borderRadius: '50%',
+                      border: '1px solid var(--border)',
+                      backgroundColor: 'var(--bg-card)',
+                      cursor: canPrev ? 'pointer' : 'default',
+                      color: canPrev ? 'var(--text)' : 'var(--text-muted)',
+                      fontSize: 14, fontWeight: 600,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      opacity: canPrev ? 1 : 0.4,
+                    }}
+                  >←</button>
+                  <button
+                    onClick={() => setCarouselIndex(Math.min(articles.length - 3, carouselIndex + 3))}
+                    disabled={!canNext}
+                    style={{
+                      width: 32, height: 32, borderRadius: '50%',
+                      border: '1px solid var(--border)',
+                      backgroundColor: 'var(--bg-card)',
+                      cursor: canNext ? 'pointer' : 'default',
+                      color: canNext ? 'var(--text)' : 'var(--text-muted)',
+                      fontSize: 14, fontWeight: 600,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      opacity: canNext ? 1 : 0.4,
+                    }}
+                  >→</button>
+                </>
+              )}
+              <a
+                href="/news"
+                style={{
+                  fontSize: 14, color: 'var(--primary)', fontWeight: 600,
+                  textDecoration: 'none', marginLeft: 4,
+                }}
+              >
+                All articles →
+              </a>
             </div>
-          ))}
+          </div>
+
+          <div className="news-carousel" style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, 1fr)',
+            gap: 16,
+          }}>
+            {visibleArticles.map(article => (
+              <a
+                key={article.id}
+                href={`/news/${article.slug}`}
+                style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}
+              >
+                <div
+                  style={{
+                    padding: '20px 18px',
+                    backgroundColor: 'var(--bg-card)',
+                    borderRadius: 'var(--radius-lg)',
+                    boxShadow: 'var(--shadow-sm)',
+                    border: '1px solid var(--border-light)',
+                    transition: 'box-shadow 0.2s, transform 0.2s',
+                    cursor: 'pointer',
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                  }}
+                  onMouseOver={(e) => { e.currentTarget.style.boxShadow = 'var(--shadow)'; e.currentTarget.style.transform = 'translateY(-2px)' }}
+                  onMouseOut={(e) => { e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; e.currentTarget.style.transform = 'translateY(0)' }}
+                >
+                  <span style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 8 }}>
+                    {new Date(article.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  </span>
+                  <h3 style={{
+                    fontSize: 16, fontWeight: 700, lineHeight: 1.3,
+                    marginBottom: 8, flex: 1,
+                  }}>
+                    {article.title}
+                  </h3>
+                  <p style={{
+                    fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.5,
+                    marginBottom: 10,
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical',
+                    overflow: 'hidden',
+                  }}>
+                    {article.summary}
+                  </p>
+                  <span style={{ fontSize: 13, color: 'var(--primary)', fontWeight: 600 }}>
+                    Read →
+                  </span>
+                </div>
+              </a>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* FAQ */}
       <div style={{ maxWidth: 600, margin: '0 auto', padding: '20px 20px 60px' }}>
@@ -250,7 +397,7 @@ export default function Home() {
               { q: 'Is this free?', a: 'Yes, completely free. No hidden fees, no premium tier.' },
               { q: 'Do I need an account?', a: "Not to get started — your points are saved locally. Sign up for free whenever you want to sync across devices." },
               { q: 'Which points programs do you support?', a: 'Chase Ultimate Rewards, Amex Membership Rewards, Citi ThankYou Points, Capital One Miles, Bilt Rewards, plus 90+ airline frequent flyer programs.' },
-              { q: 'What are Travel Hacks?', a: 'Every wallet entry has a Travel Hacks popup showing transfer partners, ratios, active bonuses, and a calculator to see exactly how many miles your points are worth with bonus transfers.' },
+              { q: 'How do Transfer Partners work?', a: 'Every wallet entry has a Transfer Partners popup showing transfer partners, ratios, active bonuses, and a calculator to see exactly how many miles your points are worth with bonus transfers.' },
               { q: "How is this different from a spreadsheet?", a: "Built-in transfer partner data, bonus tracking, drag-and-drop trip planning, flight lookup by code, and step-by-step booking playbooks. It knows things a spreadsheet can't." },
               { q: 'Do you book flights for me?', a: "No — we tell you exactly what to do and you book it yourself. You keep full control and earn any booking bonuses." },
             ].map((item, i) => (
@@ -259,7 +406,7 @@ export default function Home() {
                 borderBottom: i < 5 ? '1px solid var(--border-light)' : 'none',
               }}>
                 <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>{item.q}</div>
-                <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{item.a}</div>
+                <div style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{item.a}</div>
               </div>
             ))}
           </div>

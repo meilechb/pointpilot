@@ -125,7 +125,7 @@ export default function AirportInput({ value, onChange, placeholder, style }: Pr
                   <span style={{ fontSize: 13, color: 'var(--text-secondary)', marginLeft: 8 }}>{airport[1]}</span>
                 </div>
                 {airport[2] && (
-                  <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{airport[2]}</span>
+                  <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{airport[2]}</span>
                 )}
               </div>
             </div>

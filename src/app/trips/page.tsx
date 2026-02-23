@@ -80,7 +80,7 @@ export default function TripsPage() {
           >
             <div>
               <div style={{ fontWeight: 600, fontSize: 15 }}>{trip.tripName || 'Untitled Trip'}</div>
-              <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}>
+              <div style={{ fontSize: 14, color: 'var(--text-secondary)', marginTop: 2 }}>
                 {trip.legs?.map((l: any) => `${l.from} → ${l.to}`).join(' · ')}
                 {trip.departureDate && <span> · {trip.departureDate}</span>}
               </div>
@@ -88,7 +88,7 @@ export default function TripsPage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               {trip.flights?.length > 0 && (
                 <span style={{
-                  fontSize: 12, fontWeight: 600,
+                  fontSize: 13, fontWeight: 600,
                   padding: '2px 8px', borderRadius: 10,
                   backgroundColor: 'var(--primary-light)',
                   color: 'var(--primary)',

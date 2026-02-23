@@ -127,7 +127,7 @@ export default function ProgramSelect({ value, onChange, options, placeholder, s
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--text)' }}>{option.label}</span>
                 {option.detail && (
-                  <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 8 }}>{option.detail}</span>
+                  <span style={{ fontSize: 13, color: 'var(--text-muted)', marginLeft: 8 }}>{option.detail}</span>
                 )}
               </div>
             </div>

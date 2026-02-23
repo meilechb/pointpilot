@@ -65,13 +65,13 @@ export default function ArticlePage() {
       }}>
         <div style={{ maxWidth: 740, margin: '0 auto' }}>
           <a href="/news" style={{
-            color: 'rgba(255,255,255,0.5)', fontSize: 14, fontWeight: 500,
+            color: 'rgba(255,255,255,0.65)', fontSize: 14, fontWeight: 500,
             textDecoration: 'none', display: 'inline-block', marginBottom: 24,
             transition: 'color 0.15s',
           }}>
             ← Back to News
           </a>
-          <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, marginBottom: 14 }}>
+          <div style={{ color: 'rgba(255,255,255,0.65)', fontSize: 14, marginBottom: 14 }}>
             {formatDate(article.created_at)}
           </div>
           <h1 style={{

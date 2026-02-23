@@ -29,6 +29,15 @@ gtag('config', 'G-4HZ6XF1C20');`}
         <main style={{ minHeight: 'calc(100vh - 56px)' }}>
           {children}
         </main>
+        <footer style={{
+          textAlign: 'center', padding: '20px 16px',
+          borderTop: '1px solid var(--border-light)',
+          fontSize: 13, color: 'var(--text-muted)',
+        }}>
+          <a href="/privacy" style={{ color: 'var(--text-muted)', textDecoration: 'none' }}>
+            Privacy Policy
+          </a>
+        </footer>
       </AuthProvider>
     </>
   )

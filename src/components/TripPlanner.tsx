@@ -266,7 +266,7 @@ export default function TripPlanner({ legs, flights, travelers, onSave }: Props)
           transition: 'background-color 0.15s ease',
         }}
       >
-        <div style={{ fontSize: 14, fontWeight: 600, color: '#888', marginBottom: unassigned.length > 0 ? 10 : 0 }}>
+        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-muted)', marginBottom: unassigned.length > 0 ? 10 : 0 }}>
           {unassigned.length > 0 ? `${unassigned.length} flight${unassigned.length > 1 ? 's' : ''} to assign` : 'All flights assigned ✓'}
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
@@ -308,7 +308,7 @@ export default function TripPlanner({ legs, flights, travelers, onSave }: Props)
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                 <div>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: '#999', textTransform: 'uppercase', letterSpacing: 1 }}>Leg {i + 1}</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 1 }}>Leg {i + 1}</div>
                   <div style={{ fontSize: 18, fontWeight: 700, marginTop: 2 }}>{leg.from} → {leg.to}</div>
                 </div>
                 {validation.complete && <div style={{ fontSize: 20 }}>✅</div>}
@@ -317,7 +317,7 @@ export default function TripPlanner({ legs, flights, travelers, onSave }: Props)
 
               {legFlights.length === 0 ? (
                 <div style={{
-                  padding: 30, textAlign: 'center', color: '#bbb', fontSize: 13,
+                  padding: 30, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13,
                   border: '2px dashed #ddd', borderRadius: 8,
                   backgroundColor: isOver ? '#d4edda' : 'transparent',
                   transition: 'all 0.15s ease',
@@ -342,7 +342,7 @@ export default function TripPlanner({ legs, flights, travelers, onSave }: Props)
                         />
                       </div>
                       {pos < legFlights.length - 1 && (
-                        <div style={{ textAlign: 'center', padding: '2px 0 6px', fontSize: 12 }}>
+                        <div style={{ textAlign: 'center', padding: '2px 0 6px', fontSize: 13 }}>
                           {(() => {
                             const cTo = getFlightRoute(legFlights[pos]).to
                             const nFrom = getFlightRoute(legFlights[pos + 1]).from
@@ -350,7 +350,7 @@ export default function TripPlanner({ legs, flights, travelers, onSave }: Props)
                               return <span style={{ color: '#4CAF50' }}>↓ via {cTo}</span>
                             }
                             if (airportsMatch(cTo, nFrom)) {
-                              return <div style={{ padding: '6px 10px', backgroundColor: '#FFF3E0', borderRadius: 6, fontSize: 12, color: '#E65100', margin: '4px 0' }}>⚠ Airport change: {cTo} → {nFrom} — allow extra transfer time</div>
+                              return <div style={{ padding: '6px 10px', backgroundColor: '#FFF3E0', borderRadius: 6, fontSize: 13, color: '#E65100', margin: '4px 0' }}>⚠ Airport change: {cTo} → {nFrom} — allow extra transfer time</div>
                             }
                             return <span style={{ color: '#f44336', fontWeight: 500 }}>⚠ {cTo} ✕ {nFrom}</span>
                           })()}
@@ -368,7 +368,7 @@ export default function TripPlanner({ legs, flights, travelers, onSave }: Props)
                 <div style={{ marginTop: 8 }}>
                   {validation.warnings.map((w, wi) => (
                     <div key={wi} style={{
-                      padding: '6px 10px', borderRadius: 6, fontSize: 12, marginBottom: 4,
+                      padding: '6px 10px', borderRadius: 6, fontSize: 13, marginBottom: 4,
                       backgroundColor: w.type === 'short_layover' ? '#FFF3E0' : '#FFEBEE',
                       color: w.type === 'short_layover' ? '#E65100' : '#C62828',
                     }}>
@@ -413,8 +413,8 @@ export default function TripPlanner({ legs, flights, travelers, onSave }: Props)
 
                 return (
                   <div style={{
-                    marginTop: 10, padding: '8px 12px', backgroundColor: '#fff',
-                    borderRadius: 6, border: '1px solid #e0e0e0', fontSize: 13, color: '#555',
+                    marginTop: 10, padding: '8px 12px', backgroundColor: 'var(--bg-card)',
+                    borderRadius: 6, border: '1px solid var(--border-light)', fontSize: 13, color: 'var(--text-secondary)',
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                   }}>
                     <span>Total leg time</span>
@@ -428,11 +428,11 @@ export default function TripPlanner({ legs, flights, travelers, onSave }: Props)
       </div>
 
       {assignedIds.size > 0 && (
-        <div style={{ marginTop: 16, padding: 14, backgroundColor: '#f7f7f7', borderRadius: 8, border: '1px solid #e0e0e0' }}>
+        <div style={{ marginTop: 16, padding: 14, backgroundColor: 'var(--bg)', borderRadius: 8, border: '1px solid var(--border-light)' }}>
           <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 8 }}>Trip Total{travelers > 1 ? ` (${travelers} travelers)` : ''}</div>
-          {totalCash > 0 && <div style={{ fontSize: 14, marginBottom: 4 }}>💵 Cash: <strong>${(totalCash * travelers).toLocaleString()}</strong>{travelers > 1 && <span style={{ color: '#888' }}> (${totalCash.toLocaleString()} pp)</span>}</div>}
-          {totalPoints > 0 && <div style={{ fontSize: 14, marginBottom: 4 }}>⭐ Points: <strong>{(totalPoints * travelers).toLocaleString()}</strong>{travelers > 1 && <span style={{ color: '#888' }}> ({totalPoints.toLocaleString()} pp)</span>}</div>}
-          {totalFees > 0 && <div style={{ fontSize: 14, color: '#666' }}>+ Fees: ${(totalFees * travelers).toLocaleString()}</div>}
+          {totalCash > 0 && <div style={{ fontSize: 14, marginBottom: 4 }}>💵 Cash: <strong>${(totalCash * travelers).toLocaleString()}</strong>{travelers > 1 && <span style={{ color: 'var(--text-muted)' }}> (${totalCash.toLocaleString()} pp)</span>}</div>}
+          {totalPoints > 0 && <div style={{ fontSize: 14, marginBottom: 4 }}>⭐ Points: <strong>{(totalPoints * travelers).toLocaleString()}</strong>{travelers > 1 && <span style={{ color: 'var(--text-muted)' }}> ({totalPoints.toLocaleString()} pp)</span>}</div>}
+          {totalFees > 0 && <div style={{ fontSize: 14, color: 'var(--text-secondary)' }}>+ Fees: ${(totalFees * travelers).toLocaleString()}</div>}
         </div>
       )}
 
@@ -443,7 +443,7 @@ export default function TripPlanner({ legs, flights, travelers, onSave }: Props)
           value={planName}
           onChange={(e) => setPlanName(e.target.value)}
           style={{
-            width: '100%', padding: 12, border: '1px solid #ddd', borderRadius: 6,
+            width: '100%', padding: 12, border: '1px solid var(--border)', borderRadius: 6,
             fontSize: 14, marginBottom: 8, boxSizing: 'border-box',
           }}
         />

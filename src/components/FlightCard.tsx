@@ -124,21 +124,21 @@ export default function FlightCard({ flight, compact = false, draggable = false,
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div style={{ flex: 1 }}>
             <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text)' }}>{originCity} to {destCity}</div>
-            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
+            <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}>
               {airportChain}
               {flightCodes && <span style={{ color: 'var(--text-muted)', marginLeft: 6 }}>{flightCodes}</span>}
             </div>
-            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3 }}>
+            <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 3 }}>
               {departDate && `${departDate}`}{departTime && `, ${departTime}`}
               {totalTime && <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}> · {totalTime}</span>}
               {isNextDay && <span style={{
-                fontSize: 10, fontWeight: 700, color: 'var(--warning)',
+                fontSize: 11, fontWeight: 700, color: 'var(--warning)',
                 backgroundColor: 'var(--warning-bg)', padding: '1px 5px',
                 borderRadius: 4, marginLeft: 4,
               }}>+1</span>}
             </div>
             {priceDisplay && (
-              <div style={{ fontSize: 12, color: 'var(--text)', fontWeight: 600, marginTop: 3 }}>
+              <div style={{ fontSize: 13, color: 'var(--text)', fontWeight: 600, marginTop: 3 }}>
                 {priceDisplay}
                 {bookingLabel && <span style={{ fontWeight: 400, color: 'var(--text-muted)', marginLeft: 6 }}>{bookingLabel}</span>}
               </div>
@@ -194,7 +194,7 @@ export default function FlightCard({ flight, compact = false, draggable = false,
             <span style={{ fontWeight: 500, color: 'var(--text)' }}>{arriveTime || '—'}</span>
             <span style={{ margin: '0 4px', color: 'var(--text-muted)' }}>{arriveDate}</span>
             {isNextDay && <span style={{
-              fontSize: 10, fontWeight: 700, color: 'var(--warning)',
+              fontSize: 11, fontWeight: 700, color: 'var(--warning)',
               backgroundColor: 'var(--warning-bg)', padding: '1px 6px',
               borderRadius: 4, marginLeft: 2,
             }}>+1 day</span>}
@@ -202,7 +202,7 @@ export default function FlightCard({ flight, compact = false, draggable = false,
         </div>
         {totalTime && (
           <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>Total Time</div>
+            <div style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 500 }}>Total Time</div>
             <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>{totalTime}</div>
           </div>
         )}
@@ -213,7 +213,7 @@ export default function FlightCard({ flight, compact = false, draggable = false,
         <div style={{ marginBottom: 12, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           {layovers.map((l, i) => (
             <span key={i} style={{
-              fontSize: 12, color: 'var(--text-secondary)',
+              fontSize: 13, color: 'var(--text-secondary)',
               padding: '3px 10px', backgroundColor: 'var(--bg)',
               borderRadius: 20, border: '1px solid var(--border-light)',
             }}>

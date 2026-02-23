@@ -31,14 +31,14 @@ function slugify(text: string) {
 }
 
 const fieldLabel: React.CSSProperties = {
-  fontSize: 12, fontWeight: 500, color: 'var(--text-muted)',
+  fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)',
   marginBottom: 4, display: 'block',
 }
 
 const smallBtn: React.CSSProperties = {
   padding: '4px 12px', border: '1px solid var(--border)',
   borderRadius: 'var(--radius-sm)', cursor: 'pointer',
-  backgroundColor: 'var(--bg-card)', fontSize: 12,
+  backgroundColor: 'var(--bg-card)', fontSize: 13,
   color: 'var(--text-secondary)', fontWeight: 500,
 }
 
@@ -364,13 +364,13 @@ export default function AdminPage() {
           {articles.map(a => (
             <div key={a.id} style={{ padding: '16px 18px', backgroundColor: 'var(--bg-card)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--border-light)', marginBottom: 8 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                <span style={{ padding: '2px 8px', borderRadius: 10, backgroundColor: a.published ? 'var(--success-bg)' : 'var(--bg-accent)', color: a.published ? 'var(--success)' : 'var(--text-muted)', fontSize: 11, fontWeight: 600 }}>
+                <span style={{ padding: '2px 8px', borderRadius: 10, backgroundColor: a.published ? 'var(--success-bg)' : 'var(--bg-accent)', color: a.published ? 'var(--success)' : 'var(--text-muted)', fontSize: 13, fontWeight: 600 }}>
                   {a.published ? 'Published' : 'Draft'}
                 </span>
-                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{new Date(a.created_at).toLocaleDateString()}</span>
+                <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{new Date(a.created_at).toLocaleDateString()}</span>
               </div>
               <div style={{ fontWeight: 600, fontSize: 15 }}>{a.title}</div>
-              <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}>{a.summary}</div>
+              <div style={{ fontSize: 14, color: 'var(--text-secondary)', marginTop: 2 }}>{a.summary}</div>
               <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
                 <button onClick={() => startEditArticle(a)} style={smallBtn}>Edit</button>
                 <button onClick={() => togglePublished(a)} style={smallBtn}>{a.published ? 'Unpublish' : 'Publish'}</button>
@@ -417,7 +417,7 @@ export default function AdminPage() {
                         +{b.bonus_percent}%
                       </span>
                       {b.expires_at && (
-                        <span style={{ fontSize: 12, color: isExpired ? 'var(--danger)' : 'var(--text-muted)' }}>
+                        <span style={{ fontSize: 13, color: isExpired ? 'var(--danger)' : 'var(--text-muted)' }}>
                           {isExpired ? 'Expired' : `Expires ${new Date(b.expires_at).toLocaleDateString()}`}
                         </span>
                       )}
@@ -434,6 +434,7 @@ export default function AdminPage() {
           })}
         </>
       )}
+
     </div>
   )
 }

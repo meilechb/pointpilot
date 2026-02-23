@@ -9,8 +9,8 @@
   --bg-hover: #F8F8FA;
 
   --text: #1A1A2E;
-  --text-secondary: #6B7280;
-  --text-muted: #9CA3AF;
+  --text-secondary: #4B5563;
+  --text-muted: #6B7280;
   --text-inverse: #FFFFFF;
 
   --primary: #4338CA;
@@ -173,12 +173,12 @@ input[type="number"] {
 .react-datepicker__day-name {
   color: var(--text-muted) !important;
   font-weight: 500 !important;
-  font-size: 12px !important;
+  font-size: 13px !important;
 }
 
 .react-datepicker__day {
   border-radius: 6px !important;
-  font-size: 13px !important;
+  font-size: 14px !important;
   color: var(--text) !important;
   transition: background-color 0.1s !important;
 }
@@ -295,7 +295,7 @@ html, body {
 
 .hero-subtitle {
   font-size: 18px;
-  color: rgba(255,255,255,0.6);
+  color: rgba(255,255,255,0.7);
   margin-bottom: 36px;
   line-height: 1.6;
 }
@@ -383,6 +383,9 @@ html, body {
 /* Date picker responsive */
 @media (max-width: 640px) {
   .news-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .news-carousel {
     grid-template-columns: 1fr !important;
   }
   .react-datepicker {

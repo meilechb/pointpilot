@@ -151,7 +151,7 @@ export default function WalletPage() {
             boxShadow: 'var(--shadow-sm)',
             border: '1px solid var(--border-light)',
           }}>
-            <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-muted)', marginBottom: 4 }}>Total Points & Miles</div>
+            <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-muted)', marginBottom: 4 }}>Total Points & Miles</div>
             <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--primary)' }}>{totalPoints.toLocaleString()}</div>
           </div>
           {totalCash > 0 && (
@@ -162,7 +162,7 @@ export default function WalletPage() {
               boxShadow: 'var(--shadow-sm)',
               border: '1px solid var(--border-light)',
             }}>
-              <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-muted)', marginBottom: 4 }}>Cash Budget</div>
+              <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-muted)', marginBottom: 4 }}>Cash Budget</div>
               <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--success)' }}>${totalCash.toLocaleString()}</div>
             </div>
           )}

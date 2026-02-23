@@ -105,7 +105,7 @@ export default function WalletCard({ entry, bonuses, onEdit, onDelete }: Props) 
             onClick={() => setShowPopup(true)}
             style={{
               padding: '6px 16px', backgroundColor: '#FFF8E1',
-              borderBottom: '1px solid #F0E4B8', fontSize: 12, fontWeight: 600,
+              borderBottom: '1px solid #F0E4B8', fontSize: 13, fontWeight: 600,
               color: '#92710C', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer',
             }}
           >
@@ -113,7 +113,7 @@ export default function WalletCard({ entry, bonuses, onEdit, onDelete }: Props) 
             {bonusCount === 1
               ? `+${relevantBonuses[0].bonus_percent}% transfer bonus to ${relevantBonuses[0].partner}!`
               : `${bonusCount} active transfer bonuses!`}
-            <span style={{ marginLeft: 'auto', fontSize: 11 }}>View →</span>
+            <span style={{ marginLeft: 'auto', fontSize: 13 }}>View →</span>
           </div>
         )}
 
@@ -129,7 +129,7 @@ export default function WalletCard({ entry, bonuses, onEdit, onDelete }: Props) 
               </div>
               <div>
                 <div style={{ fontWeight: 600, fontSize: 15 }}>{entry.program}</div>
-                <div style={{ fontSize: 12, color: colors.text, fontWeight: 500 }}>{typeLabels[entry.currency_type]}</div>
+                <div style={{ fontSize: 13, color: colors.text, fontWeight: 500 }}>{typeLabels[entry.currency_type]}</div>
               </div>
             </div>
             <div style={{ textAlign: 'right' }}>
@@ -137,7 +137,7 @@ export default function WalletCard({ entry, bonuses, onEdit, onDelete }: Props) 
                 {entry.currency_type === 'cash' ? `$${entry.balance.toLocaleString()}` : entry.balance.toLocaleString()}
               </div>
               {entry.currency_type === 'cashback' && entry.redemption_value && (
-                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{entry.redemption_value}¢/pt</div>
+                <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{entry.redemption_value}¢/pt</div>
               )}
             </div>
           </div>
@@ -159,15 +159,15 @@ export default function WalletCard({ entry, bonuses, onEdit, onDelete }: Props) 
               <button onClick={() => setShowPopup(true)} style={{
                 padding: '4px 14px', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer',
                 background: 'linear-gradient(135deg, var(--primary), var(--primary-hover))',
-                fontSize: 12, fontWeight: 600, color: 'var(--text-inverse)', marginLeft: 'auto',
-              }}>Travel Hacks</button>
+                fontSize: 13, fontWeight: 600, color: 'var(--text-inverse)', marginLeft: 'auto',
+              }}>Transfer Partners</button>
             )}
           </div>
         </div>
       </div>
 
       {showPopup && (
-        <TravelHacksPopup entry={entry} bonuses={relevantBonuses} onClose={() => setShowPopup(false)} />
+        <TransferPopup entry={entry} bonuses={relevantBonuses} onClose={() => setShowPopup(false)} />
       )}
     </>
   )
@@ -176,16 +176,16 @@ export default function WalletCard({ entry, bonuses, onEdit, onDelete }: Props) 
 const smallBtnStyle: React.CSSProperties = {
   padding: '4px 12px', border: '1px solid var(--border)',
   borderRadius: 'var(--radius-sm)', cursor: 'pointer',
-  backgroundColor: 'var(--bg-card)', fontSize: 12,
+  backgroundColor: 'var(--bg-card)', fontSize: 13,
   color: 'var(--text-secondary)', fontWeight: 500,
   transition: 'border-color 0.15s, color 0.15s',
 }
 
 // ════════════════════════════════════════════════════════════════════════
-// Travel Hacks Popup
+// Transfer Partners Popup
 // ════════════════════════════════════════════════════════════════════════
 
-function TravelHacksPopup({ entry, bonuses, onClose }: {
+function TransferPopup({ entry, bonuses, onClose }: {
   entry: WalletEntry; bonuses: Bonus[]; onClose: () => void
 }) {
   const bankProgram = entry.currency_type === 'bank_points'
@@ -217,8 +217,8 @@ function TravelHacksPopup({ entry, bonuses, onClose }: {
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: 'var(--primary)', marginBottom: 4 }}>
-                Travel Hacks
+              <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: 'var(--primary)', marginBottom: 4 }}>
+                Transfer Partners
               </div>
               <div style={{ fontSize: 20, fontWeight: 700 }}>{entry.program}</div>
               <div style={{ fontSize: 14, color: 'var(--text-secondary)', marginTop: 2 }}>
@@ -306,7 +306,7 @@ function BankPointsPopup({ partners, bonuses, balance }: {
       {allianceMap.size > 0 && (
         <>
           <SectionHeader style={{ marginTop: 16 }}>Partner Airline Bookings</SectionHeader>
-          <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8, lineHeight: 1.5 }}>
+          <div style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 8, lineHeight: 1.5 }}>
             Transfer to these programs and book flights on partner airlines:
           </div>
           {Array.from(allianceMap.entries()).map(([alliance, names]) => (
@@ -315,7 +315,7 @@ function BankPointsPopup({ partners, bonuses, balance }: {
               borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)',
             }}>
               <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>{alliance}</div>
-              <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+              <div style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5 }}>
                 via {names.slice(0, 3).join(', ')}{names.length > 3 ? `, +${names.length - 3} more` : ''}
               </div>
             </div>
@@ -342,7 +342,7 @@ function AirlineMilesPopup({ sources, airlineName, bonuses, alliance, balance }:
           borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)',
         }}>
           <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--primary)', marginBottom: 2 }}>{alliance} Member</div>
-          <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+          <div style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
             Book flights on any {alliance} partner airline with your {airlineName.split(' ')[0]} miles.
           </div>
         </div>
@@ -407,7 +407,7 @@ function BonusCalculator({ bonus, ratio, defaultPoints }: {
           +{bonus.bonus_percent}% to {bonus.partner}
         </span>
         <span style={{
-          fontSize: 12, fontWeight: 700, color: '#92710C',
+          fontSize: 13, fontWeight: 700, color: '#92710C',
           backgroundColor: '#FFECB3', padding: '2px 8px', borderRadius: 10, marginLeft: 'auto',
         }}>
           {effectiveRatio(ratio, bonus.bonus_percent)}
@@ -415,7 +415,7 @@ function BonusCalculator({ bonus, ratio, defaultPoints }: {
       </div>
 
       {bonus.expires_at && (
-        <div style={{ fontSize: 11, color: '#B8960F', marginBottom: 6 }}>
+        <div style={{ fontSize: 13, color: '#B8960F', marginBottom: 6 }}>
           Expires {formatDate(bonus.expires_at)}
           {bonus.notes && ` · ${bonus.notes}`}
         </div>
@@ -424,14 +424,14 @@ function BonusCalculator({ bonus, ratio, defaultPoints }: {
       {/* Calculator toggle */}
       <button onClick={() => setShowCalc(!showCalc)} style={{
         border: 'none', background: 'none', cursor: 'pointer',
-        fontSize: 12, fontWeight: 600, color: '#92710C', padding: 0,
+        fontSize: 13, fontWeight: 600, color: '#92710C', padding: 0,
       }}>
         {showCalc ? 'Hide calculator ▴' : 'Calculate transfer ▾'}
       </button>
 
       {showCalc && (
         <div style={{ marginTop: 10, padding: '12px', backgroundColor: '#FFF3CD', borderRadius: 'var(--radius-sm)' }}>
-          <label style={{ fontSize: 12, fontWeight: 600, color: '#6D5A0A', display: 'block', marginBottom: 4 }}>
+          <label style={{ fontSize: 13, fontWeight: 600, color: '#6D5A0A', display: 'block', marginBottom: 4 }}>
             Points to transfer
           </label>
           <input
@@ -479,7 +479,7 @@ function BonusCalculator({ bonus, ratio, defaultPoints }: {
 function SectionHeader({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
   return (
     <div style={{
-      fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5,
+      fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5,
       color: 'var(--text-muted)', marginBottom: 8, ...style,
     }}>{children}</div>
   )
@@ -505,24 +505,24 @@ function PartnerRow({ name, ratio, detail, bonus, partnerPoints, icon = '✈' }:
           <div style={{ fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {name}
           </div>
-          {detail && <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{detail}</div>}
+          {detail && <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{detail}</div>}
         </div>
         <span style={{
-          fontSize: 11, fontWeight: 600,
+          fontSize: 13, fontWeight: 600,
           color: isOneToOne ? 'var(--success)' : '#B8860B',
           backgroundColor: isOneToOne ? 'var(--success-bg)' : 'var(--accent-light)',
           padding: '2px 8px', borderRadius: 10, whiteSpace: 'nowrap',
         }}>{formatRatio(ratio)}</span>
         {hasBonus && (
           <span style={{
-            fontSize: 11, fontWeight: 700, color: '#92710C',
+            fontSize: 13, fontWeight: 700, color: '#92710C',
             backgroundColor: '#FFECB3', padding: '2px 8px', borderRadius: 10, whiteSpace: 'nowrap',
           }}>{effectiveRatio(ratio, bonus!.bonus_percent)}</span>
         )}
       </div>
 
       {partnerPoints > 0 && (
-        <div style={{ padding: '0 12px 8px', paddingLeft: 33, fontSize: 11, color: 'var(--text-muted)' }}>
+        <div style={{ padding: '0 12px 8px', paddingLeft: 33, fontSize: 13, color: 'var(--text-muted)' }}>
           {hasBonus ? (
             <span>→ <strong style={{ color: '#92710C' }}>{(partnerPoints + bonusPoints).toLocaleString()}</strong> miles
               <span style={{ color: '#B8960F' }}> (incl. +{bonus!.bonus_percent}% bonus)</span></span>

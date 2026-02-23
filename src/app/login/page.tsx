@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 
 const fieldLabel: React.CSSProperties = {
-  fontSize: 12, fontWeight: 500, color: 'var(--text-muted)', marginBottom: 4, display: 'block',
+  fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 4, display: 'block',
 }
 const fieldInput: React.CSSProperties = {
   width: '100%', height: 42, padding: '10px 12px', fontSize: 14,
@@ -99,7 +99,7 @@ export default function LoginPage() {
           display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20,
         }}>
           <div style={{ flex: 1, height: 1, backgroundColor: 'var(--border)' }} />
-          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>or</span>
+          <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>or</span>
           <div style={{ flex: 1, height: 1, backgroundColor: 'var(--border)' }} />
         </div>
 
@@ -163,7 +163,7 @@ export default function LoginPage() {
           {loading ? '...' : mode === 'login' ? 'Sign In' : 'Create Account'}
         </button>
 
-        <p style={{ textAlign: 'center', marginTop: 16, fontSize: 13, color: 'var(--text-secondary)' }}>
+        <p style={{ textAlign: 'center', marginTop: 16, fontSize: 14, color: 'var(--text-secondary)' }}>
           {mode === 'login' ? "Don't have an account? " : "Already have an account? "}
           <span
             onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); setError(''); setMessage('') }}

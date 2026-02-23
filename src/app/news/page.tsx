@@ -89,7 +89,7 @@ export default function NewsPage() {
               <div style={{
                 display: 'inline-block', padding: '4px 12px', borderRadius: 20,
                 backgroundColor: 'var(--primary-light)', color: 'var(--primary)',
-                fontSize: 12, fontWeight: 700, letterSpacing: 0.5, marginBottom: 16,
+                fontSize: 13, fontWeight: 700, letterSpacing: 0.5, marginBottom: 16,
                 textTransform: 'uppercase',
               }}>
                 Latest
@@ -147,7 +147,7 @@ export default function NewsPage() {
                   onMouseOver={(e) => { e.currentTarget.style.boxShadow = 'var(--shadow)'; e.currentTarget.style.transform = 'translateY(-2px)' }}
                   onMouseOut={(e) => { e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; e.currentTarget.style.transform = 'translateY(0)' }}
                 >
-                  <span style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 10 }}>
+                  <span style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 10 }}>
                     {formatDate(article.created_at)}
                   </span>
                   <h3 style={{

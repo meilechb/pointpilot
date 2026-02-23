@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import DatePicker from 'react-datepicker'
 import 'react-datepicker/dist/react-datepicker.css'
@@ -8,9 +8,9 @@ import AirportInput from '@/components/AirportInput'
 import CustomSelect from '@/components/CustomSelect'
 
 const fieldLabel: React.CSSProperties = {
-  fontSize: 12,
+  fontSize: 13,
   fontWeight: 500,
-  color: 'var(--text-muted)',
+  color: 'var(--text-secondary)',
   marginBottom: 4,
   display: 'block',
 }
@@ -31,6 +31,12 @@ const fieldInput: React.CSSProperties = {
 export default function NewTrip() {
   const router = useRouter()
   const [tripName, setTripName] = useState('')
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const name = params.get('name')
+    if (name) setTripName(name)
+  }, [])
   const [tripType, setTripType] = useState('roundtrip')
   const [departureCity, setDepartureCity] = useState('')
   const [destinationCity, setDestinationCity] = useState('')

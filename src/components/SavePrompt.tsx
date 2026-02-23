@@ -124,7 +124,7 @@ export default function SavePrompt({ trigger }: Props) {
                 display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24,
               }}>✈</div>
               <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>{msg.title}</h2>
-              <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{msg.desc}</p>
+              <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{msg.desc}</p>
             </div>
 
             <button onClick={handleGoogleSignup} style={{
@@ -145,7 +145,7 @@ export default function SavePrompt({ trigger }: Props) {
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
               <div style={{ flex: 1, height: 1, backgroundColor: 'var(--border)' }} />
-              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>or</span>
+              <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>or</span>
               <div style={{ flex: 1, height: 1, backgroundColor: 'var(--border)' }} />
             </div>
 
@@ -170,7 +170,7 @@ export default function SavePrompt({ trigger }: Props) {
               <div style={{
                 padding: '6px 10px', backgroundColor: 'var(--danger-bg)',
                 borderRadius: 'var(--radius-sm)', border: '1px solid #FECACA',
-                fontSize: 12, color: 'var(--danger)', marginBottom: 10,
+                fontSize: 13, color: 'var(--danger)', marginBottom: 10,
               }}>
                 {error}
               </div>
@@ -193,7 +193,7 @@ export default function SavePrompt({ trigger }: Props) {
             <button onClick={dismiss} style={{
               display: 'block', width: '100%', marginTop: 8, padding: 8,
               border: 'none', background: 'none',
-              color: 'var(--text-muted)', cursor: 'pointer', fontSize: 12,
+              color: 'var(--text-muted)', cursor: 'pointer', fontSize: 13,
               textAlign: 'center',
             }}>
               Maybe later
