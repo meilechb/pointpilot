@@ -115,10 +115,29 @@ export default function AddFlight({ legs, onSave, onCancel, editingFlight }: Pro
         setLookupLoading(false)
         return
       }
-      const depDate = data.departureTime?.split(' ')[0] || ''
-      const arrDate = data.arrivalTime?.split(' ')[0] || ''
+      const apiDepDate = data.departureTime?.split(' ')[0] || ''
+      const apiArrDate = data.arrivalTime?.split(' ')[0] || ''
       const depTime = data.departureTime?.split(' ')[1] || ''
       const arrTime = data.arrivalTime?.split(' ')[1] || ''
+
+      // Use user-selected date, not the API's live date
+      const userDate = toDateStr(lookupDate)
+      const depDate = userDate || apiDepDate
+      // If API arrival is a different day than departure, calculate the offset
+      let arrDate = depDate
+      if (apiDepDate && apiArrDate && apiDepDate !== apiArrDate) {
+        const apiDepMs = new Date(apiDepDate).getTime()
+        const apiArrMs = new Date(apiArrDate).getTime()
+        const dayOffset = Math.round((apiArrMs - apiDepMs) / (1000 * 60 * 60 * 24))
+        if (userDate) {
+          const userMs = new Date(userDate).getTime()
+          const arrMs = userMs + dayOffset * 24 * 60 * 60 * 1000
+          const arrD = new Date(arrMs)
+          arrDate = `${arrD.getFullYear()}-${String(arrD.getMonth() + 1).padStart(2, '0')}-${String(arrD.getDate()).padStart(2, '0')}`
+        } else {
+          arrDate = apiArrDate
+        }
+      }
 
       const newSegment: Segment = {
         flightCode: data.flightCode || lookupCode.toUpperCase(),
