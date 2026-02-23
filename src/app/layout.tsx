@@ -1,78 +1,65 @@
-'use client'
-
+import type { Metadata } from 'next'
 import "./globals.css"
-import AuthProvider, { useAuth } from '@/components/AuthProvider'
+import ClientLayout from '@/components/ClientLayout'
 
-function Nav() {
-  const { user, loading, signOut } = useAuth()
+const SITE_URL = 'https://pointpilot-delta.vercel.app'
 
-  return (
-    <nav style={{
-      backgroundColor: 'var(--bg-nav)', padding: '0 24px', height: 56,
-      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-      position: 'sticky', top: 0, zIndex: 100,
-      boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-    }}>
-      <a href="/" style={{
-        color: 'var(--text-inverse)', fontWeight: 700, fontSize: 18,
-        letterSpacing: -0.5, textDecoration: 'none',
-        display: 'flex', alignItems: 'center', gap: 8,
-      }}>
-        <span style={{
-          width: 28, height: 28, borderRadius: 8,
-          background: 'linear-gradient(135deg, var(--accent), #E8C36A)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14,
-        }}>✈</span>
-        Point Tripper
-      </a>
-      <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-        <a href="/trip/new" style={{ color: 'rgba(255,255,255,0.7)', fontSize: 14, fontWeight: 500, textDecoration: 'none', padding: '6px 14px', borderRadius: 6 }}>New Trip</a>
-     <a href="/trips" style={{ color: 'rgba(255,255,255,0.7)', fontSize: 14, fontWeight: 500, textDecoration: 'none', padding: '6px 14px', borderRadius: 6 }}>My Trips</a>
-        <a href="/wallet" style={{ color: 'rgba(255,255,255,0.7)', fontSize: 14, fontWeight: 500, textDecoration: 'none', padding: '6px 14px', borderRadius: 6 }}>My Points</a>
-        {!loading && (
-          user ? (
-            <button
-              onClick={signOut}
-              style={{
-                color: 'rgba(255,255,255,0.5)', fontSize: 13, fontWeight: 500,
-                background: 'none', border: '1px solid rgba(255,255,255,0.2)',
-                padding: '5px 12px', borderRadius: 6, cursor: 'pointer', marginLeft: 8,
-              }}
-            >
-              Sign Out
-            </button>
-          ) : (
-            <a href="/login" style={{
-              color: 'var(--text-inverse)', fontSize: 14, fontWeight: 600,
-              textDecoration: 'none', padding: '6px 16px', borderRadius: 6, marginLeft: 8,
-              background: 'linear-gradient(135deg, var(--accent), #E8C36A)',
-            }}>Sign In</a>
-          )
-        )}
-      </div>
-    </nav>
-  )
+export const metadata: Metadata = {
+  title: {
+    default: 'Point Tripper — Maximize Your Points & Miles',
+    template: '%s | Point Tripper',
+  },
+  description: 'Stop juggling spreadsheets. Organize flight options, compare cash vs. points, and get step-by-step booking instructions using your credit card rewards.',
+  keywords: ['credit card points', 'airline miles', 'travel rewards', 'points transfer', 'flight booking', 'Chase Ultimate Rewards', 'Amex Membership Rewards', 'award travel'],
+  metadataBase: new URL(SITE_URL),
+  alternates: {
+    canonical: '/',
+  },
+  openGraph: {
+    type: 'website',
+    locale: 'en_US',
+    url: SITE_URL,
+    siteName: 'Point Tripper',
+    title: 'Point Tripper — Maximize Your Points & Miles',
+    description: 'Organize all your flight options, compare cash vs. points, and get step-by-step booking instructions. Works with Chase, Amex, Citi, Capital One, and Bilt.',
+    images: [
+      {
+        url: '/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'Point Tripper — Flight points optimization tool',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Point Tripper — Maximize Your Points & Miles',
+    description: 'Organize all your flight options, compare cash vs. points, and get step-by-step booking instructions.',
+    images: ['/og-image.png'],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
+  },
+  icons: {
+    icon: '/favicon.ico',
+    apple: '/apple-touch-icon.png',
+  },
+  manifest: '/manifest.json',
 }
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <head>
-        <title>Point Tripper — Maximize Your Points & Miles</title>
-        <meta name="description" content="Find the best way to use your credit card points and airline miles for flights." />
-        <script
-          async
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5751210990513261"
-          crossOrigin="anonymous"
-        />
-      </head>
       <body>
-        <AuthProvider>
-          <Nav />
-          <main style={{ minHeight: 'calc(100vh - 56px)' }}>
-            {children}
-          </main>
-        </AuthProvider>
+        <ClientLayout>{children}</ClientLayout>
       </body>
     </html>
   )

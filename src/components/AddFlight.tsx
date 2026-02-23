@@ -329,7 +329,7 @@ export default function AddFlight({ legs, onSave, onCancel, editingFlight }: Pro
                 >✕</button>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr 1fr', gap: 8, marginBottom: 10 }}>
+              <div className="segment-grid-3">
                 <div>
                   <label style={fieldLabel}>Code</label>
                   <input type="text" value={seg.flightCode} onChange={(e) => updateSegment(i, 'flightCode', e.target.value)} placeholder="UA123" style={fieldInput} />
@@ -350,7 +350,7 @@ export default function AddFlight({ legs, onSave, onCancel, editingFlight }: Pro
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 8 }}>
+              <div className="segment-grid-4">
                 <div>
                   <label style={fieldLabel}>From</label>
                   <AirportInput value={seg.departureAirport} onChange={(val) => updateSegment(i, 'departureAirport', val)} placeholder="EWR" />
@@ -396,7 +396,7 @@ export default function AddFlight({ legs, onSave, onCancel, editingFlight }: Pro
       {/* Lookup mode */}
       {mode === 'lookup' && (
         <>
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr auto', gap: 8, marginBottom: 10 }}>
+          <div className="lookup-grid">
             <div>
               <label style={fieldLabel}>Flight code</label>
               <input
@@ -460,7 +460,7 @@ export default function AddFlight({ legs, onSave, onCancel, editingFlight }: Pro
       {/* Manual mode */}
       {mode === 'manual' && (
         <>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
+          <div className="manual-grid-2">
             <div>
               <label style={fieldLabel}>Flight code (optional)</label>
               <input type="text" placeholder="e.g. UA123" value={manualCode} onChange={(e) => setManualCode(e.target.value)} style={fieldInput} />
@@ -471,7 +471,7 @@ export default function AddFlight({ legs, onSave, onCancel, editingFlight }: Pro
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
+          <div className="manual-grid-2">
             <div>
               <label style={fieldLabel}>Departure date</label>
               <DatePicker
@@ -494,7 +494,7 @@ export default function AddFlight({ legs, onSave, onCancel, editingFlight }: Pro
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
+          <div className="manual-grid-2">
             <div>
               <label style={fieldLabel}>From</label>
               <AirportInput value={manualFrom} onChange={setManualFrom} placeholder="e.g. EWR" />
@@ -505,7 +505,7 @@ export default function AddFlight({ legs, onSave, onCancel, editingFlight }: Pro
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
+          <div className="manual-grid-2" style={{ marginBottom: 12 }}>
             <div>
               <label style={fieldLabel}>Departure time</label>
               <DatePicker

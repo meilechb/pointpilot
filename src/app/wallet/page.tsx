@@ -266,7 +266,7 @@ export default function WalletPage() {
           <p style={{ fontWeight: 600, fontSize: 15, marginBottom: 14 }}>{editingId ? 'Edit Entry' : 'Add Entry'}</p>
 
           <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6, display: 'block' }}>Type</label>
-          <div style={{ display: 'flex', gap: 6, marginBottom: 14, flexWrap: 'wrap' }}>
+          <div className="wallet-types" style={{ display: 'flex', gap: 6, marginBottom: 14, flexWrap: 'wrap' }}>
             {(['bank_points', 'airline_miles', 'cashback', 'cash'] as const).map(type => (
               <button
                 key={type}

@@ -7,8 +7,27 @@ export default function Home() {
   const router = useRouter()
   const [showFaq, setShowFaq] = useState(false)
 
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'WebApplication',
+    name: 'Point Tripper',
+    url: 'https://pointpilot-delta.vercel.app',
+    description: 'Organize flight options, compare cash vs. points, and get step-by-step booking instructions using your credit card rewards.',
+    applicationCategory: 'TravelApplication',
+    operatingSystem: 'Web',
+    offers: {
+      '@type': 'Offer',
+      price: '0',
+      priceCurrency: 'USD',
+    },
+  }
+
   return (
     <div>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       {/* Hero */}
       <div style={{
         background: 'linear-gradient(135deg, var(--bg-nav) 0%, #2D2B55 100%)',
@@ -29,25 +48,13 @@ export default function Home() {
           }}>
             Ditch the spreadsheets
           </div>
-          <h1 style={{
-            fontSize: 44,
-            fontWeight: 700,
-            color: 'var(--text-inverse)',
-            lineHeight: 1.15,
-            letterSpacing: -1,
-            marginBottom: 16,
-          }}>
+          <h1 className="hero-title">
             Finally, one place for all your flight options
           </h1>
-          <p style={{
-            fontSize: 18,
-            color: 'rgba(255,255,255,0.6)',
-            marginBottom: 36,
-            lineHeight: 1.6,
-          }}>
+          <p className="hero-subtitle">
             Stop juggling spreadsheets and browser tabs! Organize all of your booking options, compare cash vs. points, and see exactly which combo saves you the most.
           </p>
-          <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+          <div className="hero-buttons">
             <button
               onClick={() => router.push('/trip/new')}
               style={{
@@ -91,7 +98,7 @@ export default function Home() {
 
       {/* Features */}
       <div style={{ maxWidth: 800, margin: '0 auto', padding: '56px 20px 40px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 20 }}>
+        <div className="features-grid">
           {[
             { icon: '📋', title: 'Organize options', desc: 'Log every flight you find — cash price, points cost, airline, routing. All in one place instead of scattered notes.' },
             { icon: '⚖️', title: 'Compare everything', desc: 'See all your options side by side. Drag flights into plans and instantly see total costs across points and cash.' },
@@ -124,17 +131,14 @@ export default function Home() {
           padding: '32px 36px',
         }}>
           <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 24, textAlign: 'center' }}>How it works</h2>
-          <div style={{ display: 'flex', gap: 0 }}>
+          <div className="how-it-works-steps">
             {[
               { step: '1', title: 'Create a trip', desc: 'Set your route — round trip, one-way, or multi-city' },
               { step: '2', title: 'Add every option', desc: 'Log flights with cash prices, points costs, or both' },
               { step: '3', title: 'Enter your balances', desc: 'Add your points across all banks and airlines' },
               { step: '4', title: 'Build your plan', desc: 'Assign the best flights and get step-by-step booking instructions' },
             ].map((item, i) => (
-              <div key={item.step} style={{
-                flex: 1, textAlign: 'center', position: 'relative',
-                padding: '0 12px',
-              }}>
+              <div key={item.step} className="how-it-works-step">
                 <div style={{
                   width: 36, height: 36, borderRadius: '50%',
                   background: 'linear-gradient(135deg, var(--primary), var(--primary-hover))',
@@ -144,14 +148,11 @@ export default function Home() {
                 }}>
                   {item.step}
                 </div>
-                {i < 3 && (
-                  <div style={{
-                    position: 'absolute', top: 18, left: '60%', width: '80%',
-                    height: 2, backgroundColor: 'var(--border-light)',
-                  }} />
-                )}
-                <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>{item.title}</div>
-                <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{item.desc}</div>
+                {i < 3 && <div className="how-it-works-connector" />}
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>{item.title}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{item.desc}</div>
+                </div>
               </div>
             ))}
           </div>

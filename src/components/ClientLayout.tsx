@@ -1,0 +1,24 @@
+'use client'
+
+import Script from 'next/script'
+import AuthProvider from '@/components/AuthProvider'
+import Nav from '@/components/Nav'
+
+export default function ClientLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <>
+      <Script
+        async
+        src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5751210990513261"
+        crossOrigin="anonymous"
+        strategy="afterInteractive"
+      />
+      <AuthProvider>
+        <Nav />
+        <main style={{ minHeight: 'calc(100vh - 56px)' }}>
+          {children}
+        </main>
+      </AuthProvider>
+    </>
+  )
+}

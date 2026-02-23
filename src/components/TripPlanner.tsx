@@ -271,7 +271,7 @@ export default function TripPlanner({ legs, flights, travelers, onSave }: Props)
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           {unassigned.map(f => (
-            <div key={f.id} style={{ flex: '1 1 calc(50% - 4px)', minWidth: 200 }}>
+            <div key={f.id} style={{ flex: '1 1 calc(50% - 4px)', minWidth: 0 }}>
               <FlightCard
                 flight={f}
                 compact
@@ -285,7 +285,7 @@ export default function TripPlanner({ legs, flights, travelers, onSave }: Props)
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 4 }}>
+      <div className="planner-legs">
         {legs.map((leg, i) => {
           const legFlightIds = assignments[i] || []
           const legFlights = legFlightIds.map(id => flightMap[id]).filter(Boolean)

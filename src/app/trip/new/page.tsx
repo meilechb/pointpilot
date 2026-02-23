@@ -125,7 +125,7 @@ export default function NewTrip() {
           {tripTypes.map((type) => (
             <button
               key={type.value}
-              onClick={() => { setTripType(type.value); if (type.value !== 'multicity') setStops([]) }}
+              onClick={() => { setTripType(type.value); if (type.value !== 'multicity') setStops([]); if (type.value === 'oneway') setReturnDate(null) }}
               style={{
                 flex: 1,
                 padding: '10px 8px',
@@ -210,35 +210,33 @@ export default function NewTrip() {
           />
         </div>
 
-        <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
-          <div style={{ flex: 1 }}>
-            <label style={fieldLabel}>Departure</label>
-            <DatePicker
-              selected={departureDate}
-              onChange={(d: Date | null) => setDepartureDate(d)}
-              dateFormat="MMM d, yyyy"
-              placeholderText="Select date"
-              minDate={new Date()}
-              customInput={<input type="text" style={fieldInput} />}
-            />
-          </div>
-          {tripType !== 'oneway' && (
-            <div style={{ flex: 1 }}>
-              <label style={fieldLabel}>Return</label>
+        <div className="trip-date-row">
+          <div className="date-col">
+            <label style={fieldLabel}>{tripType === 'oneway' ? 'Departure' : 'Travel dates'}</label>
+            {tripType === 'oneway' ? (
               <DatePicker
-                selected={returnDate}
-                onChange={(d: Date | null) => setReturnDate(d)}
+                selected={departureDate}
+                onChange={(d: Date | null) => { setDepartureDate(d); setReturnDate(null) }}
                 dateFormat="MMM d, yyyy"
                 placeholderText="Select date"
-                minDate={departureDate || new Date()}
+                minDate={new Date()}
                 customInput={<input type="text" style={fieldInput} />}
               />
-            </div>
-          )}
-        </div>
-
-        <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
-          <div style={{ flex: 1 }}>
+            ) : (
+              <DatePicker
+                selectsRange
+                startDate={departureDate}
+                endDate={returnDate}
+                onChange={(dates: [Date | null, Date | null]) => { setDepartureDate(dates[0]); setReturnDate(dates[1]) }}
+                dateFormat="MMM d, yyyy"
+                placeholderText="Select dates"
+                minDate={new Date()}
+                monthsShown={2}
+                customInput={<input type="text" style={fieldInput} />}
+              />
+            )}
+          </div>
+          <div className="travelers-col">
             <label style={fieldLabel}>Travelers</label>
             <input
               type="number"
@@ -248,8 +246,8 @@ export default function NewTrip() {
               style={fieldInput}
             />
           </div>
-          <div style={{ flex: 1 }}>
-            <label style={fieldLabel}>Date flexibility</label>
+          <div className="flex-col">
+            <label style={fieldLabel}>Flexibility</label>
             <CustomSelect
               value={dateFlexibility}
               onChange={(v) => setDateFlexibility(v as string)}
