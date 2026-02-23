@@ -8,7 +8,13 @@ export default function AccountPage() {
   const { user, loading, signOut } = useAuth()
   const supabase = createClient()
 
+  // Profile editing
+  const [displayName, setDisplayName] = useState('')
+  const [savingName, setSavingName] = useState(false)
+  const [nameMsg, setNameMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
   // Password change
+  const [showPasswordForm, setShowPasswordForm] = useState(false)
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [passwordMsg, setPasswordMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
@@ -19,11 +25,18 @@ export default function AccountPage() {
   const [dataCleared, setDataCleared] = useState(false)
 
   // Delete account
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState('')
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState('')
 
   const isGoogleUser = user?.app_metadata?.provider === 'google'
+
+  useEffect(() => {
+    if (user) {
+      setDisplayName(user.user_metadata?.full_name || user.user_metadata?.name || '')
+    }
+  }, [user])
 
   useEffect(() => {
     setLocalCounts({
@@ -59,6 +72,28 @@ export default function AccountPage() {
     )
   }
 
+  const currentName = user.user_metadata?.full_name || user.user_metadata?.name || ''
+  const nameChanged = displayName.trim() !== currentName
+
+  const handleSaveName = async () => {
+    setNameMsg(null)
+    if (!displayName.trim()) {
+      setNameMsg({ type: 'error', text: 'Name cannot be empty.' })
+      return
+    }
+    setSavingName(true)
+    const { error } = await supabase.auth.updateUser({
+      data: { full_name: displayName.trim() }
+    })
+    setSavingName(false)
+    if (error) {
+      setNameMsg({ type: 'error', text: error.message })
+    } else {
+      setNameMsg({ type: 'success', text: 'Name updated!' })
+      setTimeout(() => setNameMsg(null), 3000)
+    }
+  }
+
   const handleChangePassword = async () => {
     setPasswordMsg(null)
     if (newPassword.length < 6) {
@@ -75,9 +110,10 @@ export default function AccountPage() {
     if (error) {
       setPasswordMsg({ type: 'error', text: error.message })
     } else {
-      setPasswordMsg({ type: 'success', text: 'Password updated successfully!' })
+      setPasswordMsg({ type: 'success', text: 'Password updated!' })
       setNewPassword('')
       setConfirmPassword('')
+      setTimeout(() => { setShowPasswordForm(false); setPasswordMsg(null) }, 2000)
     }
   }
 
@@ -101,11 +137,9 @@ export default function AccountPage() {
         setDeleting(false)
         return
       }
-      // Clear local data too
       localStorage.removeItem('trips')
       localStorage.removeItem('flights')
       localStorage.removeItem('wallet')
-      // Sign out and redirect
       await supabase.auth.signOut()
       window.location.href = '/'
     } catch {
@@ -124,114 +158,171 @@ export default function AccountPage() {
   }
 
   const labelStyle: React.CSSProperties = {
-    fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)',
-    marginBottom: 4, display: 'block',
+    fontSize: 13, fontWeight: 600, color: 'var(--text-muted)',
+    marginBottom: 6, display: 'block', textTransform: 'uppercase',
+    letterSpacing: 0.5,
   }
+
+  const msgStyle = (type: 'success' | 'error'): React.CSSProperties => ({
+    padding: '8px 12px', borderRadius: 'var(--radius-sm)',
+    marginTop: 8, fontSize: 14,
+    backgroundColor: type === 'success' ? '#ECFDF5' : '#FEF2F2',
+    color: type === 'success' ? '#065F46' : '#991B1B',
+  })
 
   const totalLocal = localCounts.trips + localCounts.flights + localCounts.wallet
 
   return (
     <div style={{ maxWidth: 520, margin: '0 auto', padding: '40px 20px 80px' }}>
-      <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 4 }}>My Account</h1>
-      <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 28 }}>
-        Manage your profile, data, and account settings.
+      <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 4 }}>My Account</h1>
+      <p style={{ color: 'var(--text-secondary)', fontSize: 15, marginBottom: 28 }}>
+        Manage your profile and account settings.
       </p>
 
-      {/* A. Profile Info */}
+      {/* Profile */}
       <div style={cardStyle}>
-        <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>Profile</h2>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div>
-            <span style={labelStyle}>Email</span>
-            <span style={{ fontSize: 15, fontWeight: 500 }}>{user.email}</span>
+        <h2 style={{ fontSize: 17, fontWeight: 700, marginBottom: 20 }}>Profile</h2>
+
+        <div style={{ marginBottom: 18 }}>
+          <label style={labelStyle}>Email</label>
+          <div style={{ fontSize: 15, fontWeight: 500, color: 'var(--text)' }}>{user.email}</div>
+        </div>
+
+        <div style={{ marginBottom: 18 }}>
+          <label style={labelStyle}>Display Name</label>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <input
+              type="text"
+              value={displayName}
+              onChange={(e) => { setDisplayName(e.target.value); setNameMsg(null) }}
+              placeholder="Your name"
+              style={{ flex: 1, margin: 0 }}
+            />
+            {nameChanged && (
+              <button
+                onClick={handleSaveName}
+                disabled={savingName}
+                style={{
+                  padding: '8px 16px', whiteSpace: 'nowrap',
+                  background: 'linear-gradient(135deg, var(--primary), var(--primary-hover))',
+                  color: 'var(--text-inverse)',
+                  border: 'none', borderRadius: 'var(--radius-sm)',
+                  cursor: 'pointer', fontWeight: 600, fontSize: 14,
+                }}
+              >
+                {savingName ? 'Saving...' : 'Save'}
+              </button>
+            )}
           </div>
-          <div>
-            <span style={labelStyle}>Name</span>
-            <span style={{ fontSize: 15, fontWeight: 500 }}>
-              {user.user_metadata?.full_name || user.user_metadata?.name || '—'}
-            </span>
-          </div>
-          <div>
-            <span style={labelStyle}>Sign-in method</span>
-            <span style={{
-              display: 'inline-block', padding: '4px 10px',
-              borderRadius: 20, fontSize: 13, fontWeight: 600,
-              backgroundColor: isGoogleUser ? '#E8F0FE' : 'var(--primary-light)',
-              color: isGoogleUser ? '#1A73E8' : 'var(--primary)',
-            }}>
-              {isGoogleUser ? '🔵 Google' : '✉️ Email'}
-            </span>
-          </div>
+          {nameMsg && <div style={msgStyle(nameMsg.type)}>{nameMsg.text}</div>}
+        </div>
+
+        <div>
+          <label style={labelStyle}>Sign-in Method</label>
+          <span style={{
+            display: 'inline-block', padding: '5px 12px',
+            borderRadius: 20, fontSize: 13, fontWeight: 600,
+            backgroundColor: isGoogleUser ? '#E8F0FE' : 'var(--primary-light)',
+            color: isGoogleUser ? '#1A73E8' : 'var(--primary)',
+          }}>
+            {isGoogleUser ? 'Google' : 'Email & Password'}
+          </span>
         </div>
       </div>
 
-      {/* B. Change Password (email users only) */}
+      {/* Security (email users only) */}
       {!isGoogleUser && (
         <div style={cardStyle}>
-          <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>Change Password</h2>
-          <div>
-            <label style={labelStyle}>New password</label>
-            <input
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="At least 6 characters"
-              style={{ marginBottom: 10 }}
-            />
-            <label style={labelStyle}>Confirm password</label>
-            <input
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="Type it again"
-              style={{ marginBottom: 14 }}
-            />
-            {passwordMsg && (
-              <div style={{
-                padding: '8px 12px', borderRadius: 'var(--radius-sm)',
-                marginBottom: 12, fontSize: 14,
-                backgroundColor: passwordMsg.type === 'success' ? '#ECFDF5' : '#FEF2F2',
-                color: passwordMsg.type === 'success' ? '#065F46' : '#991B1B',
-              }}>
-                {passwordMsg.text}
-              </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: showPasswordForm ? 16 : 0 }}>
+            <h2 style={{ fontSize: 17, fontWeight: 700 }}>Security</h2>
+            {!showPasswordForm && (
+              <button
+                onClick={() => setShowPasswordForm(true)}
+                style={{
+                  padding: '7px 14px', fontSize: 14, fontWeight: 600,
+                  color: 'var(--primary)', backgroundColor: 'var(--primary-light)',
+                  border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+                }}
+              >
+                Change Password
+              </button>
             )}
-            <button
-              onClick={handleChangePassword}
-              disabled={changingPassword || !newPassword || !confirmPassword}
-              style={{
-                padding: '10px 20px',
-                background: (!newPassword || !confirmPassword) ? 'var(--border)' : 'linear-gradient(135deg, var(--primary), var(--primary-hover))',
-                color: (!newPassword || !confirmPassword) ? 'var(--text-muted)' : 'var(--text-inverse)',
-                border: 'none', borderRadius: 'var(--radius-sm)',
-                cursor: (!newPassword || !confirmPassword) ? 'default' : 'pointer',
-                fontWeight: 600, fontSize: 14,
-              }}
-            >
-              {changingPassword ? 'Updating...' : 'Update Password'}
-            </button>
           </div>
+
+          {showPasswordForm && (
+            <div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+                <div>
+                  <label style={labelStyle}>New Password</label>
+                  <input
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Min 6 characters"
+                    style={{ margin: 0, width: '100%' }}
+                  />
+                </div>
+                <div>
+                  <label style={labelStyle}>Confirm</label>
+                  <input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Repeat password"
+                    style={{ margin: 0, width: '100%' }}
+                  />
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  onClick={handleChangePassword}
+                  disabled={changingPassword || !newPassword || !confirmPassword}
+                  style={{
+                    padding: '9px 18px',
+                    background: (!newPassword || !confirmPassword) ? 'var(--border)' : 'linear-gradient(135deg, var(--primary), var(--primary-hover))',
+                    color: (!newPassword || !confirmPassword) ? 'var(--text-muted)' : 'var(--text-inverse)',
+                    border: 'none', borderRadius: 'var(--radius-sm)',
+                    cursor: (!newPassword || !confirmPassword) ? 'default' : 'pointer',
+                    fontWeight: 600, fontSize: 14,
+                  }}
+                >
+                  {changingPassword ? 'Updating...' : 'Update Password'}
+                </button>
+                <button
+                  onClick={() => { setShowPasswordForm(false); setNewPassword(''); setConfirmPassword(''); setPasswordMsg(null) }}
+                  style={{
+                    padding: '9px 18px', fontSize: 14, fontWeight: 500,
+                    color: 'var(--text-secondary)', backgroundColor: 'transparent',
+                    border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+              {passwordMsg && <div style={msgStyle(passwordMsg.type)}>{passwordMsg.text}</div>}
+            </div>
+          )}
         </div>
       )}
 
-      {/* C. Manage Local Data */}
+      {/* Local Data */}
       <div style={cardStyle}>
-        <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 12 }}>Local Data</h2>
-        <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 14 }}>
-          Data stored in your browser (not synced to the cloud).
+        <h2 style={{ fontSize: 17, fontWeight: 700, marginBottom: 6 }}>Local Data</h2>
+        <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 16 }}>
+          Stored in your browser — not synced to the cloud.
         </p>
-        <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
           {[
             { label: 'Trips', count: localCounts.trips, icon: '🗺️' },
             { label: 'Flights', count: localCounts.flights, icon: '✈️' },
             { label: 'Wallet', count: localCounts.wallet, icon: '💳' },
           ].map(item => (
             <div key={item.label} style={{
-              padding: '10px 16px', backgroundColor: 'var(--bg)', borderRadius: 'var(--radius-sm)',
-              border: '1px solid var(--border-light)', flex: 1, minWidth: 100, textAlign: 'center',
+              padding: '12px 16px', backgroundColor: 'var(--bg)', borderRadius: 'var(--radius-sm)',
+              border: '1px solid var(--border-light)', flex: 1, textAlign: 'center',
             }}>
               <div style={{ fontSize: 20, marginBottom: 2 }}>{item.icon}</div>
-              <div style={{ fontSize: 18, fontWeight: 700 }}>{item.count}</div>
+              <div style={{ fontSize: 20, fontWeight: 700 }}>{item.count}</div>
               <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{item.label}</div>
             </div>
           ))}
@@ -240,7 +331,7 @@ export default function AccountPage() {
           onClick={handleClearData}
           disabled={totalLocal === 0}
           style={{
-            padding: '10px 20px',
+            padding: '9px 18px',
             backgroundColor: totalLocal === 0 ? 'var(--border)' : 'var(--bg)',
             color: totalLocal === 0 ? 'var(--text-muted)' : 'var(--danger)',
             border: totalLocal === 0 ? 'none' : '1px solid var(--danger)',
@@ -253,51 +344,79 @@ export default function AccountPage() {
         </button>
       </div>
 
-      {/* D. Delete Account */}
+      {/* Danger Zone */}
       <div style={{
         ...cardStyle,
         border: '1px solid var(--danger)',
         backgroundColor: '#FEF2F2',
       }}>
-        <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--danger)', marginBottom: 8 }}>
-          Danger Zone
-        </h2>
-        <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 14 }}>
-          Permanently delete your account and all associated data. This cannot be undone.
-        </p>
-        <label style={{ ...labelStyle, marginBottom: 6 }}>
-          Type <strong>DELETE</strong> to confirm
-        </label>
-        <input
-          type="text"
-          value={deleteConfirm}
-          onChange={(e) => setDeleteConfirm(e.target.value)}
-          placeholder="DELETE"
-          style={{ marginBottom: 12, maxWidth: 200 }}
-        />
-        {deleteError && (
-          <div style={{
-            padding: '8px 12px', borderRadius: 'var(--radius-sm)',
-            marginBottom: 12, fontSize: 14,
-            backgroundColor: '#FEE2E2', color: '#991B1B',
-          }}>
-            {deleteError}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: showDeleteConfirm ? 14 : 0 }}>
+          <div>
+            <h2 style={{ fontSize: 17, fontWeight: 700, color: 'var(--danger)', marginBottom: 2 }}>
+              Danger Zone
+            </h2>
+            {!showDeleteConfirm && (
+              <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: 0 }}>
+                Permanently delete your account and data.
+              </p>
+            )}
+          </div>
+          {!showDeleteConfirm && (
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              style={{
+                padding: '7px 14px', fontSize: 14, fontWeight: 600,
+                color: 'var(--danger)', backgroundColor: 'transparent',
+                border: '1px solid var(--danger)', borderRadius: 'var(--radius-sm)',
+                cursor: 'pointer', whiteSpace: 'nowrap',
+              }}
+            >
+              Delete Account
+            </button>
+          )}
+        </div>
+
+        {showDeleteConfirm && (
+          <div>
+            <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 12 }}>
+              This will permanently delete your account and all associated data. Type <strong>DELETE</strong> to confirm.
+            </p>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <input
+                type="text"
+                value={deleteConfirm}
+                onChange={(e) => setDeleteConfirm(e.target.value)}
+                placeholder="Type DELETE"
+                style={{ margin: 0, maxWidth: 160 }}
+              />
+              <button
+                onClick={handleDeleteAccount}
+                disabled={deleteConfirm !== 'DELETE' || deleting}
+                style={{
+                  padding: '9px 18px',
+                  backgroundColor: deleteConfirm === 'DELETE' ? 'var(--danger)' : 'var(--border)',
+                  color: deleteConfirm === 'DELETE' ? '#fff' : 'var(--text-muted)',
+                  border: 'none', borderRadius: 'var(--radius-sm)',
+                  cursor: deleteConfirm === 'DELETE' ? 'pointer' : 'default',
+                  fontWeight: 600, fontSize: 14, whiteSpace: 'nowrap',
+                }}
+              >
+                {deleting ? 'Deleting...' : 'Confirm Delete'}
+              </button>
+              <button
+                onClick={() => { setShowDeleteConfirm(false); setDeleteConfirm(''); setDeleteError('') }}
+                style={{
+                  padding: '9px 14px', fontSize: 14, fontWeight: 500,
+                  color: 'var(--text-secondary)', backgroundColor: 'transparent',
+                  border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+            {deleteError && <div style={msgStyle('error')}>{deleteError}</div>}
           </div>
         )}
-        <button
-          onClick={handleDeleteAccount}
-          disabled={deleteConfirm !== 'DELETE' || deleting}
-          style={{
-            padding: '10px 20px', display: 'block',
-            backgroundColor: deleteConfirm === 'DELETE' ? 'var(--danger)' : 'var(--border)',
-            color: deleteConfirm === 'DELETE' ? '#fff' : 'var(--text-muted)',
-            border: 'none', borderRadius: 'var(--radius-sm)',
-            cursor: deleteConfirm === 'DELETE' ? 'pointer' : 'default',
-            fontWeight: 600, fontSize: 14,
-          }}
-        >
-          {deleting ? 'Deleting...' : 'Delete My Account'}
-        </button>
       </div>
 
       {/* Sign Out */}
