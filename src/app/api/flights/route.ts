@@ -83,12 +83,19 @@ export async function GET(request: NextRequest) {
 
     const data = await response.json()
 
-    // AeroDataBox returns an array of flights
+    // AeroDataBox returns an array of flights (may include previous day's
+    // overnight flight that arrives on the requested date). Pick the one
+    // whose departure date matches the user's requested date.
     if (!Array.isArray(data) || data.length === 0) {
       return NextResponse.json({ error: 'Flight not found for this date' }, { status: 404 })
     }
 
-    const flight = data[0]
+    const flight = data.find(f => {
+      const depLocal = f.departure?.scheduledTime?.local || ''
+      const depDate = depLocal.match(/^(\d{4}-\d{2}-\d{2})/)?.[1]
+      return depDate === lookupDate
+    }) || data[data.length - 1] // fallback to last (latest departure)
+
     const dep = flight.departure || {}
     const arr = flight.arrival || {}
     const airline = flight.airline || {}
@@ -96,8 +103,24 @@ export async function GET(request: NextRequest) {
     const airlineCode = airline.iata || code.replace(/\d+/g, '')
     const airlineName = airline.name || AIRLINE_NAMES[airlineCode] || airlineCode
 
-    const depParsed = parseDateTime(dep.scheduledTime?.local || dep.scheduledTimeLocal || '')
-    const arrParsed = parseDateTime(arr.scheduledTime?.local || arr.scheduledTimeLocal || '')
+    const depParsed = parseDateTime(dep.scheduledTime?.local || '')
+    const arrParsed = parseDateTime(arr.scheduledTime?.local || '')
+
+    // Calculate duration from UTC times
+    let duration: number | null = null
+    const depUtc = dep.scheduledTime?.utc || ''
+    const arrUtc = arr.scheduledTime?.utc || ''
+    if (depUtc && arrUtc) {
+      const depMs = new Date(depUtc.replace(' ', 'T')).getTime()
+      const arrMs = new Date(arrUtc.replace(' ', 'T')).getTime()
+      if (!isNaN(depMs) && !isNaN(arrMs)) {
+        duration = Math.round((arrMs - depMs) / 60000)
+      }
+    }
+
+    // Build UTC time strings for downstream total-time calculations
+    const depUtcParsed = parseDateTime(depUtc.replace('T', ' ').replace('Z', ''))
+    const arrUtcParsed = parseDateTime(arrUtc.replace('T', ' ').replace('Z', ''))
 
     return NextResponse.json({
       flightCode: flight.number || code,
@@ -107,9 +130,11 @@ export async function GET(request: NextRequest) {
       arrivalAirport: arr.airport?.iata || '',
       departureTime: depParsed.date && depParsed.time ? `${depParsed.date} ${depParsed.time}` : '',
       arrivalTime: arrParsed.date && arrParsed.time ? `${arrParsed.date} ${arrParsed.time}` : '',
+      departureTimeUtc: depUtcParsed.date && depUtcParsed.time ? `${depUtcParsed.date} ${depUtcParsed.time}` : '',
+      arrivalTimeUtc: arrUtcParsed.date && arrUtcParsed.time ? `${arrUtcParsed.date} ${arrUtcParsed.time}` : '',
       departureTerminal: dep.terminal || null,
       arrivalTerminal: arr.terminal || null,
-      duration: flight.duration?.totalMinutes || null,
+      duration,
     })
   } catch (error) {
     return NextResponse.json({ error: 'Failed to look up flight' }, { status: 500 })
