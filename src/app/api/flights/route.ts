@@ -34,6 +34,18 @@ const AIRLINE_NAMES: Record<string, string> = {
   'DD': 'Nok Air', 'AK': 'AirAsia', 'TR': 'Scoot', '5J': 'Cebu Pacific',
 }
 
+// Parse AeroDataBox datetime like "2026-05-17 18:30+03:00" or "2026-05-17T18:30Z"
+function parseDateTime(dt: string): { date: string; time: string } {
+  if (!dt) return { date: '', time: '' }
+  // Remove timezone offset for local time parsing
+  const cleaned = dt.replace('T', ' ')
+  const dateMatch = cleaned.match(/^(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2})/)
+  if (dateMatch) {
+    return { date: dateMatch[1], time: dateMatch[2] }
+  }
+  return { date: '', time: '' }
+}
+
 export async function GET(request: NextRequest) {
   const flightCode = request.nextUrl.searchParams.get('flight')
   const date = request.nextUrl.searchParams.get('date')
@@ -42,35 +54,62 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Flight code is required' }, { status: 400 })
   }
 
+  // Default to today if no date provided
+  const lookupDate = date || new Date().toISOString().split('T')[0]
+
   try {
-    const apiKey = process.env.AIRLABS_API_KEY
-    const url = `https://airlabs.co/api/v9/flight?flight_iata=${flightCode}&api_key=${apiKey}`
+    const apiKey = process.env.AERODATABOX_API_KEY
+    if (!apiKey) {
+      return NextResponse.json({ error: 'Flight lookup service not configured' }, { status: 500 })
+    }
 
-    const response = await fetch(url)
-    const data = await response.json()
+    const code = flightCode.toUpperCase().replace(/\s+/g, '')
+    const url = `https://aerodatabox.p.rapidapi.com/flights/number/${code}/${lookupDate}/${lookupDate}`
 
-    if (!data.response) {
+    const response = await fetch(url, {
+      headers: {
+        'X-RapidAPI-Key': apiKey,
+        'X-RapidAPI-Host': 'aerodatabox.p.rapidapi.com',
+      },
+    })
+
+    if (response.status === 404) {
       return NextResponse.json({ error: 'Flight not found' }, { status: 404 })
     }
 
-    const flight = data.response
-    const airlineCode = flight.airline_iata || ''
-    const airlineName = AIRLINE_NAMES[airlineCode] || airlineCode
+    if (!response.ok) {
+      return NextResponse.json({ error: 'Flight lookup failed' }, { status: response.status })
+    }
+
+    const data = await response.json()
+
+    // AeroDataBox returns an array of flights
+    if (!Array.isArray(data) || data.length === 0) {
+      return NextResponse.json({ error: 'Flight not found for this date' }, { status: 404 })
+    }
+
+    const flight = data[0]
+    const dep = flight.departure || {}
+    const arr = flight.arrival || {}
+    const airline = flight.airline || {}
+
+    const airlineCode = airline.iata || code.replace(/\d+/g, '')
+    const airlineName = airline.name || AIRLINE_NAMES[airlineCode] || airlineCode
+
+    const depParsed = parseDateTime(dep.scheduledTime?.local || dep.scheduledTimeLocal || '')
+    const arrParsed = parseDateTime(arr.scheduledTime?.local || arr.scheduledTimeLocal || '')
 
     return NextResponse.json({
-      flightCode: flight.flight_iata,
-      airlineCode: airlineCode,
-      airlineName: airlineName,
-      departureAirport: flight.dep_iata,
-      arrivalAirport: flight.arr_iata,
-      departureTime: flight.dep_time,
-      arrivalTime: flight.arr_time,
-      departureTimeUtc: flight.dep_time_utc,
-      arrivalTimeUtc: flight.arr_time_utc,
-      departureTerminal: flight.dep_terminal,
-      arrivalTerminal: flight.arr_terminal,
-      duration: flight.duration,
-      status: flight.status,
+      flightCode: flight.number || code,
+      airlineCode,
+      airlineName,
+      departureAirport: dep.airport?.iata || '',
+      arrivalAirport: arr.airport?.iata || '',
+      departureTime: depParsed.date && depParsed.time ? `${depParsed.date} ${depParsed.time}` : '',
+      arrivalTime: arrParsed.date && arrParsed.time ? `${arrParsed.date} ${arrParsed.time}` : '',
+      departureTerminal: dep.terminal || null,
+      arrivalTerminal: arr.terminal || null,
+      duration: flight.duration?.totalMinutes || null,
     })
   } catch (error) {
     return NextResponse.json({ error: 'Failed to look up flight' }, { status: 500 })
