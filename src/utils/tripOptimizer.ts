@@ -479,22 +479,33 @@ function pickPayOption(
   })
 
   if (affordable.length === 0) {
-    // Check for insufficient balance
-    const pointsOpts = payOptions.filter(o => o.method !== 'cash')
-    if (pointsOpts.length > 0) {
+    // No fully affordable options — for points-preferring modes, still pick the
+    // best points/transfer option (with a shortfall warning) instead of falling
+    // back to cash, so the user sees the recommended transfer path.
+    const pointsOpts = payOptions.filter(o => o.method !== 'cash' && o.walletId !== '__points_no_wallet__')
+    if (pointsOpts.length > 0 && mode !== 'all_cash') {
       const best = [...pointsOpts].sort((a, b) => b.cpp - a.cpp)[0]
       const used = walletUsage[best.walletId] || 0
       const w = wallet.find(we => we.id === best.walletId)
       const available = w ? w.balance - used : 0
-      warnings.push(`Insufficient ${best.pointsProgram} (have ${available.toLocaleString()}, need ${best.pointsCost.toLocaleString()})`)
-    }
-    // Fall back to cash
-    const cashOpt = payOptions.find(o => o.method === 'cash')
-    if (cashOpt) {
-      affordable = [cashOpt]
+      const shortfall = best.pointsCost - available
+      warnings.push(`Need ${shortfall.toLocaleString()} more ${best.pointsProgram} (have ${available.toLocaleString()}, need ${best.pointsCost.toLocaleString()})`)
+      affordable = [best]
     } else {
-      // No cash option either — use the first available option
-      affordable = [payOptions[0]]
+      // Fall back to cash
+      if (pointsOpts.length > 0) {
+        const best = [...pointsOpts].sort((a, b) => b.cpp - a.cpp)[0]
+        const used = walletUsage[best.walletId] || 0
+        const w = wallet.find(we => we.id === best.walletId)
+        const available = w ? w.balance - used : 0
+        warnings.push(`Insufficient ${best.pointsProgram} (have ${available.toLocaleString()}, need ${best.pointsCost.toLocaleString()})`)
+      }
+      const cashOpt = payOptions.find(o => o.method === 'cash')
+      if (cashOpt) {
+        affordable = [cashOpt]
+      } else {
+        affordable = [payOptions[0]]
+      }
     }
   }
 

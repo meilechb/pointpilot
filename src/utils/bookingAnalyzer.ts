@@ -159,7 +159,10 @@ export function analyzeItinerary(
       const totalPointsNeeded = flight.pointsAmount * travelers
       const partnerName = resolvePartnerName(flight.bookingSite || '')
 
-      // 1. Check direct airline miles in wallet
+      // Gather all available sources for this airline program
+      let remainingNeeded = totalPointsNeeded
+
+      // 1. Use direct airline miles first (if available)
       if (partnerName) {
         const directMatch = wallet.find(w =>
           w.currency_type === 'airline_miles' &&
@@ -169,33 +172,36 @@ export function analyzeItinerary(
         if (directMatch) {
           const used = walletUsage[directMatch.id] || 0
           const available = directMatch.balance - used
+          const useAmount = Math.min(available, remainingNeeded)
 
-          if (available >= totalPointsNeeded) {
-            walletUsage[directMatch.id] = used + totalPointsNeeded
+          if (useAmount > 0) {
+            walletUsage[directMatch.id] = used + useAmount
+            remainingNeeded -= useAmount
             steps.push({
               type: 'direct_miles',
               flightLabel: label,
-              pointsNeeded: totalPointsNeeded,
+              pointsNeeded: useAmount,
               walletProgram: directMatch.program,
               walletBalance: available,
-              feesAmount: (flight.feesAmount || 0) * travelers,
-              message: `Use ${totalPointsNeeded.toLocaleString()} ${directMatch.program} miles${(flight.feesAmount ? ` + $${((flight.feesAmount) * travelers).toLocaleString()} fees` : '')} to book on ${flight.bookingSite}`,
+              feesAmount: remainingNeeded === 0 ? (flight.feesAmount || 0) * travelers : 0,
+              message: remainingNeeded === 0
+                ? `Use ${useAmount.toLocaleString()} ${directMatch.program} miles${(flight.feesAmount ? ` + $${((flight.feesAmount) * travelers).toLocaleString()} fees` : '')} to book on ${flight.bookingSite}`
+                : `Use ${useAmount.toLocaleString()} of your ${directMatch.program} miles (${(totalPointsNeeded - remainingNeeded).toLocaleString()} of ${totalPointsNeeded.toLocaleString()} needed)`,
             })
-            continue
           }
         }
       }
 
-      // 2. Check bank points that can transfer
-      if (partnerName) {
-        let found = false
+      // 2. If still need more, transfer from bank points
+      if (remainingNeeded > 0 && partnerName) {
+        // Try each bank program that can transfer to this airline
         for (const program of transferPartners) {
+          if (remainingNeeded <= 0) break
           const partner = program.partners.find(p =>
             p.partner.toLowerCase() === partnerName.toLowerCase()
           )
           if (!partner) continue
 
-          // Find this program in wallet
           const walletEntry = wallet.find(w =>
             w.currency_type === 'bank_points' &&
             programNamesMatch(w.program, program.name)
@@ -204,63 +210,50 @@ export function analyzeItinerary(
 
           const used = walletUsage[walletEntry.id] || 0
           const available = walletEntry.balance - used
+          if (available <= 0) continue
 
-          // Calculate how many bank points needed
-          const bankPointsNeeded = Math.ceil(totalPointsNeeded * partner.ratio[0] / partner.ratio[1])
+          // How many bank points needed for the remaining airline miles
+          const bankPointsForRemaining = Math.ceil(remainingNeeded * partner.ratio[0] / partner.ratio[1])
+          const bankPointsToUse = Math.min(available, bankPointsForRemaining)
+          // How many airline miles does that get us
+          const milesFromTransfer = Math.floor(bankPointsToUse * partner.ratio[1] / partner.ratio[0])
 
-          if (available >= bankPointsNeeded) {
-            walletUsage[walletEntry.id] = used + bankPointsNeeded
-            const ratioStr = partner.ratio[0] === partner.ratio[1] ? '1:1' : `${partner.ratio[0]}:${partner.ratio[1]}`
-            steps.push({
-              type: 'transfer',
-              flightLabel: label,
-              pointsNeeded: totalPointsNeeded,
-              walletProgram: walletEntry.program,
-              walletBalance: available,
-              transferFrom: program.name,
-              transferTo: partner.partner,
-              transferRatio: partner.ratio,
-              bankPointsNeeded,
-              feesAmount: (flight.feesAmount || 0) * travelers,
-              message: `Transfer ${bankPointsNeeded.toLocaleString()} ${program.name} → ${partner.partner} (${ratioStr}), then book on ${flight.bookingSite}${flight.feesAmount ? ` + $${((flight.feesAmount) * travelers).toLocaleString()} fees` : ''}`,
-            })
-            found = true
-            break
-          }
+          walletUsage[walletEntry.id] = used + bankPointsToUse
+          remainingNeeded -= milesFromTransfer
+
+          const ratioStr = partner.ratio[0] === partner.ratio[1] ? '1:1' : `${partner.ratio[0]}:${partner.ratio[1]}`
+          steps.push({
+            type: 'transfer',
+            flightLabel: label,
+            pointsNeeded: milesFromTransfer,
+            walletProgram: walletEntry.program,
+            walletBalance: available,
+            transferFrom: program.name,
+            transferTo: partner.partner,
+            transferRatio: partner.ratio,
+            bankPointsNeeded: bankPointsToUse,
+            feesAmount: remainingNeeded <= 0 ? (flight.feesAmount || 0) * travelers : 0,
+            message: `Transfer ${bankPointsToUse.toLocaleString()} ${program.name} → ${partner.partner} (${ratioStr}), then book on ${flight.bookingSite}${remainingNeeded <= 0 && flight.feesAmount ? ` + $${((flight.feesAmount) * travelers).toLocaleString()} fees` : ''}`,
+          })
         }
-        if (found) continue
       }
 
-      // 3. Not enough points anywhere — provide helpful message about what was found
-      let shortfallMsg = ''
-      if (partnerName) {
-        // Check if user has any matching wallet entries (direct or transfer)
-        const directEntry = wallet.find(w => w.currency_type === 'airline_miles' && programNamesMatch(w.program, partnerName))
-        const transferEntry = wallet.find(w => {
-          if (w.currency_type !== 'bank_points') return false
-          return transferPartners.some(p => programNamesMatch(w.program, p.name) && p.partners.some(pt => pt.partner.toLowerCase() === partnerName.toLowerCase()))
-        })
-
-        if (directEntry) {
-          const used = walletUsage[directEntry.id] || 0
-          shortfallMsg = `Need ${totalPointsNeeded.toLocaleString()} ${partnerName} miles but only have ${(directEntry.balance - used).toLocaleString()} ${directEntry.program} remaining`
-        } else if (transferEntry) {
-          const used = walletUsage[transferEntry.id] || 0
-          shortfallMsg = `Need ${totalPointsNeeded.toLocaleString()} ${partnerName} miles — your ${transferEntry.program} (${(transferEntry.balance - used).toLocaleString()} pts) doesn't have enough to transfer`
+      // 3. If STILL not enough after all sources, show shortfall
+      if (remainingNeeded > 0) {
+        let shortfallMsg = ''
+        if (partnerName) {
+          shortfallMsg = `Still need ${remainingNeeded.toLocaleString()} more ${partnerName} miles — add more points or consider a cash booking`
         } else {
-          shortfallMsg = `Need ${totalPointsNeeded.toLocaleString()} ${partnerName} miles but no matching program found in your wallet — add ${partnerName} or a bank program that transfers to it`
+          shortfallMsg = `Need ${totalPointsNeeded.toLocaleString()} points on ${flight.bookingSite || 'unknown program'} — add this program to your wallet or check transfer partners`
         }
-      } else {
-        shortfallMsg = `Need ${totalPointsNeeded.toLocaleString()} points on ${flight.bookingSite || 'unknown program'} — add this program to your wallet or check transfer partners`
+        steps.push({
+          type: 'shortfall',
+          flightLabel: label,
+          pointsNeeded: remainingNeeded,
+          feesAmount: (flight.feesAmount || 0) * travelers,
+          message: shortfallMsg,
+        })
       }
-
-      steps.push({
-        type: 'shortfall',
-        flightLabel: label,
-        pointsNeeded: totalPointsNeeded,
-        feesAmount: (flight.feesAmount || 0) * travelers,
-        message: shortfallMsg,
-      })
     }
   }
 
