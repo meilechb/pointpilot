@@ -6,6 +6,7 @@ import DatePicker from 'react-datepicker'
 import 'react-datepicker/dist/react-datepicker.css'
 import AirportInput from '@/components/AirportInput'
 import CustomSelect from '@/components/CustomSelect'
+import { saveTrip } from '@/lib/dataService'
 
 const fieldLabel: React.CSSProperties = {
   fontSize: 13,
@@ -72,7 +73,7 @@ export default function NewTrip() {
     return cities.slice(0, -1).map((city, i) => ({ from: city, to: cities[i + 1] }))
   }
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     const trip = {
       id: crypto.randomUUID(),
       tripName,
@@ -89,9 +90,7 @@ export default function NewTrip() {
       itineraries: [],
       createdAt: new Date().toISOString(),
     }
-    const existing = JSON.parse(localStorage.getItem('trips') || '[]')
-    existing.push(trip)
-    localStorage.setItem('trips', JSON.stringify(existing))
+    await saveTrip(trip)
     router.push(`/trip/${trip.id}`)
   }
 

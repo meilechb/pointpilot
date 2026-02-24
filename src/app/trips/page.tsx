@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import SavePrompt from '@/components/SavePrompt'
+import { loadTrips, deleteTrip as deleteRemoteTrip } from '@/lib/dataService'
 
 function formatShortDate(dateStr: string): string {
   if (!dateStr) return ''
@@ -23,19 +24,19 @@ export default function TripsPage() {
   const [savePromptTrigger, setSavePromptTrigger] = useState<'flight' | 'plan' | 'trip' | 'wallet' | null>(null)
 
   useEffect(() => {
-    const saved = JSON.parse(localStorage.getItem('trips') || '[]')
-    setTrips(saved)
-    if (saved.length === 1) {
-      setSavePromptTrigger('trip')
-    }
+    loadTrips().then(saved => {
+      setTrips(saved)
+      if (saved.length === 1) {
+        setSavePromptTrigger('trip')
+      }
+    })
   }, [])
 
-  const handleDelete = (e: React.MouseEvent, tripId: string) => {
+  const handleDelete = async (e: React.MouseEvent, tripId: string) => {
     e.stopPropagation()
     if (!confirm('Delete this trip? This cannot be undone.')) return
-    const updated = trips.filter(t => t.id !== tripId)
-    localStorage.setItem('trips', JSON.stringify(updated))
-    setTrips(updated)
+    await deleteRemoteTrip(tripId)
+    setTrips(trips.filter(t => t.id !== tripId))
   }
 
   return (

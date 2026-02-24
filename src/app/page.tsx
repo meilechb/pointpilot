@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { saveTrip } from '@/lib/dataService'
 
 type Article = {
   id: string
@@ -29,7 +30,7 @@ export default function Home() {
       .catch(() => setArticles([]))
   }, [])
 
-  const handleStartTrip = () => {
+  const handleStartTrip = async () => {
     const trip = {
       id: crypto.randomUUID(),
       tripName: tripName || 'My Trip',
@@ -46,9 +47,7 @@ export default function Home() {
       itineraries: [],
       createdAt: new Date().toISOString(),
     }
-    const existing = JSON.parse(localStorage.getItem('trips') || '[]')
-    existing.push(trip)
-    localStorage.setItem('trips', JSON.stringify(existing))
+    await saveTrip(trip)
     router.push(`/trip/${trip.id}`)
   }
 

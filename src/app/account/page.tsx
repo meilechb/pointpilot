@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/components/AuthProvider'
 import { createClient } from '@/lib/supabase'
+import { loadTrips, loadWallet } from '@/lib/dataService'
 
 export default function AccountPage() {
   const { user, loading, signOut } = useAuth()
@@ -39,10 +40,9 @@ export default function AccountPage() {
   }, [user])
 
   useEffect(() => {
-    setLocalCounts({
-      trips: JSON.parse(localStorage.getItem('trips') || '[]').length,
-      flights: JSON.parse(localStorage.getItem('flights') || '[]').length,
-      wallet: JSON.parse(localStorage.getItem('wallet') || '[]').length,
+    Promise.all([loadTrips(), loadWallet()]).then(([trips, wallet]) => {
+      const flights = trips.reduce((sum: number, t: any) => sum + (t.flights?.length || 0), 0)
+      setLocalCounts({ trips: trips.length, flights, wallet: wallet.length })
     })
   }, [dataCleared])
 
@@ -117,11 +117,15 @@ export default function AccountPage() {
     }
   }
 
-  const handleClearData = () => {
-    if (!confirm('This will delete all your locally saved trips, flights, and wallet entries. This cannot be undone. Continue?')) return
+  const handleClearData = async () => {
+    if (!confirm('This will delete all your saved trips, flights, and wallet entries. This cannot be undone. Continue?')) return
     localStorage.removeItem('trips')
     localStorage.removeItem('flights')
     localStorage.removeItem('wallet')
+    if (user) {
+      await supabase.from('trips').delete().eq('user_id', user.id)
+      await supabase.from('wallet').delete().eq('user_id', user.id)
+    }
     setDataCleared(prev => !prev)
   }
 
@@ -307,9 +311,9 @@ export default function AccountPage() {
 
       {/* Local Data */}
       <div style={cardStyle}>
-        <h2 style={{ fontSize: 17, fontWeight: 700, marginBottom: 6 }}>Local Data</h2>
+        <h2 style={{ fontSize: 17, fontWeight: 700, marginBottom: 6 }}>Your Data</h2>
         <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 16 }}>
-          Stored in your browser — not synced to the cloud.
+          {user ? 'Synced to your account across devices.' : 'Stored in your browser — sign in to sync across devices.'}
         </p>
         <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
           {[

@@ -6,6 +6,7 @@ import ProgramSelect from '@/components/ProgramSelect'
 import WalletCard from '@/components/WalletCard'
 import { bankPointPrograms, airlineMilesPrograms, cashbackPrograms } from '@/data/programOptions'
 import { createClient } from '@/lib/supabase'
+import { loadWallet, saveWalletEntry, deleteWalletEntry, saveAllWalletEntries } from '@/lib/dataService'
 
 type Bonus = {
   id: string
@@ -54,8 +55,7 @@ export default function WalletPage() {
   const [bonuses, setBonuses] = useState<Bonus[]>([])
 
   useEffect(() => {
-    const saved = JSON.parse(localStorage.getItem('wallet') || '[]')
-    setEntries(saved)
+    loadWallet().then(saved => setEntries(saved))
 
     // Fetch active transfer bonuses from Supabase
     const fetchBonuses = async () => {
@@ -71,8 +71,8 @@ export default function WalletPage() {
   }, [])
 
   const saveEntries = (updated: WalletEntry[]) => {
-    localStorage.setItem('wallet', JSON.stringify(updated))
     setEntries(updated)
+    saveAllWalletEntries(updated)
   }
 
   const resetForm = () => {

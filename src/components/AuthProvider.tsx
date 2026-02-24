@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import { User, Session } from '@supabase/supabase-js'
+import { migrateLocalDataToSupabase } from '@/lib/dataService'
 
 type AuthContextType = {
   user: User | null
@@ -37,6 +38,9 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
       setSession(session)
       setUser(session?.user ?? null)
       setLoading(false)
+      if (session?.user) {
+        migrateLocalDataToSupabase().catch(console.error)
+      }
     })
 
     return () => subscription.unsubscribe()

@@ -284,7 +284,7 @@ export default function AddFlight({ legs, onSave, onCancel, editingFlight }: Pro
     top: 0, left: 0, right: 0, bottom: 0,
     backgroundColor: 'rgba(0,0,0,0.5)',
     display: 'flex',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     justifyContent: 'center',
     zIndex: 1000,
     padding: '40px 16px',
@@ -362,18 +362,6 @@ export default function AddFlight({ legs, onSave, onCancel, editingFlight }: Pro
         </div>
         {flightSummary}
 
-        <label style={fieldLabel}>Which leg?</label>
-        <div style={{ marginBottom: 14 }}>
-          <CustomSelect
-            value={selectedLeg}
-            onChange={(v) => setSelectedLeg(Number(v))}
-            options={legs.map((leg, i) => ({
-              value: i,
-              label: `Leg ${i + 1}: ${leg.from} → ${leg.to}`,
-            }))}
-          />
-        </div>
-
         <label style={fieldLabel}>Booking site</label>
         <ProgramSelect
           value={bookingSite}
@@ -383,20 +371,33 @@ export default function AddFlight({ legs, onSave, onCancel, editingFlight }: Pro
           style={{ marginBottom: 14 }}
         />
 
-        <label style={fieldLabel}>Cabin class (optional)</label>
-        <div style={{ marginBottom: 14 }}>
-          <CustomSelect
-            value={defaultTierLabel}
-            onChange={(v) => setDefaultTierLabel(v as string)}
-            options={[
-              { value: '', label: 'None' },
-              { value: 'Economy', label: 'Economy' },
-              { value: 'Premium Economy', label: 'Premium Economy' },
-              { value: 'Business', label: 'Business' },
-              { value: 'First', label: 'First' },
-            ]}
-            placeholder="Select cabin class"
-          />
+        <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
+          <div style={{ flex: 1 }}>
+            <label style={fieldLabel}>Which leg?</label>
+            <CustomSelect
+              value={selectedLeg}
+              onChange={(v) => setSelectedLeg(Number(v))}
+              options={legs.map((leg, i) => ({
+                value: i,
+                label: `Leg ${i + 1}: ${leg.from} → ${leg.to}`,
+              }))}
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label style={fieldLabel}>Cabin class (optional)</label>
+            <CustomSelect
+              value={defaultTierLabel}
+              onChange={(v) => setDefaultTierLabel(v as string)}
+              options={[
+                { value: '', label: 'None' },
+                { value: 'Economy', label: 'Economy' },
+                { value: 'Premium Economy', label: 'Premium Economy' },
+                { value: 'Business', label: 'Business' },
+                { value: 'First', label: 'First' },
+              ]}
+              placeholder="Select cabin class"
+            />
+          </div>
         </div>
 
         <label style={fieldLabel}>Payment type</label>

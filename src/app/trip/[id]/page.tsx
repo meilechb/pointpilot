@@ -13,6 +13,7 @@ import { getCityName } from '@/utils/airportUtils'
 import { analyzeItinerary } from '@/utils/bookingAnalyzer'
 import { optimizeTrip, getRelevantSweetSpots, type BookingStrategy } from '@/utils/tripOptimizer'
 import SavePrompt from '@/components/SavePrompt'
+import { loadTrips, saveTrip as saveTripRemote } from '@/lib/dataService'
 
 function formatShortDate(dateStr: string): string {
   if (!dateStr) return ''
@@ -52,18 +53,16 @@ export default function TripDetail() {
   const [editDateFlexibility, setEditDateFlexibility] = useState('exact')
 
   useEffect(() => {
-    const trips = JSON.parse(localStorage.getItem('trips') || '[]')
-    const found = trips.find((t: any) => t.id === params.id)
-    if (found && !found.itineraries) found.itineraries = []
-    setTrip(found)
+    loadTrips().then(trips => {
+      const found = trips.find((t: any) => t.id === params.id)
+      if (found && !found.itineraries) found.itineraries = []
+      setTrip(found)
+    })
   }, [params.id])
 
   const saveTrip = (updatedTrip: any) => {
-    const trips = JSON.parse(localStorage.getItem('trips') || '[]')
-    const tripIndex = trips.findIndex((t: any) => t.id === params.id)
-    trips[tripIndex] = updatedTrip
-    localStorage.setItem('trips', JSON.stringify(trips))
     setTrip({ ...updatedTrip })
+    saveTripRemote(updatedTrip)
   }
 
   const parseDate = (dateStr: string): Date | null => {
