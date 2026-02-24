@@ -235,8 +235,38 @@ export default function TripDetail() {
   }
 
   if (tripLoading) return (
-    <div style={{ padding: 60, textAlign: 'center', color: 'var(--text-muted)' }}>
-      Loading...
+    <div style={{ maxWidth: 720, margin: '0 auto', padding: '24px 16px' }}>
+      {/* Skeleton header */}
+      <div style={{
+        backgroundColor: 'var(--bg-card)',
+        borderRadius: 'var(--radius-lg)',
+        border: '1px solid var(--border-light)',
+        padding: 28,
+        marginBottom: 20,
+        animation: 'pulse 1.5s ease-in-out infinite',
+      }}>
+        <div style={{ height: 24, width: '40%', backgroundColor: 'var(--border)', borderRadius: 6, marginBottom: 12 }} />
+        <div style={{ height: 16, width: '60%', backgroundColor: 'var(--border-light)', borderRadius: 6, marginBottom: 8 }} />
+        <div style={{ height: 16, width: '30%', backgroundColor: 'var(--border-light)', borderRadius: 6 }} />
+      </div>
+      {/* Skeleton tabs */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+        {[80, 60, 80, 100].map((w, i) => (
+          <div key={i} style={{ height: 36, width: w, backgroundColor: 'var(--border-light)', borderRadius: 'var(--radius-sm)' }} />
+        ))}
+      </div>
+      {/* Skeleton card */}
+      <div style={{
+        backgroundColor: 'var(--bg-card)',
+        borderRadius: 'var(--radius-lg)',
+        border: '1px solid var(--border-light)',
+        padding: 24,
+      }}>
+        <div style={{ height: 16, width: '50%', backgroundColor: 'var(--border)', borderRadius: 6, marginBottom: 12 }} />
+        <div style={{ height: 16, width: '70%', backgroundColor: 'var(--border-light)', borderRadius: 6, marginBottom: 8 }} />
+        <div style={{ height: 16, width: '40%', backgroundColor: 'var(--border-light)', borderRadius: 6 }} />
+      </div>
+      <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }`}</style>
     </div>
   )
 
