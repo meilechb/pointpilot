@@ -121,6 +121,7 @@ function matchWalletToAirline(wallet: WalletEntry): string | null {
 
 // Find which airline program a booking site maps to
 const SITE_TO_PROGRAM: Record<string, string> = {
+  // Airline names
   'united': 'United MileagePlus', 'united airlines': 'United MileagePlus',
   'delta': 'Delta SkyMiles', 'delta airlines': 'Delta SkyMiles',
   'american': 'American Airlines AAdvantage', 'american airlines': 'American Airlines AAdvantage', 'aa': 'American Airlines AAdvantage',
@@ -139,13 +140,40 @@ const SITE_TO_PROGRAM: Record<string, string> = {
   'turkish': 'Turkish Airlines Miles&Smiles', 'turkish airlines': 'Turkish Airlines Miles&Smiles',
   'ana': 'ANA Mileage Club', 'aer lingus': 'Aer Lingus AerClub',
   'qantas': 'Qantas Frequent Flyer', 'tap': 'TAP Portugal Miles&Go', 'tap portugal': 'TAP Portugal Miles&Go',
+  // Booking site URLs (from programOptions.ts bookingSites)
+  'united.com': 'United MileagePlus',
+  'aa.com': 'American Airlines AAdvantage',
+  'delta.com': 'Delta SkyMiles',
+  'southwest.com': 'Southwest Rapid Rewards',
+  'jetblue.com': 'JetBlue TrueBlue',
+  'alaskaair.com': 'Alaska Airlines Mileage Plan',
+  'britishairways.com': 'British Airways Executive Club',
+  'emirates.com': 'Emirates Skywards',
+  'qatarairways.com': 'Qatar Airways Privilege Club',
+  'singaporeair.com': 'Singapore Airlines KrisFlyer',
+  'ana.co.jp': 'ANA Mileage Club',
+  'aircanada.com': 'Air Canada Aeroplan',
+  'virginatlantic.com': 'Virgin Atlantic Flying Club',
+  'aerlingus.com': 'Aer Lingus AerClub',
+  'iberia.com': 'Iberia Plus',
+  'avianca.com': 'Avianca LifeMiles',
+  'turkishairlines.com': 'Turkish Airlines Miles&Smiles',
+  'flyingblue.com': 'Air France-KLM Flying Blue',
+  'cathaypacific.com': 'Cathay Pacific Asia Miles',
+  'jal.co.jp': 'Japan Airlines Mileage Bank',
+  'koreanair.com': 'Korean Air SKYPASS',
+  'qantas.com': 'Qantas Frequent Flyer',
 }
 
 function resolveAirlineProgram(bookingSite: string): string | null {
   const lower = (bookingSite || '').toLowerCase().trim()
   if (SITE_TO_PROGRAM[lower]) return SITE_TO_PROGRAM[lower]
+  // Strip .com/.co.jp etc and try again
+  const stripped = lower.replace(/\.(com|co\.jp|co\.uk|net|org)$/i, '')
+  if (SITE_TO_PROGRAM[stripped]) return SITE_TO_PROGRAM[stripped]
   for (const [key, value] of Object.entries(SITE_TO_PROGRAM)) {
     if (lower.includes(key) || key.includes(lower)) return value
+    if (stripped.includes(key) || key.includes(stripped)) return value
   }
   return null
 }
@@ -387,85 +415,44 @@ export function optimizeTrip(
   // Build strategies
   const strategies: BookingStrategy[] = []
 
-  // For each flight option per leg, get all pay options
-  // Then compose strategies: Best Value, Lowest Cash, Points Maximizer
-
-  // Collect all flight+payOption combos per leg
-  type LegOption = { flight: Flight; payOption: PayOption; legIndex: number }
-  const allLegOptions: LegOption[][] = []
+  // For each leg, get pay options for EACH flight in that leg.
+  // All flights in a leg are needed (they form a connecting itinerary),
+  // so we book ALL of them, choosing the best payment for each.
+  type FlightPayOptions = { flight: Flight; payOptions: PayOption[] }
+  const legFlightOptions: FlightPayOptions[][] = [] // [legIndex][flightInLeg]
 
   for (let i = 0; i < legs.length; i++) {
-    const legOpts: LegOption[] = []
     const flightsForLeg = legFlights[i]
-
+    const flightOpts: FlightPayOptions[] = []
     for (const f of flightsForLeg) {
       const payOpts = getPayOptions(f, wallet, travelers)
-      for (const po of payOpts) {
-        legOpts.push({ flight: f, payOption: po, legIndex: i })
-      }
+      flightOpts.push({ flight: f, payOptions: payOpts })
     }
-
-    // Also check unassigned flights that might work for this leg
-    // (skip for now — user should assign flights to legs first)
-
-    allLegOptions.push(legOpts)
+    legFlightOptions.push(flightOpts)
   }
 
-  // Check if we have options for every leg
-  const hasAllLegs = allLegOptions.every(opts => opts.length > 0)
-
-  if (!hasAllLegs) {
-    // Not all legs covered — still generate what we can
-    // but warn the user
-  }
-
-  // Strategy 1: BEST VALUE — maximize cpp (use points where they get best value, cash where not)
-  const bestValue = buildStrategy(
-    'best-value',
-    'Best Value',
+  // Strategy 1: BEST VALUE — maximize cpp
+  const bestValue = buildStrategy('best-value', 'Best Value',
     'Maximize the value of your points — use them where you get the highest cents-per-point, pay cash elsewhere.',
-    allLegOptions,
-    wallet,
-    legs,
-    uncoveredLegs,
-    'best_cpp'
-  )
+    legFlightOptions, wallet, legs, uncoveredLegs, 'best_cpp')
   if (bestValue) strategies.push(bestValue)
 
-  // Strategy 2: LOWEST CASH — minimize out-of-pocket cash
-  const lowestCash = buildStrategy(
-    'lowest-cash',
-    'Lowest Cash Out-of-Pocket',
+  // Strategy 2: LOWEST CASH — minimize out-of-pocket
+  const lowestCash = buildStrategy('lowest-cash', 'Lowest Cash Out-of-Pocket',
     'Minimize cash spending — use points and transfers wherever possible.',
-    allLegOptions,
-    wallet,
-    legs,
-    uncoveredLegs,
-    'min_cash'
-  )
+    legFlightOptions, wallet, legs, uncoveredLegs, 'min_cash')
   if (lowestCash) strategies.push(lowestCash)
 
-  // Strategy 3: ALL CASH — just pay cash for everything (baseline comparison)
-  const allCash = buildStrategy(
-    'all-cash',
-    'All Cash',
+  // Strategy 3: ALL CASH — baseline comparison
+  const allCash = buildStrategy('all-cash', 'All Cash',
     'Pay cash for everything — use this as a baseline to see how much your points save.',
-    allLegOptions,
-    wallet,
-    legs,
-    uncoveredLegs,
-    'all_cash'
-  )
+    legFlightOptions, wallet, legs, uncoveredLegs, 'all_cash')
   if (allCash) strategies.push(allCash)
 
-  // Sort: best value first, then lowest cash, then all cash
-  // Tag them
+  // Tag strategies
   if (strategies.length > 0) {
-    // Find the one with best cpp
     const bestCpp = strategies.reduce((a, b) => a.estimatedCpp > b.estimatedCpp ? a : b)
     if (!bestCpp.tags.includes('Best Value')) bestCpp.tags.push('Best Value')
-
-    // Find lowest cash
     const lowestCashStrategy = strategies.reduce((a, b) => a.totalCash < b.totalCash ? a : b)
     if (!lowestCashStrategy.tags.includes('Lowest Cash')) lowestCashStrategy.tags.push('Lowest Cash')
   }
@@ -473,112 +460,130 @@ export function optimizeTrip(
   return strategies
 }
 
+// Pick the best payment option for a single flight given the mode and wallet state
+function pickPayOption(
+  payOptions: PayOption[],
+  walletUsage: Record<string, number>,
+  wallet: WalletEntry[],
+  mode: 'best_cpp' | 'min_cash' | 'all_cash'
+): { chosen: PayOption; warnings: string[] } {
+  const warnings: string[] = []
+
+  // Filter affordable options
+  let affordable = payOptions.filter(o => {
+    if (o.walletId === '__cash__' || o.walletId === '__points_no_wallet__') return true
+    const used = walletUsage[o.walletId] || 0
+    const w = wallet.find(we => we.id === o.walletId)
+    if (!w) return true
+    return (w.balance - used) >= o.pointsCost
+  })
+
+  if (affordable.length === 0) {
+    // Check for insufficient balance
+    const pointsOpts = payOptions.filter(o => o.method !== 'cash')
+    if (pointsOpts.length > 0) {
+      const best = [...pointsOpts].sort((a, b) => b.cpp - a.cpp)[0]
+      const used = walletUsage[best.walletId] || 0
+      const w = wallet.find(we => we.id === best.walletId)
+      const available = w ? w.balance - used : 0
+      warnings.push(`Insufficient ${best.pointsProgram} (have ${available.toLocaleString()}, need ${best.pointsCost.toLocaleString()})`)
+    }
+    // Fall back to cash
+    const cashOpt = payOptions.find(o => o.method === 'cash')
+    if (cashOpt) {
+      affordable = [cashOpt]
+    } else {
+      // No cash option either — use the first available option
+      affordable = [payOptions[0]]
+    }
+  }
+
+  let chosen: PayOption
+  if (mode === 'all_cash') {
+    chosen = affordable.find(o => o.method === 'cash')
+      || affordable.find(o => o.method === 'portal')
+      || affordable[0]
+  } else if (mode === 'min_cash') {
+    chosen = [...affordable].sort((a, b) => {
+      const cashDiff = a.cashCost - b.cashCost
+      if (cashDiff !== 0) return cashDiff
+      return b.cpp - a.cpp
+    })[0]
+  } else {
+    // best_cpp
+    const pointsOpts = affordable.filter(o => o.method !== 'cash' && o.cpp > 0)
+    if (pointsOpts.length > 0) {
+      chosen = [...pointsOpts].sort((a, b) => b.cpp - a.cpp)[0]
+    } else {
+      chosen = [...affordable].sort((a, b) => a.cashCost - b.cashCost)[0]
+    }
+  }
+
+  return { chosen, warnings }
+}
+
 function buildStrategy(
   id: string,
   name: string,
   description: string,
-  allLegOptions: { flight: Flight; payOption: PayOption; legIndex: number }[][],
+  legFlightOptions: { flight: Flight; payOptions: PayOption[] }[][],
   wallet: WalletEntry[],
   legs: Leg[],
   uncoveredLegs: number[],
   mode: 'best_cpp' | 'min_cash' | 'all_cash'
 ): BookingStrategy | null {
   const bookings: FlightBooking[] = []
-  const walletUsage: Record<string, number> = {} // walletId → points used
+  const walletUsage: Record<string, number> = {}
   let totalCash = 0
   let totalPoints = 0
   let totalEstimatedValue = 0
   const warnings: string[] = []
 
-  for (let legIdx = 0; legIdx < allLegOptions.length; legIdx++) {
-    const opts = allLegOptions[legIdx]
-    if (opts.length === 0) {
-      warnings.push(`No flight options for ${legs[legIdx].from} → ${legs[legIdx].to}`)
+  for (let legIdx = 0; legIdx < legFlightOptions.length; legIdx++) {
+    const flightsInLeg = legFlightOptions[legIdx]
+    if (flightsInLeg.length === 0) {
+      warnings.push(`No flights for ${legs[legIdx].from} → ${legs[legIdx].to}`)
       continue
     }
 
-    // Filter options that we can still afford (wallet not depleted)
-    let affordable = opts.filter(o => {
-      if (o.payOption.walletId === '__cash__' || o.payOption.walletId === '__points_no_wallet__') return true
-      const used = walletUsage[o.payOption.walletId] || 0
-      const w = wallet.find(w => w.id === o.payOption.walletId)
-      if (!w) return true
-      return (w.balance - used) >= o.payOption.pointsCost
-    })
-
-    if (affordable.length === 0) {
-      // Check if there are points options that just don't have enough balance
-      const pointsOpts = opts.filter(o => o.payOption.method !== 'cash')
-      if (pointsOpts.length > 0) {
-        const bestShortfall = pointsOpts.sort((a, b) => b.payOption.cpp - a.payOption.cpp)[0]
-        const used = walletUsage[bestShortfall.payOption.walletId] || 0
-        const w = wallet.find(we => we.id === bestShortfall.payOption.walletId)
-        const available = w ? w.balance - used : 0
-        const needed = bestShortfall.payOption.pointsCost
-        warnings.push(`Insufficient ${bestShortfall.payOption.pointsProgram} balance for ${legs[legIdx].from} → ${legs[legIdx].to} (have ${available.toLocaleString()}, need ${needed.toLocaleString()})`)
-      }
-
-      // Fall back to any cash option
-      const cashOpt = opts.find(o => o.payOption.method === 'cash')
-      if (cashOpt) {
-        affordable.push(cashOpt)
-      } else {
-        warnings.push(`Cannot afford any option for ${legs[legIdx].from} → ${legs[legIdx].to}`)
+    // Book EVERY flight in this leg (they're all part of the connecting itinerary)
+    for (const { flight, payOptions } of flightsInLeg) {
+      if (payOptions.length === 0) {
+        warnings.push(`No booking options for ${getFlightLabel(flight)}`)
         continue
       }
-    }
 
-    // Pick the best option based on mode
-    let chosen: typeof affordable[0]
-
-    if (mode === 'all_cash') {
-      // Prefer cash, then portal, then anything
-      chosen = affordable.find(o => o.payOption.method === 'cash')
-        || affordable.find(o => o.payOption.method === 'portal')
-        || affordable[0]
-    } else if (mode === 'min_cash') {
-      // Sort by lowest cash cost, then by highest cpp
-      chosen = affordable.sort((a, b) => {
-        const cashDiff = a.payOption.cashCost - b.payOption.cashCost
-        if (cashDiff !== 0) return cashDiff
-        return b.payOption.cpp - a.payOption.cpp
-      })[0]
-    } else {
-      // best_cpp: prefer points options with highest cpp, but only if cpp > portal rate
-      const pointsOpts = affordable.filter(o => o.payOption.method !== 'cash' && o.payOption.cpp > 0)
-      if (pointsOpts.length > 0) {
-        chosen = pointsOpts.sort((a, b) => b.payOption.cpp - a.payOption.cpp)[0]
-      } else {
-        chosen = affordable.sort((a, b) => a.payOption.cashCost - b.payOption.cashCost)[0]
+      const { chosen: po, warnings: flightWarnings } = pickPayOption(payOptions, walletUsage, wallet, mode)
+      for (const w of flightWarnings) {
+        warnings.push(`${getFlightLabel(flight)}: ${w}`)
       }
+
+      // Track wallet usage
+      if (po.walletId !== '__cash__' && po.walletId !== '__points_no_wallet__') {
+        walletUsage[po.walletId] = (walletUsage[po.walletId] || 0) + po.pointsCost
+      }
+
+      totalCash += po.cashCost
+      totalPoints += po.pointsCost
+      totalEstimatedValue += po.estimatedCashValue
+
+      bookings.push({
+        flightId: flight.id,
+        flightLabel: getFlightLabel(flight),
+        legIndex: legIdx,
+        method: po.method,
+        cashCost: po.cashCost,
+        pointsCost: po.pointsCost,
+        pointsProgram: po.pointsProgram,
+        transferFrom: po.transferFrom,
+        transferTo: po.transferTo,
+        transferRatio: po.transferRatio,
+        portalName: po.portalName,
+        portalCpp: po.portalCpp,
+        description: po.description,
+        tierLabel: po.tierLabel,
+      })
     }
-
-    // Record this choice
-    const po = chosen.payOption
-    if (po.walletId !== '__cash__') {
-      walletUsage[po.walletId] = (walletUsage[po.walletId] || 0) + po.pointsCost
-    }
-
-    totalCash += po.cashCost
-    totalPoints += po.pointsCost
-    totalEstimatedValue += po.estimatedCashValue
-
-    bookings.push({
-      flightId: chosen.flight.id,
-      flightLabel: getFlightLabel(chosen.flight),
-      legIndex: legIdx,
-      method: po.method,
-      cashCost: po.cashCost,
-      pointsCost: po.pointsCost,
-      pointsProgram: po.pointsProgram,
-      transferFrom: po.transferFrom,
-      transferTo: po.transferTo,
-      transferRatio: po.transferRatio,
-      portalName: po.portalName,
-      portalCpp: po.portalCpp,
-      description: po.description,
-      tierLabel: po.tierLabel,
-    })
   }
 
   if (bookings.length === 0) return null
@@ -586,11 +591,12 @@ function buildStrategy(
   // Calculate overall cpp
   const estimatedCpp = totalPoints > 0 ? ((totalEstimatedValue - totalCash) / totalPoints) * 100 : 0
 
-  // Calculate savings vs all-cash
+  // Calculate savings vs all-cash: for each booking, find the cash price of that same flight
   const allCashCost = bookings.reduce((sum, b) => {
-    const flight = allLegOptions[b.legIndex]?.find(o => o.flight.id === b.flightId)
-    const cashOpt = flight ? allLegOptions[b.legIndex].find(o => o.flight.id === b.flightId && o.payOption.method === 'cash') : null
-    return sum + (cashOpt?.payOption.cashCost || b.cashCost)
+    const legFlights = legFlightOptions[b.legIndex]
+    const flightEntry = legFlights?.find(fo => fo.flight.id === b.flightId)
+    const cashOpt = flightEntry?.payOptions.find(o => o.method === 'cash')
+    return sum + (cashOpt?.cashCost || b.cashCost)
   }, 0)
 
   if (uncoveredLegs.length > 0) {
@@ -598,17 +604,11 @@ function buildStrategy(
   }
 
   return {
-    id,
-    name,
-    description,
-    bookings,
-    totalCash,
-    totalPoints,
+    id, name, description, bookings, totalCash, totalPoints,
     estimatedValue: totalEstimatedValue,
     estimatedCpp: Math.round(estimatedCpp * 10) / 10,
     savingsVsCash: Math.max(0, allCashCost - totalCash),
-    warnings,
-    tags: [],
+    warnings, tags: [],
   }
 }
 

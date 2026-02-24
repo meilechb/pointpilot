@@ -37,51 +37,60 @@ export type BookingStep = {
 
 // Map booking site names to transfer partner search terms
 const BOOKING_SITE_TO_PROGRAM: Record<string, string> = {
-  'united': 'United MileagePlus',
-  'united airlines': 'United MileagePlus',
-  'delta': 'Delta SkyMiles',
-  'delta airlines': 'Delta SkyMiles',
-  'american': 'American Airlines AAdvantage',
-  'american airlines': 'American Airlines AAdvantage',
-  'aa': 'American Airlines AAdvantage',
-  'british airways': 'British Airways Executive Club',
-  'ba': 'British Airways Executive Club',
+  // Airline names
+  'united': 'United MileagePlus', 'united airlines': 'United MileagePlus',
+  'delta': 'Delta SkyMiles', 'delta airlines': 'Delta SkyMiles',
+  'american': 'American Airlines AAdvantage', 'american airlines': 'American Airlines AAdvantage', 'aa': 'American Airlines AAdvantage',
+  'british airways': 'British Airways Executive Club', 'ba': 'British Airways Executive Club',
   'virgin atlantic': 'Virgin Atlantic Flying Club',
-  'air canada': 'Air Canada Aeroplan',
-  'aeroplan': 'Air Canada Aeroplan',
-  'air france': 'Air France-KLM Flying Blue',
-  'klm': 'Air France-KLM Flying Blue',
-  'flying blue': 'Air France-KLM Flying Blue',
+  'air canada': 'Air Canada Aeroplan', 'aeroplan': 'Air Canada Aeroplan',
+  'air france': 'Air France-KLM Flying Blue', 'klm': 'Air France-KLM Flying Blue', 'flying blue': 'Air France-KLM Flying Blue',
   'emirates': 'Emirates Skywards',
-  'qatar': 'Qatar Airways Privilege Club',
-  'qatar airways': 'Qatar Airways Privilege Club',
-  'singapore': 'Singapore Airlines KrisFlyer',
-  'singapore airlines': 'Singapore Airlines KrisFlyer',
-  'jetblue': 'JetBlue TrueBlue',
-  'southwest': 'Southwest Rapid Rewards',
-  'alaska': 'Alaska Airlines Mileage Plan',
-  'alaska airlines': 'Alaska Airlines Mileage Plan',
-  'avianca': 'Avianca LifeMiles',
-  'lifemiles': 'Avianca LifeMiles',
-  'cathay': 'Cathay Pacific Asia Miles',
-  'cathay pacific': 'Cathay Pacific Asia Miles',
-  'etihad': 'Etihad Guest',
-  'iberia': 'Iberia Plus',
-  'turkish': 'Turkish Airlines Miles&Smiles',
-  'turkish airlines': 'Turkish Airlines Miles&Smiles',
-  'ana': 'ANA Mileage Club',
-  'aer lingus': 'Aer Lingus AerClub',
-  'qantas': 'Qantas Frequent Flyer',
-  'tap': 'TAP Portugal Miles&Go',
-  'tap portugal': 'TAP Portugal Miles&Go',
+  'qatar': 'Qatar Airways Privilege Club', 'qatar airways': 'Qatar Airways Privilege Club',
+  'singapore': 'Singapore Airlines KrisFlyer', 'singapore airlines': 'Singapore Airlines KrisFlyer',
+  'jetblue': 'JetBlue TrueBlue', 'southwest': 'Southwest Rapid Rewards',
+  'alaska': 'Alaska Airlines Mileage Plan', 'alaska airlines': 'Alaska Airlines Mileage Plan',
+  'avianca': 'Avianca LifeMiles', 'lifemiles': 'Avianca LifeMiles',
+  'cathay': 'Cathay Pacific Asia Miles', 'cathay pacific': 'Cathay Pacific Asia Miles',
+  'etihad': 'Etihad Guest', 'iberia': 'Iberia Plus',
+  'turkish': 'Turkish Airlines Miles&Smiles', 'turkish airlines': 'Turkish Airlines Miles&Smiles',
+  'ana': 'ANA Mileage Club', 'aer lingus': 'Aer Lingus AerClub',
+  'qantas': 'Qantas Frequent Flyer', 'tap': 'TAP Portugal Miles&Go', 'tap portugal': 'TAP Portugal Miles&Go',
+  // Booking site URLs (from programOptions.ts bookingSites)
+  'united.com': 'United MileagePlus',
+  'aa.com': 'American Airlines AAdvantage',
+  'delta.com': 'Delta SkyMiles',
+  'southwest.com': 'Southwest Rapid Rewards',
+  'jetblue.com': 'JetBlue TrueBlue',
+  'alaskaair.com': 'Alaska Airlines Mileage Plan',
+  'britishairways.com': 'British Airways Executive Club',
+  'emirates.com': 'Emirates Skywards',
+  'qatarairways.com': 'Qatar Airways Privilege Club',
+  'singaporeair.com': 'Singapore Airlines KrisFlyer',
+  'ana.co.jp': 'ANA Mileage Club',
+  'aircanada.com': 'Air Canada Aeroplan',
+  'virginatlantic.com': 'Virgin Atlantic Flying Club',
+  'aerlingus.com': 'Aer Lingus AerClub',
+  'iberia.com': 'Iberia Plus',
+  'avianca.com': 'Avianca LifeMiles',
+  'turkishairlines.com': 'Turkish Airlines Miles&Smiles',
+  'flyingblue.com': 'Air France-KLM Flying Blue',
+  'cathaypacific.com': 'Cathay Pacific Asia Miles',
+  'jal.co.jp': 'Japan Airlines Mileage Bank',
+  'koreanair.com': 'Korean Air SKYPASS',
+  'qantas.com': 'Qantas Frequent Flyer',
 }
 
 function resolvePartnerName(bookingSite: string): string | null {
   const lower = bookingSite.toLowerCase().trim()
   if (BOOKING_SITE_TO_PROGRAM[lower]) return BOOKING_SITE_TO_PROGRAM[lower]
+  // Strip .com/.co.jp etc and try again
+  const stripped = lower.replace(/\.(com|co\.jp|co\.uk|net|org)$/i, '')
+  if (BOOKING_SITE_TO_PROGRAM[stripped]) return BOOKING_SITE_TO_PROGRAM[stripped]
   // Fuzzy: check if any key is contained in the booking site
   for (const [key, value] of Object.entries(BOOKING_SITE_TO_PROGRAM)) {
     if (lower.includes(key) || key.includes(lower)) return value
+    if (stripped.includes(key) || key.includes(stripped)) return value
   }
   return null
 }

@@ -143,12 +143,23 @@ function validateLeg(leg: Leg, flights: Flight[]): { complete: boolean; warnings
 
     const seg1 = flights[i].segments[flights[i].segments.length - 1]
     const seg2 = flights[i + 1].segments[0]
-    if (seg1.arrivalTime && seg2.departureTime && seg1.date && seg2.date) {
-      const arrive = new Date(`${seg1.date}T${seg1.arrivalTime}`)
-      const depart = new Date(`${seg2.date}T${seg2.departureTime}`)
+    // Use arrivalDate for seg1 (flight may land next day), fall back to departure date
+    const seg1ArrDate = seg1.arrivalDate || seg1.date
+    const seg2DepDate = seg2.date
+    if (seg1.arrivalTime && seg2.departureTime && seg1ArrDate && seg2DepDate) {
+      const arrive = new Date(`${seg1ArrDate}T${seg1.arrivalTime}`)
+      const depart = new Date(`${seg2DepDate}T${seg2.departureTime}`)
       const mins = (depart.getTime() - arrive.getTime()) / 60000
       if (mins > 0 && mins < 120) {
         warnings.push({ type: 'short_layover', message: `Only ${Math.round(mins)} min layover between flights ${i + 1} and ${i + 2} — consider allowing at least 2 hours` })
+      }
+    } else if (seg1.arrivalTime && seg2.departureTime) {
+      // No dates available — compare times only (assume same day)
+      const [h1, m1] = seg1.arrivalTime.split(':').map(Number)
+      const [h2, m2] = seg2.departureTime.split(':').map(Number)
+      const mins = (h2 * 60 + m2) - (h1 * 60 + m1)
+      if (mins > 0 && mins < 120) {
+        warnings.push({ type: 'short_layover', message: `Only ${mins} min layover between flights ${i + 1} and ${i + 2} — consider allowing at least 2 hours` })
       }
     }
   }
