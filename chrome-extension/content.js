@@ -100,31 +100,217 @@ function scrapeGoogleFlights(flights) {
 }
 
 function scrapeUnited(flights) {
-  document.querySelectorAll('.app-components-Shopping-FlightResult--FlightResult, .flight-result-item').forEach(el => {
-    const code = el.querySelector('.app-components-Shopping-FlightNumber--flightNumber, .flight-number')?.textContent?.trim()
-    const airports = el.querySelectorAll('.app-components-Airport-AirportCode--code, .airport-code')
-    const times = el.querySelectorAll('.app-components-TimeLine-TimeLine--time, .flight-time')
-    const cashEl = el.querySelector('.app-components-Shopping-PriceBreakdown--price, .price-amount')
-    const pointsEl = el.querySelector('.miles-amount, .award-miles')
+  // United layout: cabin headers across the top, flight rows below.
+  // Each flight row has departure/arrival times, flight number, duration.
+  // Each cabin column cell has a price button.
 
-    if (airports.length >= 2) {
-      flights.push({
-        flightCode: code || null,
-        airlineName: 'United Airlines',
-        departureAirport: airports[0]?.textContent?.trim() || null,
-        arrivalAirport: airports[airports.length - 1]?.textContent?.trim() || null,
-        departureTime: times[0]?.textContent?.trim() || null,
-        arrivalTime: times[times.length - 1]?.textContent?.trim() || null,
-        date: null,
-        arrivalDate: null,
-        duration: null,
-        cashAmount: cashEl ? parseFloat(cashEl.textContent.replace(/[^0-9.]/g, '')) || null : null,
-        pointsAmount: pointsEl ? parseFloat(pointsEl.textContent.replace(/[^0-9]/g, '')) || null : null,
-        feesAmount: null,
-        cabinClass: el.querySelector('.cabin-class, .fare-name')?.textContent?.trim() || null,
-      })
+  // Get cabin column headers (Economy, Economy (fully refundable), Premium Economy, Business)
+  const cabinHeaders = []
+  document.querySelectorAll('th, [class*="columnHeader"], [class*="ColumnHeader"], [class*="fareColumn"], [class*="FareColumn"]').forEach(el => {
+    const text = el.textContent?.trim()
+    if (text && text.length < 60 && (
+      text.includes('Economy') || text.includes('Business') || text.includes('First') || text.includes('Premium')
+    )) {
+      cabinHeaders.push({ label: text, index: cabinHeaders.length })
     }
   })
+
+  // Try to find flight rows
+  const flightRows = document.querySelectorAll(
+    '[class*="FlightCard"], [class*="flightCard"], [class*="flight-row"], [class*="FlightRow"], ' +
+    '[class*="ResultRow"], [class*="resultRow"], [class*="segment-row"], [class*="SegmentRow"]'
+  )
+
+  flightRows.forEach(row => {
+    // Departure + arrival time
+    const timeEls = row.querySelectorAll('[class*="time"], [class*="Time"]')
+    let depTime = null, arrTime = null, arrDate = null
+    timeEls.forEach(el => {
+      const txt = el.textContent?.trim()
+      if (!txt) return
+      // Match "3:20 PM" or "08:55"
+      if (/^\d{1,2}:\d{2}/.test(txt) || /\d{1,2}:\d{2}\s*(AM|PM)/i.test(txt)) {
+        if (!depTime) depTime = txt
+        else if (!arrTime) arrTime = txt
+      }
+    })
+
+    // "Arrives Apr 25" text
+    const arrivalDateEl = row.querySelector('[class*="arrivalDate"], [class*="ArrivalDate"], [class*="arrives"], [class*="Arrives"]')
+    if (arrivalDateEl) arrDate = arrivalDateEl.textContent?.trim() || null
+
+    // Flight number — look for "UA 84" pattern
+    let flightCode = null
+    const codeEl = row.querySelector('[class*="flightNumber"], [class*="FlightNumber"], [class*="operatedBy"]')
+    if (codeEl) {
+      const match = codeEl.textContent?.match(/([A-Z]{2}\s?\d+)/)
+      if (match) flightCode = match[1].replace(/\s/, '')
+    }
+    if (!flightCode) {
+      // scan all text in row for flight code pattern
+      const text = row.textContent || ''
+      const match = text.match(/\b(UA|DL|AA|AS|B6|WN|F9)\s?(\d{1,4})\b/)
+      if (match) flightCode = match[1] + match[2]
+    }
+
+    // Duration "10H, 35M"
+    let duration = null
+    const durEl = row.querySelector('[class*="duration"], [class*="Duration"], [class*="travelTime"]')
+    if (durEl) {
+      const txt = durEl.textContent?.trim() || ''
+      const m = txt.match(/(\d+)\s*H[,\s]*(\d+)\s*M/i) || txt.match(/(\d+)h\s*(\d+)m/i)
+      if (m) duration = parseInt(m[1]) * 60 + parseInt(m[2])
+    }
+
+    // Airports — look for 3-letter codes
+    const airports = []
+    row.querySelectorAll('[class*="airport"], [class*="Airport"], [class*="station"], [class*="Station"]').forEach(el => {
+      const txt = el.textContent?.trim()
+      if (txt && /^[A-Z]{3}$/.test(txt)) airports.push(txt)
+    })
+    // Fallback: scan text for IATA codes near times
+    if (airports.length < 2) {
+      const text = row.textContent || ''
+      const matches = text.match(/\b(EWR|JFK|LGA|LAX|SFO|ORD|DEN|IAH|IAD|TLV|LHR|CDG|FRA|AMS|DXB|NRT|HND|SYD|MEL|YYZ|YVR|MIA|ATL|BOS|SEA|DFW|PHX|MSP|DTW|CLT|PHL)\b/g)
+      if (matches && matches.length >= 2) {
+        airports.push(matches[0], matches[matches.length - 1])
+      }
+    }
+
+    if (!depTime && airports.length < 2) return // not a real flight row
+
+    // Cabin prices in this row
+    // Look for price cells (each cabin column has a price)
+    const priceCells = row.querySelectorAll(
+      '[class*="price"], [class*="Price"], [class*="fare"], [class*="Fare"], ' +
+      'td[class*="cabin"], td[class*="Cabin"], button[class*="select"], button[class*="Select"]'
+    )
+
+    const pricingTiers = []
+    const cabins = ['Economy', 'Economy (Refundable)', 'Premium Economy', 'Business', 'First']
+
+    priceCells.forEach((cell, i) => {
+      const txt = cell.textContent?.trim() || ''
+      // Look for dollar amounts
+      const cashMatch = txt.match(/\$\s?([\d,]+)/)
+      // Look for miles/points
+      const milesMatch = txt.match(/([\d,]+)\s*(miles|pts|points|mi\b)/i)
+
+      if (cashMatch || milesMatch) {
+        const cabinLabel = cabinHeaders[i]?.label || cabins[i] || `Option ${i + 1}`
+        pricingTiers.push({
+          id: crypto.randomUUID(),
+          label: cabinLabel,
+          paymentType: milesMatch && !cashMatch ? 'points' : 'cash',
+          cashAmount: cashMatch ? parseFloat(cashMatch[1].replace(/,/g, '')) : null,
+          pointsAmount: milesMatch ? parseFloat(milesMatch[1].replace(/,/g, '')) : null,
+          feesAmount: null,
+        })
+      }
+    })
+
+    // Also try reading from the visible price columns directly (United's grid)
+    // United shows prices as sibling elements to the flight row in a table/grid
+    if (pricingTiers.length === 0) {
+      // Look for any $ amounts in the row
+      const allText = row.textContent || ''
+      const priceMatches = [...allText.matchAll(/\$([\d,]+)/g)]
+      priceMatches.forEach((m, i) => {
+        const amount = parseFloat(m[1].replace(/,/g, ''))
+        if (amount > 0) {
+          pricingTiers.push({
+            id: crypto.randomUUID(),
+            label: cabins[i] || `Option ${i + 1}`,
+            paymentType: 'cash',
+            cashAmount: amount,
+            pointsAmount: null,
+            feesAmount: null,
+          })
+        }
+      })
+    }
+
+    const primaryTier = pricingTiers[0]
+    flights.push({
+      flightCode: flightCode || null,
+      airlineName: 'United Airlines',
+      departureAirport: airports[0] || null,
+      arrivalAirport: airports[1] || null,
+      departureTime: depTime,
+      arrivalTime: arrTime,
+      date: null,
+      arrivalDate: arrDate,
+      duration,
+      stops: row.textContent?.toLowerCase().includes('nonstop') ? 0 : null,
+      cashAmount: primaryTier?.paymentType === 'cash' ? primaryTier?.cashAmount : null,
+      pointsAmount: primaryTier?.paymentType === 'points' ? primaryTier?.pointsAmount : null,
+      feesAmount: null,
+      cabinClass: primaryTier?.label || null,
+      pricingTiers: pricingTiers.length > 1 ? pricingTiers : [],
+    })
+  })
+
+  // Fallback: try reading the price grid separately if rows weren't found
+  if (flights.length === 0) {
+    // Read cabin columns from the page header
+    const cabinCols = []
+    document.querySelectorAll('[class*="cabinTitle"], [class*="CabinTitle"], thead th, [role="columnheader"]').forEach(el => {
+      const txt = el.textContent?.trim()
+      if (txt && (txt.includes('Economy') || txt.includes('Business') || txt.includes('First') || txt.includes('Premium'))) {
+        cabinCols.push(txt)
+      }
+    })
+
+    // Find each flight result block
+    document.querySelectorAll('[class*="result"]:not([class*="results"]), [class*="Result"]:not([class*="Results"])').forEach(block => {
+      const times = []
+      block.querySelectorAll('[class*="time"], [class*="Time"]').forEach(el => {
+        const txt = el.textContent?.trim()
+        if (txt && /\d{1,2}:\d{2}/.test(txt)) times.push(txt)
+      })
+
+      const priceEls = block.querySelectorAll('[class*="price"], [class*="Price"]')
+      const pricingTiers = []
+      priceEls.forEach((el, i) => {
+        const txt = el.textContent?.trim() || ''
+        const m = txt.match(/\$([\d,]+)/)
+        if (m) {
+          pricingTiers.push({
+            id: crypto.randomUUID(),
+            label: cabinCols[i] || cabins[i] || `Option ${i+1}`,
+            paymentType: 'cash',
+            cashAmount: parseFloat(m[1].replace(/,/g, '')),
+            pointsAmount: null,
+            feesAmount: null,
+          })
+        }
+      })
+
+      // Look for airport codes
+      const text = block.textContent || ''
+      const airportMatches = text.match(/\b([A-Z]{3})\b.*?\b([A-Z]{3})\b/)
+
+      if (times.length >= 2 && pricingTiers.length > 0) {
+        flights.push({
+          flightCode: text.match(/\b(UA\d+)\b/)?.[1] || null,
+          airlineName: 'United Airlines',
+          departureAirport: airportMatches?.[1] || null,
+          arrivalAirport: airportMatches?.[2] || null,
+          departureTime: times[0],
+          arrivalTime: times[times.length - 1],
+          date: null,
+          arrivalDate: null,
+          duration: null,
+          stops: text.toLowerCase().includes('nonstop') ? 0 : null,
+          cashAmount: pricingTiers[0]?.cashAmount || null,
+          pointsAmount: null,
+          feesAmount: null,
+          cabinClass: pricingTiers[0]?.label || null,
+          pricingTiers: pricingTiers.length > 1 ? pricingTiers : [],
+        })
+      }
+    })
+  }
 }
 
 function scrapeDelta(flights) {

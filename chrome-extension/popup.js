@@ -267,14 +267,7 @@ function renderFlightPicker() {
     return el
   }
 
-  if (flights.length === 1) {
-    // Auto-select and jump straight to details
-    setTimeout(() => selectFlight(flights[0]), 0)
-    el.innerHTML = `<div style="text-align:center;padding:20px;color:#6b7280">Loading flight details...</div>`
-    return el
-  }
-
-  el.innerHTML = `<div class="section-title">${flights.length} flights detected — pick one</div>`
+  el.innerHTML = `<div class="section-title">${flights.length} flight${flights.length !== 1 ? 's' : ''} detected — pick one</div>`
   const list = document.createElement('div')
   list.className = 'flight-list'
 
@@ -282,6 +275,16 @@ function renderFlightPicker() {
     const card = document.createElement('div')
     card.className = 'flight-card'
     const price = formatPrice(f)
+    const tiers = buildTiersFromFlight(f)
+    const tierBadges = tiers.length > 1
+      ? tiers.map(t => {
+          const p = t.paymentType === 'points'
+            ? `${Math.round(t.pointsAmount||0).toLocaleString()}pts`
+            : `$${(t.cashAmount||0).toLocaleString()}`
+          return `<span class="badge">${t.label}: ${p}</span>`
+        }).join('')
+      : (price ? `<span class="badge">${price}</span>` : '')
+
     card.innerHTML = `
       <div class="flight-route">
         <span>${f.departureAirport || '?'}</span>
@@ -294,8 +297,7 @@ function renderFlightPicker() {
         ${f.airlineName ? `<span>${f.airlineName}</span>` : ''}
         ${f.departureTime ? `<span>${formatTime(f.departureTime)} → ${formatTime(f.arrivalTime)}</span>` : ''}
         ${f.duration ? `<span>${formatDuration(f.duration)}</span>` : ''}
-        ${price ? `<span class="badge">${price}</span>` : ''}
-        ${f.cabinClass ? `<span>${f.cabinClass}</span>` : ''}
+        ${tierBadges}
       </div>
     `
     card.addEventListener('click', () => selectFlight(f))

@@ -102,7 +102,7 @@ input:focus { border-color: #4338ca; }
   margin-bottom: 4px;
 }
 .flight-route .arrow { color: #9ca3af; font-size: 12px; }
-.flight-meta { font-size: 12px; color: #6b7280; display: flex; gap: 10px; flex-wrap: wrap; }
+.flight-meta { font-size: 12px; color: #6b7280; display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
 .flight-meta .badge {
   background: #ede9fe;
   color: #4338ca;
