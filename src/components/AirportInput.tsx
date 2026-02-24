@@ -74,9 +74,11 @@ export default function AirportInput({ value, onChange, placeholder, style }: Pr
 
   const handleBlur = () => {
     setTimeout(() => {
-      if (query && query !== value) {
+      // Only commit raw text if dropdown is not open (i.e. user didn't click a result)
+      if (!showDropdown && query && query !== value) {
         onChange(query.toUpperCase())
       }
+      setShowDropdown(false)
     }, 150)
   }
 

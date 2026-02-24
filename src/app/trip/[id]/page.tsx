@@ -13,7 +13,7 @@ import { getCityName } from '@/utils/airportUtils'
 import { analyzeItinerary } from '@/utils/bookingAnalyzer'
 import { optimizeTrip, getRelevantSweetSpots, type BookingStrategy } from '@/utils/tripOptimizer'
 import SavePrompt from '@/components/SavePrompt'
-import { loadTrips, saveTrip as saveTripRemote } from '@/lib/dataService'
+import { loadTripById, saveTrip as saveTripRemote } from '@/lib/dataService'
 
 function formatShortDate(dateStr: string): string {
   if (!dateStr) return ''
@@ -35,6 +35,7 @@ const fieldInput: React.CSSProperties = {
 export default function TripDetail() {
   const params = useParams()
   const [trip, setTrip] = useState<any>(null)
+  const [tripLoading, setTripLoading] = useState(true)
   const [showAddFlight, setShowAddFlight] = useState(false)
   const [editingFlightId, setEditingFlightId] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'flights' | 'plan' | 'optimize' | 'itineraries'>('flights')
@@ -53,10 +54,11 @@ export default function TripDetail() {
   const [editDateFlexibility, setEditDateFlexibility] = useState('exact')
 
   useEffect(() => {
-    loadTrips().then(trips => {
-      const found = trips.find((t: any) => t.id === params.id)
+    setTripLoading(true)
+    loadTripById(params.id as string).then(found => {
       if (found && !found.itineraries) found.itineraries = []
       setTrip(found)
+      setTripLoading(false)
     })
   }, [params.id])
 
@@ -231,6 +233,12 @@ export default function TripDetail() {
     if (it) it.name = newName
     saveTrip(updatedTrip)
   }
+
+  if (tripLoading) return (
+    <div style={{ padding: 60, textAlign: 'center', color: 'var(--text-muted)' }}>
+      Loading...
+    </div>
+  )
 
   if (!trip) return (
     <div style={{ padding: 60, textAlign: 'center', color: 'var(--text-muted)' }}>

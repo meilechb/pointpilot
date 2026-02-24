@@ -48,8 +48,13 @@ function flightsToRows(trip: any, userId: string) {
     user_id: userId,
     trip_id: trip.id,
     leg_index: f.legIndex ?? null,
-    segments: f.segments || [],
-    booking_site: f.bookingUrl || null,
+    // segments column stores segments array + any extra fields (tiers, defaultTierLabel)
+    segments: {
+      segments: f.segments || [],
+      pricingTiers: f.pricingTiers || [],
+      defaultTierLabel: f.defaultTierLabel || '',
+    },
+    booking_site: f.bookingSite || null,
     payment_type: f.paymentType || 'cash',
     cash_amount: f.cashAmount ?? null,
     points_amount: f.pointsAmount ?? null,
@@ -74,16 +79,23 @@ function assembleTrip(tripRow: any, legRows: any[], flightRows: any[], itinRows:
     .sort((a, b) => a.leg_order - b.leg_order)
     .map(l => ({ from: l.from_city, to: l.to_city }))
 
-  const flights = flightRows.map(f => ({
-    id: f.id,
-    legIndex: f.leg_index,
-    segments: f.segments || [],
-    bookingUrl: f.booking_site,
-    paymentType: f.payment_type,
-    cashAmount: f.cash_amount,
-    pointsAmount: f.points_amount,
-    feesAmount: f.fees_amount,
-  }))
+  const flights = flightRows.map(f => {
+    // segments column may be array (old format) or wrapper object (new format)
+    const seg = f.segments || {}
+    const isWrapped = !Array.isArray(seg)
+    return {
+      id: f.id,
+      legIndex: f.leg_index,
+      segments: isWrapped ? (seg.segments || []) : seg,
+      pricingTiers: isWrapped ? (seg.pricingTiers || []) : [],
+      defaultTierLabel: isWrapped ? (seg.defaultTierLabel || '') : '',
+      bookingSite: f.booking_site,
+      paymentType: f.payment_type,
+      cashAmount: f.cash_amount,
+      pointsAmount: f.points_amount,
+      feesAmount: f.fees_amount,
+    }
+  })
 
   const itineraries = itinRows.map(it => ({
     id: it.id,
@@ -119,6 +131,35 @@ function assembleTrip(tripRow: any, legRows: any[], flightRows: any[], itinRows:
     flights,
     itineraries,
   }
+}
+
+export async function loadTripById(tripId: string): Promise<any | null> {
+  const user = await getUser()
+  if (user) {
+    const sb = getSupabase()
+    const { data: tripRows, error } = await sb
+      .from('trips')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('id', tripId)
+      .limit(1)
+
+    if (error || !tripRows || tripRows.length === 0) {
+      // Fall back to localStorage
+      const local = JSON.parse(localStorage.getItem('trips') || '[]')
+      return local.find((t: any) => t.id === tripId) ?? null
+    }
+
+    const [{ data: legRows }, { data: flightRows }, { data: itinRows }] = await Promise.all([
+      sb.from('legs').select('*').eq('trip_id', tripId),
+      sb.from('flights').select('*').eq('trip_id', tripId),
+      sb.from('itineraries').select('*').eq('trip_id', tripId),
+    ])
+
+    return assembleTrip(tripRows[0], legRows || [], flightRows || [], itinRows || [])
+  }
+  const local = JSON.parse(localStorage.getItem('trips') || '[]')
+  return local.find((t: any) => t.id === tripId) ?? null
 }
 
 export async function loadTrips(): Promise<any[]> {

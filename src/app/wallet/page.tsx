@@ -118,6 +118,7 @@ export default function WalletPage() {
   }
 
   const handleDelete = (id: string) => {
+    if (!confirm('Delete this entry? This cannot be undone.')) return
     saveEntries(entries.filter(e => e.id !== id))
     if (editingId === id) resetForm()
   }
