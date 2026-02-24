@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import DatePicker from 'react-datepicker'
 import 'react-datepicker/dist/react-datepicker.css'
 import AirportInput from '@/components/AirportInput'
@@ -193,6 +193,19 @@ export default function AddFlight({ legs, onSave, onCancel, editingFlight }: Pro
     })
   }
 
+  // Close on Escape key
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onCancel() }
+    document.addEventListener('keydown', handleKey)
+    return () => document.removeEventListener('keydown', handleKey)
+  }, [onCancel])
+
+  // Prevent body scroll when modal is open
+  useEffect(() => {
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = '' }
+  }, [])
+
   const editingBanner = editingFlight && (
     <div style={{
       padding: '8px 14px', backgroundColor: 'var(--primary-light)', color: 'var(--primary)',
@@ -202,22 +215,88 @@ export default function AddFlight({ legs, onSave, onCancel, editingFlight }: Pro
     </div>
   )
 
+  const overlayStyle: React.CSSProperties = {
+    position: 'fixed',
+    top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    display: 'flex',
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+    zIndex: 1000,
+    padding: '40px 16px',
+    overflowY: 'auto',
+  }
+
   const cardStyle: React.CSSProperties = {
     backgroundColor: 'var(--bg-card)',
     border: editingFlight ? '2px solid var(--primary)' : '1px solid var(--border-light)',
-    borderRadius: 'var(--radius)',
-    boxShadow: 'var(--shadow)',
-    padding: 20,
+    borderRadius: 'var(--radius-lg)',
+    boxShadow: 'var(--shadow-lg)',
+    padding: 24,
+    width: '100%',
+    maxWidth: 560,
+    position: 'relative',
   }
+
+  // Flight summary for booking step
+  const flightSummary = segments.length > 0 && (
+    <div style={{
+      marginBottom: 18,
+      padding: 14,
+      backgroundColor: 'var(--bg)',
+      borderRadius: 'var(--radius-sm)',
+      border: '1px solid var(--border-light)',
+    }}>
+      {segments.map((seg, i) => {
+        const h = seg.duration ? Math.floor(seg.duration / 60) : null
+        const m = seg.duration ? seg.duration % 60 : null
+        const durationStr = h !== null ? (m ? `${h}h ${m}m` : `${h}h`) : null
+        return (
+          <div key={i} style={{
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            padding: i > 0 ? '8px 0 0' : 0,
+            borderTop: i > 0 ? '1px solid var(--border-light)' : 'none',
+            marginTop: i > 0 ? 8 : 0,
+          }}>
+            <div>
+              <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text)' }}>
+                {seg.departureAirport} → {seg.arrivalAirport}
+                {seg.flightCode && <span style={{ color: 'var(--text-muted)', fontWeight: 400, marginLeft: 8 }}>{seg.flightCode}</span>}
+              </div>
+              <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}>
+                {seg.date && new Date(seg.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                {seg.departureTime && ` at ${seg.departureTime}`}
+                {seg.arrivalTime && ` → ${seg.arrivalTime}`}
+                {seg.arrivalDate && seg.arrivalDate !== seg.date && (
+                  <span style={{
+                    fontSize: 11, fontWeight: 700, color: 'var(--warning)',
+                    backgroundColor: 'var(--warning-bg)', padding: '1px 5px',
+                    borderRadius: 4, marginLeft: 4,
+                  }}>+1</span>
+                )}
+              </div>
+            </div>
+            {durationStr && (
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', flexShrink: 0, marginLeft: 12 }}>
+                {durationStr}
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
 
   if (step === 'booking') {
     return (
+      <div style={overlayStyle} onClick={(e) => { if (e.target === e.currentTarget) onCancel() }}>
       <div style={cardStyle}>
         {editingBanner}
-        <p style={{ fontWeight: 600, fontSize: 15, marginBottom: 4 }}>Booking details</p>
-        <p style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 18 }}>
-          {segments.map(s => `${s.flightCode} ${s.departureAirport}→${s.arrivalAirport}`).join(' · ')}
-        </p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+          <p style={{ fontWeight: 600, fontSize: 15 }}>Booking details</p>
+          <button onClick={onCancel} style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 18, color: 'var(--text-muted)', padding: '0 4px' }}>✕</button>
+        </div>
+        {flightSummary}
 
         <label style={fieldLabel}>Which leg?</label>
         <div style={{ marginBottom: 14 }}>
@@ -302,11 +381,17 @@ export default function AddFlight({ legs, onSave, onCancel, editingFlight }: Pro
           </button>
         </div>
       </div>
+      </div>
     )
   }
 
   return (
+    <div style={overlayStyle} onClick={(e) => { if (e.target === e.currentTarget) onCancel() }}>
     <div style={cardStyle}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+        <p style={{ fontWeight: 600, fontSize: 15 }}>{editingFlight ? 'Edit Flight' : 'Add Flight'}</p>
+        <button onClick={onCancel} style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 18, color: 'var(--text-muted)', padding: '0 4px' }}>✕</button>
+      </div>
       {editingBanner}
 
       {/* Existing segments */}
@@ -578,17 +663,7 @@ export default function AddFlight({ legs, onSave, onCancel, editingFlight }: Pro
         </div>
       )}
 
-      <div style={{ marginTop: 10 }}>
-        <button
-          onClick={onCancel}
-          style={{
-            border: 'none', background: 'none',
-            color: 'var(--text-muted)', cursor: 'pointer', fontSize: 13, padding: 0,
-          }}
-        >
-          Cancel
-        </button>
-      </div>
+    </div>
     </div>
   )
 }
