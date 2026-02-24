@@ -8,6 +8,15 @@ import {
   calculateLayovers,
 } from '@/utils/airportUtils'
 
+type PricingTier = {
+  id: string
+  label: string
+  paymentType: 'cash' | 'points'
+  cashAmount: number | null
+  pointsAmount: number | null
+  feesAmount: number | null
+}
+
 type Flight = {
   id: string
   legIndex: number
@@ -17,6 +26,8 @@ type Flight = {
   cashAmount: number | null
   pointsAmount: number | null
   feesAmount: number | null
+  pricingTiers?: PricingTier[]
+  defaultTierLabel?: string
 }
 
 type Props = {
@@ -63,7 +74,10 @@ export default function FlightCard({ flight, compact = false, draggable = false,
     if (flight.feesAmount) priceDisplay += ` + $${flight.feesAmount}`
   }
 
+  const tierCount = (flight.pricingTiers?.length || 0) + 1 // +1 for the main/default price
+
   const bookingLabel = [
+    ...(flight.defaultTierLabel ? [flight.defaultTierLabel] : []),
     ...(airlines.length > 0 ? [airlines.join(', ')] : []),
     ...(flight.bookingSite && !airlines.includes(flight.bookingSite) ? [`via ${flight.bookingSite}`] : []),
   ].join(' · ')
@@ -141,6 +155,13 @@ export default function FlightCard({ flight, compact = false, draggable = false,
               <div style={{ fontSize: 13, color: 'var(--text)', fontWeight: 600, marginTop: 3 }}>
                 {priceDisplay}
                 {bookingLabel && <span style={{ fontWeight: 400, color: 'var(--text-muted)', marginLeft: 6 }}>{bookingLabel}</span>}
+                {tierCount > 1 && (
+                  <span style={{
+                    fontSize: 11, fontWeight: 600, color: 'var(--primary)',
+                    backgroundColor: 'var(--primary-light)', padding: '1px 6px',
+                    borderRadius: 4, marginLeft: 6,
+                  }}>{tierCount} options</span>
+                )}
               </div>
             )}
           </div>
@@ -228,7 +249,16 @@ export default function FlightCard({ flight, compact = false, draggable = false,
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         paddingTop: 12, borderTop: '1px solid var(--border-light)',
       }}>
-        <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{bookingLabel}</div>
+        <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+          {bookingLabel}
+          {tierCount > 1 && (
+            <span style={{
+              fontSize: 11, fontWeight: 600, color: 'var(--primary)',
+              backgroundColor: 'var(--primary-light)', padding: '1px 6px',
+              borderRadius: 4, marginLeft: 6,
+            }}>{tierCount} options</span>
+          )}
+        </div>
         {priceDisplay && (
           <div style={{
             fontSize: 15, fontWeight: 700,

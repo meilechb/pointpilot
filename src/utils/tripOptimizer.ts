@@ -21,6 +21,15 @@ type Segment = {
   arrivalAirport: string
 }
 
+type PricingTier = {
+  id: string
+  label: string
+  paymentType: 'cash' | 'points'
+  cashAmount: number | null
+  pointsAmount: number | null
+  feesAmount: number | null
+}
+
 type Flight = {
   id: string
   legIndex: number | null
@@ -30,6 +39,8 @@ type Flight = {
   cashAmount: number | null
   pointsAmount: number | null
   feesAmount: number | null
+  pricingTiers?: PricingTier[]
+  defaultTierLabel?: string
 }
 
 type Leg = { from: string; to: string }
@@ -49,6 +60,7 @@ export type FlightBooking = {
   portalName?: string       // e.g. "Chase Travel Portal"
   portalCpp?: number        // cents per point in portal
   description: string       // human-readable step
+  tierLabel?: string        // cabin class if from a pricing tier
 }
 
 // A complete booking strategy for the whole trip
@@ -139,6 +151,7 @@ type PayOption = {
   estimatedCashValue: number // what the flight is "worth" in cash
   description: string
   cpp: number // cents per point achieved (higher = better)
+  tierLabel?: string // cabin class label if from a pricing tier
 }
 
 function getPayOptions(flight: Flight, wallet: WalletEntry[], travelers: number): PayOption[] {
@@ -255,6 +268,34 @@ function getPayOptions(flight: Flight, wallet: WalletEntry[], travelers: number)
         description: `Book through ${portal.name} for ${pointsNeeded.toLocaleString()} ${w.program} (${cpp} cpp)`,
         cpp,
       })
+    }
+  }
+
+  // Label base options with default tier label if set
+  if (flight.defaultTierLabel && flight.pricingTiers && flight.pricingTiers.length > 0) {
+    for (const opt of options) {
+      opt.tierLabel = flight.defaultTierLabel
+      opt.description = `[${flight.defaultTierLabel}] ${opt.description}`
+    }
+  }
+
+  // Also evaluate pricing tiers (e.g. Business, First class options)
+  if (flight.pricingTiers && flight.pricingTiers.length > 0) {
+    for (const tier of flight.pricingTiers) {
+      const tierFlight: Flight = {
+        ...flight,
+        paymentType: tier.paymentType,
+        cashAmount: tier.cashAmount,
+        pointsAmount: tier.pointsAmount,
+        feesAmount: tier.feesAmount,
+        pricingTiers: undefined, // prevent recursion
+      }
+      const tierOptions = getPayOptions(tierFlight, wallet, travelers)
+      for (const opt of tierOptions) {
+        opt.tierLabel = tier.label
+        opt.description = `[${tier.label}] ${opt.description}`
+      }
+      options.push(...tierOptions)
     }
   }
 
@@ -479,6 +520,7 @@ function buildStrategy(
       portalName: po.portalName,
       portalCpp: po.portalCpp,
       description: po.description,
+      tierLabel: po.tierLabel,
     })
   }
 

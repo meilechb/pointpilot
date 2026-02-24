@@ -61,6 +61,15 @@ type Segment = {
   duration: number | null
 }
 
+type PricingTier = {
+  id: string
+  label: string
+  paymentType: 'cash' | 'points'
+  cashAmount: number | null
+  pointsAmount: number | null
+  feesAmount: number | null
+}
+
 type Flight = {
   id: string
   legIndex: number
@@ -70,6 +79,8 @@ type Flight = {
   cashAmount: number | null
   pointsAmount: number | null
   feesAmount: number | null
+  pricingTiers?: PricingTier[]
+  defaultTierLabel?: string
 }
 
 type Leg = { from: string; to: string }
@@ -84,6 +95,7 @@ type Props = {
   flights: Flight[]
   travelers: number
   onSave: (assignments: LegAssignment, name: string) => void
+  onChangeTier?: (flightId: string, tier: PricingTier | null) => void
 }
 
 function getFlightRoute(flight: Flight): { from: string; to: string } {
@@ -145,7 +157,7 @@ function validateLeg(leg: Leg, flights: Flight[]): { complete: boolean; warnings
   return { complete, warnings }
 }
 
-export default function TripPlanner({ legs, flights, travelers, onSave }: Props) {
+export default function TripPlanner({ legs, flights, travelers, onSave, onChangeTier }: Props) {
   const [assignments, setAssignments] = useState<LegAssignment>(() => {
     const a: LegAssignment = {}
     legs.forEach((_, i) => { a[i] = [] })
@@ -340,6 +352,35 @@ export default function TripPlanner({ legs, flights, travelers, onSave }: Props)
                           onDragEnd={handleDragEnd}
                           style={{ opacity: draggedFlight === f.id ? 0.4 : 1 }}
                         />
+                        {f.pricingTiers && f.pricingTiers.length > 0 && onChangeTier && (
+                          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 4, paddingLeft: 2 }}>
+                            {[null, ...f.pricingTiers].map((tier, ti) => {
+                              const label = tier ? tier.label : (f.defaultTierLabel || 'Default')
+                              const isActive = tier === null
+                                ? !f.pricingTiers!.some(t => t.paymentType === f.paymentType && t.cashAmount === f.cashAmount && t.pointsAmount === f.pointsAmount)
+                                : tier.paymentType === f.paymentType && tier.cashAmount === f.cashAmount && tier.pointsAmount === f.pointsAmount
+                              const price = tier
+                                ? (tier.paymentType === 'cash' && tier.cashAmount ? `$${tier.cashAmount.toLocaleString()}` : tier.pointsAmount ? `${tier.pointsAmount.toLocaleString()} pts` : '')
+                                : (f.paymentType === 'cash' && f.cashAmount ? `$${f.cashAmount.toLocaleString()}` : f.pointsAmount ? `${f.pointsAmount.toLocaleString()} pts` : '')
+                              return (
+                                <button
+                                  key={ti}
+                                  onClick={() => onChangeTier(f.id, tier)}
+                                  style={{
+                                    padding: '3px 8px', fontSize: 11, fontWeight: isActive ? 600 : 400,
+                                    border: isActive ? '1.5px solid var(--primary)' : '1px solid var(--border)',
+                                    borderRadius: 4,
+                                    backgroundColor: isActive ? 'var(--primary-light)' : 'var(--bg-card)',
+                                    color: isActive ? 'var(--primary)' : 'var(--text-secondary)',
+                                    cursor: 'pointer', transition: 'all 0.15s',
+                                  }}
+                                >
+                                  {label}{price ? ` · ${price}` : ''}
+                                </button>
+                              )
+                            })}
+                          </div>
+                        )}
                       </div>
                       {pos < legFlights.length - 1 && (
                         <div style={{ textAlign: 'center', padding: '2px 0 6px', fontSize: 13 }}>

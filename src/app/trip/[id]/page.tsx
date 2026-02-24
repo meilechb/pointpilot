@@ -14,6 +14,13 @@ import { analyzeItinerary } from '@/utils/bookingAnalyzer'
 import { optimizeTrip, getRelevantSweetSpots, type BookingStrategy } from '@/utils/tripOptimizer'
 import SavePrompt from '@/components/SavePrompt'
 
+function formatShortDate(dateStr: string): string {
+  if (!dateStr) return ''
+  const [y, m, d] = dateStr.split('-').map(Number)
+  const date = new Date(y, m - 1, d)
+  return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+}
+
 const fieldLabel: React.CSSProperties = {
   fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 4, display: 'block',
 }
@@ -151,6 +158,21 @@ export default function TripDetail() {
     if (editingFlightId === flightId) setEditingFlightId(null)
   }
 
+  const handleChangeTier = (flightId: string, tier: any | null) => {
+    const updatedTrip = { ...trip }
+    const flight = updatedTrip.flights.find((f: any) => f.id === flightId)
+    if (!flight) return
+    if (tier) {
+      // Copy tier values to top-level fields
+      flight.paymentType = tier.paymentType
+      flight.cashAmount = tier.cashAmount
+      flight.pointsAmount = tier.pointsAmount
+      flight.feesAmount = tier.feesAmount
+    }
+    // If tier is null, keep current top-level values (already the default)
+    saveTrip(updatedTrip)
+  }
+
   const handleSavePlan = (assignments: any, planName: string) => {
     const updatedTrip = { ...trip }
     const flightMap: Record<string, any> = {}
@@ -253,7 +275,7 @@ export default function TripDetail() {
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, fontSize: 14, color: 'var(--text-secondary)' }}>
             <span>{trip.travelers} traveler{trip.travelers > 1 ? 's' : ''}</span>
             <span style={{ color: 'var(--border)' }}>·</span>
-            <span>{trip.departureDate}{trip.returnDate ? ` → ${trip.returnDate}` : ''}</span>
+            <span>{formatShortDate(trip.departureDate)}{trip.returnDate ? ` → ${formatShortDate(trip.returnDate)}` : ''}</span>
             <span style={{ color: 'var(--border)' }}>·</span>
             <span>{trip.dateFlexibility === 'exact' ? 'Exact dates' : trip.dateFlexibility}</span>
           </div>
@@ -534,6 +556,25 @@ export default function TripDetail() {
             </div>
           ) : (
             <>
+              {!editingFlightId && (
+                <button
+                  onClick={() => setShowAddFlight(true)}
+                  style={{
+                    width: '100%', padding: 14, marginBottom: 12,
+                    background: 'linear-gradient(135deg, var(--primary), var(--primary-hover))',
+                    color: 'var(--text-inverse)',
+                    border: 'none', borderRadius: 'var(--radius)',
+                    cursor: 'pointer', fontSize: 15, fontWeight: 600,
+                    boxShadow: '0 2px 8px rgba(67, 56, 202, 0.3)',
+                    transition: 'transform 0.15s, box-shadow 0.15s',
+                  }}
+                  onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(67, 56, 202, 0.4)' }}
+                  onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(67, 56, 202, 0.3)' }}
+                >
+                  + Add Flight
+                </button>
+              )}
+
               {trip.flights.map((flight: any) => (
                 <div key={flight.id} style={{ marginBottom: 10 }}>
                   {editingFlightId === flight.id ? (
@@ -553,31 +594,12 @@ export default function TripDetail() {
                 </div>
               ))}
 
-              {showAddFlight ? (
+              {showAddFlight && (
                 <AddFlight
                   legs={trip.legs}
                   onSave={handleSaveFlight}
                   onCancel={() => setShowAddFlight(false)}
                 />
-              ) : (
-                !editingFlightId && (
-                  <button
-                    onClick={() => setShowAddFlight(true)}
-                    style={{
-                      width: '100%', padding: 14, marginTop: 4,
-                      background: 'linear-gradient(135deg, var(--primary), var(--primary-hover))',
-                      color: 'var(--text-inverse)',
-                      border: 'none', borderRadius: 'var(--radius)',
-                      cursor: 'pointer', fontSize: 15, fontWeight: 600,
-                      boxShadow: '0 2px 8px rgba(67, 56, 202, 0.3)',
-                      transition: 'transform 0.15s, box-shadow 0.15s',
-                    }}
-                    onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(67, 56, 202, 0.4)' }}
-                    onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(67, 56, 202, 0.3)' }}
-                  >
-                    + Add Flight
-                  </button>
-                )
               )}
             </>
           )}
@@ -614,6 +636,7 @@ export default function TripDetail() {
               flights={trip.flights}
               travelers={trip.travelers || 1}
               onSave={handleSavePlan}
+              onChangeTier={handleChangeTier}
             />
           )}
         </>

@@ -22,6 +22,15 @@ type Segment = {
   duration: number | null
 }
 
+export type PricingTier = {
+  id: string
+  label: string
+  paymentType: 'cash' | 'points'
+  cashAmount: number | null
+  pointsAmount: number | null
+  feesAmount: number | null
+}
+
 type Props = {
   legs: { from: string; to: string }[]
   onSave: (flight: any) => void
@@ -82,6 +91,8 @@ export default function AddFlight({ legs, onSave, onCancel, editingFlight }: Pro
   const [step, setStep] = useState<'flight' | 'booking'>('flight')
   const [segments, setSegments] = useState<Segment[]>(editingFlight?.segments || [])
 
+  const [showAddMore, setShowAddMore] = useState(segments.length === 0)
+
   const [lookupCode, setLookupCode] = useState('')
   const [lookupDate, setLookupDate] = useState<Date | null>(null)
   const [lookupLoading, setLookupLoading] = useState(false)
@@ -102,6 +113,17 @@ export default function AddFlight({ legs, onSave, onCancel, editingFlight }: Pro
   const [cashAmount, setCashAmount] = useState(editingFlight?.cashAmount?.toString() || '')
   const [pointsAmount, setPointsAmount] = useState(editingFlight?.pointsAmount?.toString() || '')
   const [feesAmount, setFeesAmount] = useState(editingFlight?.feesAmount?.toString() || '')
+
+  // Pricing tiers
+  const [pricingTiers, setPricingTiers] = useState<PricingTier[]>(editingFlight?.pricingTiers || [])
+  const [defaultTierLabel, setDefaultTierLabel] = useState(editingFlight?.defaultTierLabel || '')
+  const [showTierForm, setShowTierForm] = useState(false)
+  const [tierLabel, setTierLabel] = useState('')
+  const [tierPaymentType, setTierPaymentType] = useState<'cash' | 'points'>('cash')
+  const [tierCashAmount, setTierCashAmount] = useState('')
+  const [tierPointsAmount, setTierPointsAmount] = useState('')
+  const [tierFeesAmount, setTierFeesAmount] = useState('')
+  const [editingTierId, setEditingTierId] = useState<string | null>(null)
 
   const handleLookup = async () => {
     setLookupLoading(true)
@@ -134,6 +156,7 @@ export default function AddFlight({ legs, onSave, onCancel, editingFlight }: Pro
         duration: data.duration || null,
       }
       setSegments([...segments, newSegment])
+      setShowAddMore(false)
       setLookupCode('')
       setLookupDate(null)
       setLookupLoading(false)
@@ -160,6 +183,7 @@ export default function AddFlight({ legs, onSave, onCancel, editingFlight }: Pro
       duration: null,
     }
     setSegments([...segments, newSegment])
+    setShowAddMore(false)
     setManualCode('')
     setManualAirline('')
     setManualDate(null)
@@ -180,6 +204,44 @@ export default function AddFlight({ legs, onSave, onCancel, editingFlight }: Pro
     setSegments(segments.filter((_, i) => i !== index))
   }
 
+  const resetTierForm = () => {
+    setTierLabel('')
+    setTierPaymentType('cash')
+    setTierCashAmount('')
+    setTierPointsAmount('')
+    setTierFeesAmount('')
+    setEditingTierId(null)
+    setShowTierForm(false)
+  }
+
+  const handleAddTier = () => {
+    if (!tierLabel) return
+    const tier: PricingTier = {
+      id: editingTierId || crypto.randomUUID(),
+      label: tierLabel,
+      paymentType: tierPaymentType,
+      cashAmount: tierCashAmount ? parseFloat(tierCashAmount) : null,
+      pointsAmount: tierPointsAmount ? parseInt(tierPointsAmount) : null,
+      feesAmount: tierFeesAmount ? parseFloat(tierFeesAmount) : null,
+    }
+    if (editingTierId) {
+      setPricingTiers(pricingTiers.map(t => t.id === editingTierId ? tier : t))
+    } else {
+      setPricingTiers([...pricingTiers, tier])
+    }
+    resetTierForm()
+  }
+
+  const startEditTier = (tier: PricingTier) => {
+    setEditingTierId(tier.id)
+    setTierLabel(tier.label)
+    setTierPaymentType(tier.paymentType)
+    setTierCashAmount(tier.cashAmount?.toString() || '')
+    setTierPointsAmount(tier.pointsAmount?.toString() || '')
+    setTierFeesAmount(tier.feesAmount?.toString() || '')
+    setShowTierForm(true)
+  }
+
   const handleSave = () => {
     onSave({
       id: editingFlight?.id || crypto.randomUUID(),
@@ -190,6 +252,8 @@ export default function AddFlight({ legs, onSave, onCancel, editingFlight }: Pro
       cashAmount: cashAmount ? parseFloat(cashAmount) : null,
       pointsAmount: pointsAmount ? parseInt(pointsAmount) : null,
       feesAmount: feesAmount ? parseFloat(feesAmount) : null,
+      ...(defaultTierLabel ? { defaultTierLabel } : {}),
+      ...(pricingTiers.length > 0 ? { pricingTiers } : {}),
     })
   }
 
@@ -319,6 +383,22 @@ export default function AddFlight({ legs, onSave, onCancel, editingFlight }: Pro
           style={{ marginBottom: 14 }}
         />
 
+        <label style={fieldLabel}>Cabin class (optional)</label>
+        <div style={{ marginBottom: 14 }}>
+          <CustomSelect
+            value={defaultTierLabel}
+            onChange={(v) => setDefaultTierLabel(v as string)}
+            options={[
+              { value: '', label: 'None' },
+              { value: 'Economy', label: 'Economy' },
+              { value: 'Premium Economy', label: 'Premium Economy' },
+              { value: 'Business', label: 'Business' },
+              { value: 'First', label: 'First' },
+            ]}
+            placeholder="Select cabin class"
+          />
+        </div>
+
         <label style={fieldLabel}>Payment type</label>
         <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
           {['cash', 'points'].map(type => (
@@ -359,6 +439,129 @@ export default function AddFlight({ legs, onSave, onCancel, editingFlight }: Pro
               <label style={fieldLabel}>Taxes & fees ($)</label>
               <input type="number" placeholder="e.g. 45" value={feesAmount} onChange={(e) => setFeesAmount(e.target.value)} />
             </div>
+          </div>
+        )}
+
+        {/* Additional pricing tiers */}
+        {pricingTiers.length > 0 && (
+          <div style={{ marginBottom: 10 }}>
+            {pricingTiers.map(tier => (
+              <div key={tier.id} style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                padding: '6px 10px', marginBottom: 4,
+                backgroundColor: 'var(--bg)', borderRadius: 'var(--radius-sm)',
+                border: '1px solid var(--border-light)',
+              }}>
+                <div style={{ fontSize: 12 }}>
+                  <span style={{ fontWeight: 600 }}>{tier.label}</span>
+                  <span style={{ color: 'var(--text-muted)', marginLeft: 6 }}>
+                    {tier.paymentType === 'cash' && tier.cashAmount ? `$${tier.cashAmount.toLocaleString()}` : ''}
+                    {tier.paymentType === 'points' && tier.pointsAmount ? `${tier.pointsAmount.toLocaleString()} pts` : ''}
+                    {tier.paymentType === 'points' && tier.feesAmount ? ` + $${tier.feesAmount}` : ''}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', gap: 2 }}>
+                  <button onClick={() => startEditTier(tier)} style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 12, color: 'var(--text-muted)', padding: '2px 5px' }}>✎</button>
+                  <button onClick={() => setPricingTiers(pricingTiers.filter(t => t.id !== tier.id))} style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 12, color: 'var(--text-muted)', padding: '2px 5px' }}>✕</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {!showTierForm ? (
+          <button
+            onClick={() => { setShowTierForm(true); setTierPaymentType(paymentType as 'cash' | 'points') }}
+            style={{
+              border: 'none', background: 'none', cursor: 'pointer',
+              fontSize: 12, color: 'var(--text-muted)', padding: 0, marginBottom: 14,
+              display: 'block',
+            }}
+          >
+            + Compare with another cabin class
+          </button>
+        ) : (
+          <div style={{
+            padding: 10, marginBottom: 14,
+            backgroundColor: 'var(--bg)', borderRadius: 'var(--radius-sm)',
+            border: '1px solid var(--border-light)',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <span style={{ fontWeight: 600, fontSize: 12 }}>{editingTierId ? 'Edit option' : 'Add pricing option'}</span>
+              <button onClick={resetTierForm} style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 13, color: 'var(--text-muted)', padding: '0 4px' }}>✕</button>
+            </div>
+
+            <label style={{ ...fieldLabel, fontSize: 12 }}>Payment type</label>
+            <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+              {(['cash', 'points'] as const).map(type => (
+                <button
+                  key={type}
+                  onClick={() => setTierPaymentType(type)}
+                  style={{
+                    flex: 1, padding: 6, height: 32, fontSize: 12,
+                    border: tierPaymentType === type ? '2px solid var(--primary)' : '1.5px solid var(--border)',
+                    borderRadius: 'var(--radius-sm)',
+                    backgroundColor: tierPaymentType === type ? 'var(--primary-light)' : 'var(--bg-card)',
+                    cursor: 'pointer',
+                    fontWeight: tierPaymentType === type ? 600 : 400,
+                    color: tierPaymentType === type ? 'var(--primary)' : 'var(--text)',
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  {type === 'cash' ? 'Cash' : 'Points'}
+                </button>
+              ))}
+            </div>
+
+            {tierPaymentType === 'cash' && (
+              <>
+                <label style={{ ...fieldLabel, fontSize: 12 }}>Price per person ($)</label>
+                <input type="number" placeholder="e.g. 1200" value={tierCashAmount} onChange={(e) => setTierCashAmount(e.target.value)} style={{ marginBottom: 8 }} />
+              </>
+            )}
+
+            {tierPaymentType === 'points' && (
+              <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ ...fieldLabel, fontSize: 12 }}>Points per person</label>
+                  <input type="number" placeholder="e.g. 80000" value={tierPointsAmount} onChange={(e) => setTierPointsAmount(e.target.value)} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ ...fieldLabel, fontSize: 12 }}>Taxes & fees ($)</label>
+                  <input type="number" placeholder="e.g. 45" value={tierFeesAmount} onChange={(e) => setTierFeesAmount(e.target.value)} />
+                </div>
+              </div>
+            )}
+
+            <label style={{ ...fieldLabel, fontSize: 12 }}>Cabin class</label>
+            <div style={{ marginBottom: 8 }}>
+              <CustomSelect
+                value={tierLabel}
+                onChange={(v) => setTierLabel(v as string)}
+                options={[
+                  { value: 'Economy', label: 'Economy' },
+                  { value: 'Premium Economy', label: 'Premium Economy' },
+                  { value: 'Business', label: 'Business' },
+                  { value: 'First', label: 'First' },
+                ]}
+                placeholder="Select cabin class"
+              />
+            </div>
+
+            <button
+              onClick={handleAddTier}
+              disabled={!tierLabel}
+              style={{
+                width: '100%', padding: 8, height: 34,
+                background: !tierLabel ? 'var(--border)' : 'linear-gradient(135deg, var(--primary), var(--primary-hover))',
+                color: !tierLabel ? 'var(--text-muted)' : 'var(--text-inverse)',
+                border: 'none', borderRadius: 'var(--radius-sm)',
+                cursor: !tierLabel ? 'default' : 'pointer',
+                fontWeight: 600, fontSize: 12,
+              }}
+            >
+              {editingTierId ? 'Update' : 'Add'}
+            </button>
           </div>
         )}
 
@@ -480,8 +683,32 @@ export default function AddFlight({ legs, onSave, onCancel, editingFlight }: Pro
         </div>
       )}
 
+      {/* Hint for first segment */}
+      {segments.length === 0 && (
+        <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}>
+          Has a layover? You can add connecting flights after.
+        </p>
+      )}
+
+      {/* Add connecting segment button (shown after first segment is added) */}
+      {segments.length > 0 && !showAddMore && (
+        <button
+          onClick={() => setShowAddMore(true)}
+          style={{
+            border: '1.5px dashed var(--border)', background: 'none', cursor: 'pointer',
+            fontSize: 13, color: 'var(--text-muted)', padding: '8px 0',
+            width: '100%', borderRadius: 'var(--radius-sm)', marginBottom: 4,
+            transition: 'border-color 0.15s, color 0.15s',
+          }}
+          onMouseOver={(e) => { e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.color = 'var(--primary)' }}
+          onMouseOut={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-muted)' }}
+        >
+          + Add connecting flight
+        </button>
+      )}
+
       {/* Lookup mode */}
-      {mode === 'lookup' && (
+      {showAddMore && mode === 'lookup' && (
         <>
           <div className="lookup-grid">
             <div>
@@ -545,7 +772,7 @@ export default function AddFlight({ legs, onSave, onCancel, editingFlight }: Pro
       )}
 
       {/* Manual mode */}
-      {mode === 'manual' && (
+      {showAddMore && mode === 'manual' && (
         <>
           <div className="manual-grid-2">
             <div>
