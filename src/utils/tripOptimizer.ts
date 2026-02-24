@@ -199,10 +199,12 @@ function getPayOptions(flight: Flight, wallet: WalletEntry[], travelers: number)
 
     // Option B: Direct airline miles from wallet
     if (airlineProgram) {
+      let foundDirectMatch = false
       for (const w of wallet) {
         if (w.currency_type !== 'airline_miles') continue
         if (!programNamesMatch(w.program, airlineProgram)) continue
 
+        foundDirectMatch = true
         const cpp = estimatedCashValue > 0 ? (estimatedCashValue - totalFees) / totalPoints * 100 : 1.5
         options.push({
           method: 'direct_miles',
@@ -217,6 +219,34 @@ function getPayOptions(flight: Flight, wallet: WalletEntry[], travelers: number)
           cpp,
         })
       }
+
+      // Always add a baseline "pay points" option so the flight isn't invisible to the optimizer
+      if (!foundDirectMatch) {
+        const cpp = estimatedCashValue > 0 ? (estimatedCashValue - totalFees) / totalPoints * 100 : 1.5
+        const programLabel = airlineProgram || flight.bookingSite || 'airline miles'
+        options.push({
+          method: 'direct_miles',
+          cashCost: totalFees,
+          pointsCost: totalPoints,
+          pointsProgram: programLabel,
+          walletId: '__points_no_wallet__',
+          estimatedCashValue,
+          description: `Use ${totalPoints.toLocaleString()} ${programLabel}${totalFees ? ` + $${totalFees.toLocaleString()} fees` : ''} on ${flight.bookingSite} (not in your wallet)`,
+          cpp,
+        })
+      }
+    } else {
+      // No recognized airline program — still add a generic points option
+      options.push({
+        method: 'direct_miles',
+        cashCost: totalFees,
+        pointsCost: totalPoints,
+        pointsProgram: flight.bookingSite || 'points',
+        walletId: '__points_no_wallet__',
+        estimatedCashValue,
+        description: `Use ${totalPoints.toLocaleString()} points${totalFees ? ` + $${totalFees.toLocaleString()} fees` : ''} on ${flight.bookingSite || 'booking site'}`,
+        cpp: estimatedCashValue > 0 ? (estimatedCashValue - totalFees) / totalPoints * 100 : 1.5,
+      })
     }
 
     // Option C: Transfer bank points → airline program
@@ -468,8 +498,8 @@ function buildStrategy(
     }
 
     // Filter options that we can still afford (wallet not depleted)
-    const affordable = opts.filter(o => {
-      if (o.payOption.walletId === '__cash__') return true
+    let affordable = opts.filter(o => {
+      if (o.payOption.walletId === '__cash__' || o.payOption.walletId === '__points_no_wallet__') return true
       const used = walletUsage[o.payOption.walletId] || 0
       const w = wallet.find(w => w.id === o.payOption.walletId)
       if (!w) return true
