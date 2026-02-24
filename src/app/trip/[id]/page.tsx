@@ -253,45 +253,97 @@ export default function TripDetail() {
         <div style={{
           backgroundColor: 'var(--bg-card)',
           borderRadius: 'var(--radius-lg)',
-          boxShadow: 'var(--shadow-sm)',
+          boxShadow: 'var(--shadow-md)',
           border: '1px solid var(--border-light)',
-          padding: '20px 24px',
+          padding: 0,
           marginBottom: 20,
+          overflow: 'hidden',
         }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 4 }}>{trip.tripName || 'Untitled Trip'}</h1>
-            <button
-              onClick={startEditing}
-              style={{
-                padding: '5px 14px', border: '1px solid var(--border)',
-                borderRadius: 'var(--radius-sm)', cursor: 'pointer',
-                backgroundColor: 'var(--bg-card)', fontSize: 13, fontWeight: 500,
-                color: 'var(--text-secondary)', transition: 'border-color 0.15s',
-              }}
-            >
-              Edit
-            </button>
+          {/* Top banner with route visualization */}
+          <div style={{
+            background: 'linear-gradient(135deg, var(--primary), var(--primary-hover))',
+            padding: '18px 24px',
+            color: 'var(--text-inverse)',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div>
+                <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 6, color: 'var(--text-inverse)' }}>
+                  {trip.tripName || 'Untitled Trip'}
+                </h1>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  {trip.legs.map((leg: any, i: number) => (
+                    <span key={i} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ fontWeight: 600, fontSize: 15 }}>{getCityName(leg.from) || leg.from}</span>
+                      <span style={{ fontSize: 12, opacity: 0.7 }}>→</span>
+                      {i === trip.legs.length - 1 && (
+                        <span style={{ fontWeight: 600, fontSize: 15 }}>{getCityName(leg.to) || leg.to}</span>
+                      )}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <button
+                onClick={startEditing}
+                style={{
+                  padding: '5px 14px', border: '1px solid rgba(255,255,255,0.3)',
+                  borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+                  backgroundColor: 'rgba(255,255,255,0.15)', fontSize: 12, fontWeight: 600,
+                  color: 'var(--text-inverse)', transition: 'background-color 0.15s',
+                  flexShrink: 0,
+                }}
+                onMouseOver={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.25)' }}
+                onMouseOut={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.15)' }}
+              >
+                Edit
+              </button>
+            </div>
           </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, fontSize: 14, color: 'var(--text-secondary)' }}>
-            <span>{trip.travelers} traveler{trip.travelers > 1 ? 's' : ''}</span>
-            <span style={{ color: 'var(--border)' }}>·</span>
-            <span>{formatShortDate(trip.departureDate)}{trip.returnDate ? ` → ${formatShortDate(trip.returnDate)}` : ''}</span>
-            <span style={{ color: 'var(--border)' }}>·</span>
-            <span>{trip.dateFlexibility === 'exact' ? 'Exact dates' : trip.dateFlexibility}</span>
-          </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 12 }}>
-            {trip.legs.map((leg: any, i: number) => (
-              <span key={i} style={{
-                padding: '4px 10px',
-                backgroundColor: 'var(--bg-accent)',
-                borderRadius: 20,
-                fontSize: 13,
-                fontWeight: 600,
-                color: 'var(--primary)',
-              }}>
-                {leg.from} → {leg.to}
+
+          {/* Details row */}
+          <div style={{
+            padding: '14px 24px',
+            display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 14 }}>📅</span>
+              <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>
+                {formatShortDate(trip.departureDate)}
+                {trip.returnDate ? ` – ${formatShortDate(trip.returnDate)}` : ''}
               </span>
-            ))}
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 14 }}>👤</span>
+              <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>
+                {trip.travelers} traveler{trip.travelers > 1 ? 's' : ''}
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+              {trip.legs.map((leg: any, i: number) => (
+                <span key={i} style={{
+                  padding: '2px 8px',
+                  backgroundColor: 'var(--primary-light)',
+                  borderRadius: 12,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: 'var(--primary)',
+                }}>
+                  {leg.from} → {leg.to}
+                </span>
+              ))}
+            </div>
+
+            {trip.tripType && (
+              <span style={{
+                fontSize: 12, fontWeight: 500,
+                padding: '2px 8px', borderRadius: 12,
+                backgroundColor: 'var(--bg)', color: 'var(--text-muted)',
+                border: '1px solid var(--border-light)',
+              }}>
+                {trip.tripType === 'oneway' ? 'One Way' : trip.tripType === 'multicity' ? 'Multi-City' : 'Round Trip'}
+              </span>
+            )}
           </div>
         </div>
       ) : (
