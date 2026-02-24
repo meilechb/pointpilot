@@ -147,8 +147,8 @@ function validateLeg(leg: Leg, flights: Flight[]): { complete: boolean; warnings
       const arrive = new Date(`${seg1.date}T${seg1.arrivalTime}`)
       const depart = new Date(`${seg2.date}T${seg2.departureTime}`)
       const mins = (depart.getTime() - arrive.getTime()) / 60000
-      if (mins > 0 && mins < 90) {
-        warnings.push({ type: 'short_layover', message: `Only ${Math.round(mins)} min layover between flights ${i + 1} and ${i + 2}` })
+      if (mins > 0 && mins < 120) {
+        warnings.push({ type: 'short_layover', message: `Only ${Math.round(mins)} min layover between flights ${i + 1} and ${i + 2} — consider allowing at least 2 hours` })
       }
     }
   }

@@ -86,6 +86,21 @@ function resolvePartnerName(bookingSite: string): string | null {
   return null
 }
 
+// Robust program name matching — checks multiple strategies
+function programNamesMatch(walletProgram: string, targetProgram: string): boolean {
+  const w = walletProgram.toLowerCase().trim()
+  const t = targetProgram.toLowerCase().trim()
+  if (w === t) return true
+  if (w.includes(t) || t.includes(w)) return true
+  // Check each significant word (3+ chars) from target appears in wallet
+  const targetWords = t.split(/[\s\-]+/).filter(word => word.length >= 3)
+  if (targetWords.length > 0 && targetWords.every(word => w.includes(word))) return true
+  // Check each significant word from wallet appears in target
+  const walletWords = w.split(/[\s\-]+/).filter(word => word.length >= 3)
+  if (walletWords.length > 0 && walletWords.every(word => t.includes(word))) return true
+  return false
+}
+
 function getFlightLabel(flight: Flight): string {
   const segs = flight.segments
   if (segs.length === 0) return 'Unknown flight'
@@ -139,7 +154,7 @@ export function analyzeItinerary(
       if (partnerName) {
         const directMatch = wallet.find(w =>
           w.currency_type === 'airline_miles' &&
-          w.program.toLowerCase().includes(partnerName.toLowerCase().split(' ')[0])
+          programNamesMatch(w.program, partnerName)
         )
 
         if (directMatch) {
@@ -174,7 +189,7 @@ export function analyzeItinerary(
           // Find this program in wallet
           const walletEntry = wallet.find(w =>
             w.currency_type === 'bank_points' &&
-            w.program.toLowerCase().includes(program.name.toLowerCase().split(' ')[0])
+            programNamesMatch(w.program, program.name)
           )
           if (!walletEntry) continue
 
@@ -207,15 +222,35 @@ export function analyzeItinerary(
         if (found) continue
       }
 
-      // 3. Not enough points anywhere
+      // 3. Not enough points anywhere — provide helpful message about what was found
+      let shortfallMsg = ''
+      if (partnerName) {
+        // Check if user has any matching wallet entries (direct or transfer)
+        const directEntry = wallet.find(w => w.currency_type === 'airline_miles' && programNamesMatch(w.program, partnerName))
+        const transferEntry = wallet.find(w => {
+          if (w.currency_type !== 'bank_points') return false
+          return transferPartners.some(p => programNamesMatch(w.program, p.name) && p.partners.some(pt => pt.partner.toLowerCase() === partnerName.toLowerCase()))
+        })
+
+        if (directEntry) {
+          const used = walletUsage[directEntry.id] || 0
+          shortfallMsg = `Need ${totalPointsNeeded.toLocaleString()} ${partnerName} miles but only have ${(directEntry.balance - used).toLocaleString()} ${directEntry.program} remaining`
+        } else if (transferEntry) {
+          const used = walletUsage[transferEntry.id] || 0
+          shortfallMsg = `Need ${totalPointsNeeded.toLocaleString()} ${partnerName} miles — your ${transferEntry.program} (${(transferEntry.balance - used).toLocaleString()} pts) doesn't have enough to transfer`
+        } else {
+          shortfallMsg = `Need ${totalPointsNeeded.toLocaleString()} ${partnerName} miles but no matching program found in your wallet — add ${partnerName} or a bank program that transfers to it`
+        }
+      } else {
+        shortfallMsg = `Need ${totalPointsNeeded.toLocaleString()} points on ${flight.bookingSite || 'unknown program'} — add this program to your wallet or check transfer partners`
+      }
+
       steps.push({
         type: 'shortfall',
         flightLabel: label,
         pointsNeeded: totalPointsNeeded,
         feesAmount: (flight.feesAmount || 0) * travelers,
-        message: partnerName
-          ? `Need ${totalPointsNeeded.toLocaleString()} ${partnerName} miles but you don't have enough points or transfer options`
-          : `Need ${totalPointsNeeded.toLocaleString()} points on ${flight.bookingSite || 'unknown program'} — add this program to your wallet or check transfer partners`,
+        message: shortfallMsg,
       })
     }
   }

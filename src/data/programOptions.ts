@@ -300,4 +300,5 @@ export const cashbackPrograms: ProgramOption[] = [
   { value: 'Wells Fargo Active Cash', label: 'Wells Fargo Active Cash' },
   { value: 'US Bank Cash+', label: 'US Bank Cash+' },
   { value: 'PayPal Cashback Mastercard', label: 'PayPal Cashback Mastercard' },
+  { value: 'X1 Card', label: 'X1 Card' },
 ]

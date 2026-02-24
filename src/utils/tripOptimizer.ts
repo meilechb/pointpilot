@@ -89,12 +89,26 @@ function getFlightLabel(flight: Flight): string {
   return codes ? `${codes} (${from} → ${to})` : `${from} → ${to}`
 }
 
+// Robust program name matching — checks multiple strategies
+function programNamesMatch(walletProgram: string, targetProgram: string): boolean {
+  const w = walletProgram.toLowerCase().trim()
+  const t = targetProgram.toLowerCase().trim()
+  if (w === t) return true
+  if (w.includes(t) || t.includes(w)) return true
+  // Check each significant word (3+ chars) from target appears in wallet
+  const targetWords = t.split(/[\s\-]+/).filter(word => word.length >= 3)
+  if (targetWords.length > 0 && targetWords.every(word => w.includes(word))) return true
+  // Check each significant word from wallet appears in target
+  const walletWords = w.split(/[\s\-]+/).filter(word => word.length >= 3)
+  if (walletWords.length > 0 && walletWords.every(word => t.includes(word))) return true
+  return false
+}
+
 // Match a wallet entry to a bank program in transferPartners
 function matchWalletToProgram(wallet: WalletEntry): string | null {
   if (wallet.currency_type !== 'bank_points') return null
-  const lower = wallet.program.toLowerCase()
   for (const p of transferPartners) {
-    if (lower.includes(p.name.toLowerCase().split(' ')[0])) return p.id
+    if (programNamesMatch(wallet.program, p.name)) return p.id
   }
   return null
 }
@@ -187,8 +201,7 @@ function getPayOptions(flight: Flight, wallet: WalletEntry[], travelers: number)
     if (airlineProgram) {
       for (const w of wallet) {
         if (w.currency_type !== 'airline_miles') continue
-        if (!w.program.toLowerCase().includes(airlineProgram.toLowerCase().split(' ')[0])) continue
-        if (w.balance < totalPoints) continue
+        if (!programNamesMatch(w.program, airlineProgram)) continue
 
         const cpp = estimatedCashValue > 0 ? (estimatedCashValue - totalFees) / totalPoints * 100 : 1.5
         options.push({
@@ -198,7 +211,9 @@ function getPayOptions(flight: Flight, wallet: WalletEntry[], travelers: number)
           pointsProgram: w.program,
           walletId: w.id,
           estimatedCashValue,
-          description: `Use ${totalPoints.toLocaleString()} ${w.program}${totalFees ? ` + $${totalFees.toLocaleString()} fees` : ''} on ${flight.bookingSite}`,
+          description: w.balance >= totalPoints
+            ? `Use ${totalPoints.toLocaleString()} ${w.program}${totalFees ? ` + $${totalFees.toLocaleString()} fees` : ''} on ${flight.bookingSite}`
+            : `Use ${totalPoints.toLocaleString()} ${w.program}${totalFees ? ` + $${totalFees.toLocaleString()} fees` : ''} on ${flight.bookingSite} (need ${(totalPoints - w.balance).toLocaleString()} more miles)`,
           cpp,
         })
       }
@@ -215,11 +230,9 @@ function getPayOptions(flight: Flight, wallet: WalletEntry[], travelers: number)
         // Find this bank program in wallet
         for (const w of wallet) {
           if (w.currency_type !== 'bank_points') continue
-          if (!w.program.toLowerCase().includes(program.name.toLowerCase().split(' ')[0])) continue
+          if (!programNamesMatch(w.program, program.name)) continue
 
           const bankPointsNeeded = Math.ceil(totalPoints * partner.ratio[0] / partner.ratio[1])
-          if (w.balance < bankPointsNeeded) continue
-
           const ratioStr = partner.ratio[0] === partner.ratio[1] ? '1:1' : `${partner.ratio[0]}:${partner.ratio[1]}`
           const cpp = estimatedCashValue > 0 ? (estimatedCashValue - totalFees) / bankPointsNeeded * 100 : 1.5
 
@@ -233,7 +246,9 @@ function getPayOptions(flight: Flight, wallet: WalletEntry[], travelers: number)
             transferTo: partner.partner,
             transferRatio: ratioStr,
             estimatedCashValue,
-            description: `Transfer ${bankPointsNeeded.toLocaleString()} ${program.name} → ${partner.partner} (${ratioStr}), book on ${flight.bookingSite}${totalFees ? ` + $${totalFees.toLocaleString()} fees` : ''}`,
+            description: w.balance >= bankPointsNeeded
+              ? `Transfer ${bankPointsNeeded.toLocaleString()} ${program.name} → ${partner.partner} (${ratioStr}), book on ${flight.bookingSite}${totalFees ? ` + $${totalFees.toLocaleString()} fees` : ''}`
+              : `Transfer ${bankPointsNeeded.toLocaleString()} ${program.name} → ${partner.partner} (${ratioStr}), book on ${flight.bookingSite}${totalFees ? ` + $${totalFees.toLocaleString()} fees` : ''} (need ${(bankPointsNeeded - w.balance).toLocaleString()} more pts)`,
             cpp,
           })
         }
@@ -254,7 +269,6 @@ function getPayOptions(flight: Flight, wallet: WalletEntry[], travelers: number)
 
       const cpp = portal.premiumCentsPerPoint || portal.centsPerPoint
       const pointsNeeded = Math.ceil(totalCash / (cpp / 100))
-      if (w.balance < pointsNeeded) continue
 
       options.push({
         method: 'portal',
@@ -265,7 +279,9 @@ function getPayOptions(flight: Flight, wallet: WalletEntry[], travelers: number)
         portalName: portal.name,
         portalCpp: cpp,
         estimatedCashValue: totalCash,
-        description: `Book through ${portal.name} for ${pointsNeeded.toLocaleString()} ${w.program} (${cpp} cpp)`,
+        description: w.balance >= pointsNeeded
+          ? `Book through ${portal.name} for ${pointsNeeded.toLocaleString()} ${w.program} (${cpp} cpp)`
+          : `Book through ${portal.name} for ${pointsNeeded.toLocaleString()} ${w.program} (${cpp} cpp) (need ${(pointsNeeded - w.balance).toLocaleString()} more pts)`,
         cpp,
       })
     }
@@ -461,6 +477,17 @@ function buildStrategy(
     })
 
     if (affordable.length === 0) {
+      // Check if there are points options that just don't have enough balance
+      const pointsOpts = opts.filter(o => o.payOption.method !== 'cash')
+      if (pointsOpts.length > 0) {
+        const bestShortfall = pointsOpts.sort((a, b) => b.payOption.cpp - a.payOption.cpp)[0]
+        const used = walletUsage[bestShortfall.payOption.walletId] || 0
+        const w = wallet.find(we => we.id === bestShortfall.payOption.walletId)
+        const available = w ? w.balance - used : 0
+        const needed = bestShortfall.payOption.pointsCost
+        warnings.push(`Insufficient ${bestShortfall.payOption.pointsProgram} balance for ${legs[legIdx].from} → ${legs[legIdx].to} (have ${available.toLocaleString()}, need ${needed.toLocaleString()})`)
+      }
+
       // Fall back to any cash option
       const cashOpt = opts.find(o => o.payOption.method === 'cash')
       if (cashOpt) {
