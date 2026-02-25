@@ -89,6 +89,43 @@ async function loadFlights() {
   })
 }
 
+async function loadRawPayloads() {
+  return new Promise(resolve => {
+    chrome.runtime.sendMessage({ type: 'GET_RAW_PAYLOADS' }, result => {
+      resolve(result?.payloads || [])
+    })
+  })
+}
+
+async function parseFlightsWithAI(payloads, pageUrl) {
+  const res = await fetch(`${API_BASE}/api/parse-flights`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${state.token}`,
+    },
+    body: JSON.stringify({
+      payloads: payloads.map(p => p.payload),
+      url: pageUrl,
+    }),
+  })
+  if (!res.ok) return []
+  const data = await res.json()
+  return data.flights || []
+}
+
+function getCurrentTabUrl() {
+  return new Promise(resolve => {
+    chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
+      resolve(tabs[0]?.url || '')
+    })
+  })
+}
+
+function storeFlights(flights) {
+  chrome.runtime.sendMessage({ type: 'STORE_FLIGHTS', flights })
+}
+
 // ---- Helpers ----
 
 function formatFlightLabel(f) {
@@ -173,6 +210,12 @@ function render() {
   if (s === 'loading') {
     screen.innerHTML = `<div style="padding:40px;text-align:center;color:#6b7280">
       <div class="spinner" style="border-color:rgba(67,56,202,0.3);border-top-color:#4338ca;display:inline-block"></div>
+    </div>`
+  } else if (s === 'analyzing') {
+    screen.innerHTML = `<div style="padding:32px 16px;text-align:center;color:#6b7280">
+      <div class="spinner" style="border-color:rgba(67,56,202,0.3);border-top-color:#4338ca;display:inline-block;width:24px;height:24px;border-width:3px"></div>
+      <div style="margin-top:14px;font-weight:600;color:#1e1b4b;font-size:14px">Analyzing flights...</div>
+      <div style="margin-top:6px;font-size:12px">Reading flight data from this page</div>
     </div>`
   } else if (s === 'login') {
     screen.appendChild(renderLogin())
@@ -598,8 +641,45 @@ function renderSuccess() {
 // ---- Init ----
 
 async function goToFlights() {
-  const flights = await loadFlights()
-  setState({ flights, screen: 'flights' })
+  // First get any already-parsed flights (e.g. from JSON-LD)
+  const existingFlights = await loadFlights()
+
+  // Check if there are raw payloads to send to AI
+  const rawPayloads = await loadRawPayloads()
+
+  if (rawPayloads.length === 0) {
+    // No raw data to parse — show what we have (or empty state)
+    setState({ flights: existingFlights, screen: 'flights' })
+    return
+  }
+
+  // Show "analyzing" state while AI parses
+  setState({ screen: 'analyzing' })
+
+  try {
+    const pageUrl = await getCurrentTabUrl()
+    const aiFlights = await parseFlightsWithAI(rawPayloads, pageUrl)
+
+    // Store AI results in background cache
+    if (aiFlights.length > 0) {
+      storeFlights(aiFlights)
+    }
+
+    // Merge: AI flights + any JSON-LD flights (dedupe by key)
+    const allFlights = [...aiFlights]
+    const keys = new Set(aiFlights.map(f =>
+      `${f.flightCode || ''}|${f.departureAirport || ''}|${f.arrivalAirport || ''}|${f.departureTime || ''}`
+    ))
+    for (const f of existingFlights) {
+      const k = `${f.flightCode || ''}|${f.departureAirport || ''}|${f.arrivalAirport || ''}|${f.departureTime || ''}`
+      if (!keys.has(k)) allFlights.push(f)
+    }
+
+    setState({ flights: allFlights, screen: 'flights' })
+  } catch (err) {
+    // AI failed — fall back to whatever we have
+    setState({ flights: existingFlights, screen: 'flights' })
+  }
 }
 
 async function init() {
