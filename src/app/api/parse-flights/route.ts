@@ -154,9 +154,13 @@ export async function POST(request: NextRequest) {
     }, {
       headers: { 'Access-Control-Allow-Origin': '*' },
     })
-  } catch (err) {
+  } catch (err: any) {
     console.error('Gemini parse error:', err)
-    return NextResponse.json({ flights: [], error: 'AI parsing failed' }, { status: 200 })
+    const isQuota = err?.status === 429 || err?.message?.includes('429') || err?.message?.includes('quota')
+    const errMsg = isQuota
+      ? 'Gemini API quota exceeded — upgrade to a paid plan at ai.google.dev'
+      : `AI parsing failed: ${err?.message || err}`
+    return NextResponse.json({ flights: [], error: errMsg }, { status: 200 })
   }
 }
 

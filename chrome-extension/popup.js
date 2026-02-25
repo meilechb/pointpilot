@@ -170,6 +170,9 @@ async function parseFlightsWithAI(payloads, pageUrl) {
   if (data.debug) {
     setState({ lastDebug: data.debug })
   }
+  if (data.error && (!data.flights || data.flights.length === 0)) {
+    throw new Error(data.error)
+  }
   return data.flights || []
 }
 
