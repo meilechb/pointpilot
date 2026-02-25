@@ -104,7 +104,7 @@ async function readPagePayloads(tabId) {
     const results = await chrome.scripting.executeScript({
       target: { tabId },
       world: 'MAIN',
-      func: () => window.__pointpilotPayloads || [],
+      func: () => (window.__pointpilotPayloads || []).filter(p => p && p.payload && p.payload.length > 200),
     })
     return results?.[0]?.result || []
   } catch (_) {
@@ -695,40 +695,40 @@ async function goToFlights() {
   setState({ screen: 'analyzing' })
 
   try {
-    // Strategy 1: try to read network payloads stored by injected.js
-    let payloads = []
-    let debugSource = ''
-
-    // First check background cache
-    const cachedPayloads = await loadRawPayloads()
-    if (cachedPayloads.length > 0) {
-      payloads = cachedPayloads
-      debugSource = `cache(${cachedPayloads.length})`
-    } else if (tabId) {
-      // Try to read directly from the page's MAIN world
-      const pagePayloads = await readPagePayloads(tabId)
-      if (pagePayloads.length > 0) {
-        payloads = pagePayloads
-        debugSource = `mainworld(${pagePayloads.length})`
-      }
-    }
-
-    // Strategy 2 (fallback): send visible page text to AI
-    if (payloads.length === 0 && tabId) {
-      const pageText = await readPageText(tabId)
-      if (pageText.length > 200) {
-        payloads = [{ payload: pageText }]
-        debugSource = `pagetext(${pageText.length}chars)`
-      }
-    }
-
-    if (payloads.length === 0) {
-      setState({ flights: [], screen: 'flights', error: `Debug: no data (tabId=${tabId}, url=${pageUrl.substring(0,40)})` })
+    if (!tabId) {
+      setState({ flights: [], screen: 'flights', error: 'Debug: no active tab' })
       return
     }
 
-    // Show source in analyzing screen
-    setState({ screen: 'analyzing', debugInfo: `Reading ${debugSource}...` })
+    // Always read page text — it's the most reliable fallback
+    setState({ screen: 'analyzing', debugInfo: 'Reading page...' })
+    const pageText = await readPageText(tabId)
+
+    // Also try to get any intercepted network payloads
+    const cachedPayloads = await loadRawPayloads()
+    const pagePayloads = cachedPayloads.length > 0 ? cachedPayloads : await readPagePayloads(tabId)
+
+    // Build payload list: prefer network JSON (more structured), fall back to page text
+    let payloads = []
+    let debugSource = ''
+
+    if (pagePayloads.length > 0) {
+      payloads = pagePayloads
+      debugSource = `network(${pagePayloads.length})`
+    }
+
+    if (pageText.length > 500) {
+      // Always include page text — it shows what the user actually sees
+      payloads = [...payloads, { payload: pageText }]
+      debugSource = debugSource ? `${debugSource}+page` : `pagetext(${pageText.length}ch)`
+    }
+
+    if (payloads.length === 0) {
+      setState({ flights: [], screen: 'flights', error: `Debug: no data (tabId=${tabId})` })
+      return
+    }
+
+    setState({ screen: 'analyzing', debugInfo: `Analyzing ${debugSource}...` })
 
     const aiFlights = await parseFlightsWithAI(payloads, pageUrl)
 

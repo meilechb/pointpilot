@@ -53,7 +53,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       // No cached payloads — ask content script to dump from MAIN world
       // then wait a moment for the RAW_PAYLOAD messages to come in
       chrome.tabs.sendMessage(tabId, { type: 'REQUEST_PAYLOADS_DUMP' }, () => {
-        // Wait 300ms for the dump messages to arrive, then return whatever we got
+        // Suppress "receiving end does not exist" error — content script may not be loaded
+        void chrome.runtime.lastError
         setTimeout(() => {
           sendResponse({ payloads: rawPayloadCache[tabId] || [] })
         }, 300)
