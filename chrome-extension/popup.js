@@ -701,6 +701,10 @@ function renderSuccess() {
 
 // ---- Init ----
 
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
 async function goToFlights() {
   const tab = await getCurrentTab()
   const tabId = tab?.id
@@ -723,13 +727,27 @@ async function goToFlights() {
       return
     }
 
-    // Always read page text — it's the most reliable fallback
     setState({ screen: 'analyzing', debugInfo: 'Reading page...' })
-    const pageText = await readPageText(tabId)
 
-    // Also try to get any intercepted network payloads
+    // Read network payloads first (most structured data)
     const cachedPayloads = await loadRawPayloads()
     const pagePayloads = cachedPayloads.length > 0 ? cachedPayloads : await readPagePayloads(tabId)
+
+    // Read page text
+    let pageText = await readPageText(tabId)
+
+    // If page text is very short, the SPA may not have rendered yet — wait and retry once
+    if (pageText.length < 5000 && pagePayloads.length === 0) {
+      setState({ screen: 'analyzing', debugInfo: 'Waiting for page to load...' })
+      await sleep(2500)
+      pageText = await readPageText(tabId)
+      // Also re-check for network payloads after wait
+      const freshPayloads = await readPagePayloads(tabId)
+      if (freshPayloads.length > pagePayloads.length) {
+        pagePayloads.length = 0
+        pagePayloads.push(...freshPayloads)
+      }
+    }
 
     // Build payload list: prefer network JSON (more structured), fall back to page text
     let payloads = []
@@ -743,7 +761,7 @@ async function goToFlights() {
     if (pageText.length > 500) {
       // Always include page text — it shows what the user actually sees
       payloads = [...payloads, { payload: pageText }]
-      debugSource = debugSource ? `${debugSource}+page` : `pagetext(${pageText.length}ch)`
+      debugSource = debugSource ? `${debugSource}+page(${pageText.length}ch)` : `pagetext(${pageText.length}ch)`
     }
 
     if (payloads.length === 0) {
