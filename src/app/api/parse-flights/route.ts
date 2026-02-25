@@ -140,12 +140,18 @@ export async function POST(request: NextRequest) {
     const jsonMatch = text.match(/\[[\s\S]*\]/)
     if (!jsonMatch) {
       console.log('[parse-flights] No JSON array found in response')
-      return NextResponse.json({ flights: [] })
+      return NextResponse.json({
+        flights: [],
+        debug: { geminiSaid: text.substring(0, 300), payloadSample: toSend[0]?.substring(0, 200) },
+      }, { headers: { 'Access-Control-Allow-Origin': '*' } })
     }
 
     const flights = JSON.parse(jsonMatch[0])
     console.log(`[parse-flights] Extracted ${flights.length} flights`)
-    return NextResponse.json({ flights }, {
+    return NextResponse.json({
+      flights,
+      debug: flights.length === 0 ? { geminiSaid: text.substring(0, 300), payloadSample: toSend[0]?.substring(0, 200) } : undefined,
+    }, {
       headers: { 'Access-Control-Allow-Origin': '*' },
     })
   } catch (err) {

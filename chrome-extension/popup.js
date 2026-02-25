@@ -166,6 +166,10 @@ async function parseFlightsWithAI(payloads, pageUrl) {
     throw new Error(`API error ${res.status}: ${body.substring(0, 200)}`)
   }
   const data = await res.json()
+  if (data.debug) {
+    // Store debug info in state for display
+    state._lastDebug = data.debug
+  }
   return data.flights || []
 }
 
@@ -355,11 +359,13 @@ function renderFlightPicker() {
   const flights = state.flights
 
   if (flights.length === 0) {
+    const debug = state._lastDebug
     el.innerHTML = `
       <div class="empty-state">
         <div class="empty-icon">✈️</div>
         <div class="empty-title">No flights detected</div>
         ${state.error ? `<div style="font-size:10px;color:#dc2626;margin-top:8px;word-break:break-all;text-align:left">${state.error}</div>` : ''}
+        ${debug ? `<div style="font-size:9px;color:#6b7280;margin-top:6px;text-align:left;word-break:break-all"><b>Gemini said:</b> ${debug.geminiSaid || '(empty)'}<br><b>Data sample:</b> ${debug.payloadSample || '(none)'}</div>` : ''}
         <button class="btn btn-secondary" id="retryBtn" style="margin-top:12px">Retry</button>
       </div>
     `
