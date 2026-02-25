@@ -372,7 +372,7 @@ function renderFlightPicker() {
         <div class="empty-icon">✈️</div>
         <div class="empty-title">No flights detected</div>
         ${state.error ? `<div style="font-size:10px;color:#dc2626;margin-top:8px;word-break:break-all;text-align:left">${state.error}</div>` : ''}
-        ${debug ? `<div style="font-size:9px;color:#6b7280;margin-top:6px;text-align:left;word-break:break-all;white-space:pre-wrap"><b>AI sent ${debug.payloadCount || '?'} payloads (${(debug.sizes||[]).join(',')} chars)</b>&#10;<b>Said:</b> ${esc(debug.geminiSaid || '(empty)')}&#10;<b>Sample:</b> ${esc(debug.payloadSample || '(none)')}</div>` : ''}
+        ${debug ? `<div style="font-size:9px;color:#6b7280;margin-top:6px;text-align:left;word-break:break-all;white-space:pre-wrap"><b>AI sent ${debug.payloadCount || '?'} payloads (${(debug.sizes||[]).join(',')} chars)</b>&#10;<b>Said:</b> ${esc(debug.aiSaid || debug.geminiSaid || '(empty)')}&#10;<b>Sample:</b> ${esc(debug.payloadSample || '(none)')}</div>` : ''}
         <button class="btn btn-secondary" id="retryBtn" style="margin-top:12px">Retry</button>
       </div>
     `

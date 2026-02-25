@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
 
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) {
-    console.error('[parse-flights] Auth failed:', authError?.message, '| SUPABASE_URL set:', !!process.env.NEXT_PUBLIC_SUPABASE_URL, '| token length:', token?.length)
+    console.error('[parse-flights] Auth failed:', authError?.message)
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -92,10 +92,10 @@ export async function POST(request: NextRequest) {
   const filtered = payloads
     .filter(p => p && p.length > 200 && looksLikeFlightData(p))
     .map(p => p.substring(0, 60000))
-    .sort((a, b) => b.length - a.length) // prefer larger payloads (more data)
+    .sort((a, b) => b.length - a.length)
     .slice(0, 5)
 
-  // If nothing passed the keyword filter, fall back to ALL payloads (no filter) — let Gemini decide
+  // If nothing passed the keyword filter, fall back to ALL payloads (no filter)
   const toSend = filtered.length > 0
     ? filtered
     : payloads.filter(p => p && p.length > 50).map(p => p.substring(0, 60000)).slice(0, 5)
@@ -122,10 +122,7 @@ export async function POST(request: NextRequest) {
     ...toSend.map((p, i) => toSend.length > 1 ? `--- Data ${i + 1} ---\n${p}` : p),
   ].join('\n')
 
-  console.log(`[parse-flights] Received ${payloads.length} payloads, filtered to ${toSend.length}. Sizes: ${toSend.map(p => p.length).join(', ')}. URL: ${url}`)
-  console.log(`[parse-flights] All received payload sizes: ${payloads.map(p => p?.length ?? 0).join(', ')}`)
-  console.log(`[parse-flights] First payload starts with: ${payloads[0]?.substring(0, 300)}`)
-  console.log(`[parse-flights] First 300 chars of first SENT payload: ${toSend[0]?.substring(0, 300)}`)
+  console.log(`[parse-flights] Sending ${toSend.length} payload(s) to Gemini. Sizes: ${toSend.map(p => p.length).join(', ')}. URL: ${url}`)
 
   try {
     const result = await model.generateContent([
@@ -142,7 +139,7 @@ export async function POST(request: NextRequest) {
       console.log('[parse-flights] No JSON array found in response')
       return NextResponse.json({
         flights: [],
-        debug: { geminiSaid: text.substring(0, 400), payloadSample: toSend[0]?.substring(0, 400), payloadCount: toSend.length, sizes: toSend.map(p => p.length) },
+        debug: { aiSaid: text.substring(0, 400), payloadSample: toSend[0]?.substring(0, 400), payloadCount: toSend.length, sizes: toSend.map(p => p.length) },
       }, { headers: { 'Access-Control-Allow-Origin': '*' } })
     }
 
@@ -150,7 +147,7 @@ export async function POST(request: NextRequest) {
     console.log(`[parse-flights] Extracted ${flights.length} flights`)
     return NextResponse.json({
       flights,
-      debug: flights.length === 0 ? { geminiSaid: text.substring(0, 400), payloadSample: toSend[0]?.substring(0, 400), payloadCount: toSend.length, sizes: toSend.map(p => p.length) } : undefined,
+      debug: flights.length === 0 ? { aiSaid: text.substring(0, 400), payloadSample: toSend[0]?.substring(0, 400), payloadCount: toSend.length, sizes: toSend.map(p => p.length) } : undefined,
     }, {
       headers: { 'Access-Control-Allow-Origin': '*' },
     })
@@ -158,7 +155,7 @@ export async function POST(request: NextRequest) {
     console.error('Gemini parse error:', err)
     const isQuota = err?.status === 429 || err?.message?.includes('429') || err?.message?.includes('quota')
     const errMsg = isQuota
-      ? 'Gemini API quota exceeded — upgrade to a paid plan at ai.google.dev'
+      ? 'Gemini API quota exceeded — add billing at ai.google.dev'
       : `AI parsing failed: ${err?.message || err}`
     return NextResponse.json({ flights: [], error: errMsg }, { status: 200 })
   }
