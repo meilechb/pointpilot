@@ -28,6 +28,7 @@ For each flight found, return an object with these exact fields (use null for mi
   "arrivalDate": string | null,       // "YYYY-MM-DD" arrival date
   "duration": number | null,          // total flight duration in minutes
   "stops": number | null,             // 0 = nonstop, 1 = one stop, etc.
+  "stopoverAirports": string[] | null, // IATA codes of layover airports in order, e.g. ["LHR"] for a 1-stop flight via London
   "cashAmount": number | null,        // lowest cash price in USD (number only, no currency symbols)
   "pointsAmount": number | null,      // points/miles required (number only)
   "feesAmount": number | null,        // taxes + fees in USD (number only)
@@ -53,7 +54,15 @@ Rules:
 - If no flight data is found at all, return []
 - Focus on flight SEARCH RESULTS (bookable options), not confirmation pages or unrelated content
 - When reading page text: look for flight cards showing departure/arrival airports, times, prices
-- Extract as many flights as you can find — aim for completeness`
+- Extract as many flights as you can find — aim for completeness
+
+CRITICAL — Filtering rules for page text:
+- ONLY extract flights from the MAIN search results listing on the page
+- IGNORE ads, sponsored content, promotional banners, "explore" suggestions, partner deals, cross-sell offers, and sidebar/popup recommendations
+- IGNORE flights from other airlines shown in comparison widgets, deal cards, or "you might also like" sections
+- On Skyscanner: only extract flights from the actual itinerary result cards (the ones showing specific departure→arrival times with a price and a "Select" or "View Deal" button). Ignore any "cheapest", "best", or "fastest" tab summaries that duplicate results, and ignore any provider/agent price lists within a single itinerary
+- Each flight result should appear ONCE with its lowest displayed price — do not create separate entries for each booking agent/provider offering the same flight at different prices
+- If the page shows results for a specific route (e.g. EWR→MIA), only return flights on THAT route — ignore any flights shown for different routes in ads or cross-sell sections`
 
 function looksLikeFlightData(payload: string): boolean {
   const lower = payload.toLowerCase()

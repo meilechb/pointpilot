@@ -1,6 +1,11 @@
 // Background service worker
 // Caches intercepted raw payloads and parsed flights per tab, manages auth token
 
+// Open side panel when extension icon is clicked
+chrome.action.onClicked.addListener((tab) => {
+  chrome.sidePanel.open({ tabId: tab.id })
+})
+
 const flightCache = {}     // tabId -> [flight, ...]
 const rawPayloadCache = {} // tabId -> [{ url, payload }, ...]
 

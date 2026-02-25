@@ -17,7 +17,7 @@ const fieldInput: React.CSSProperties = {
 export default function LoginPage() {
   const router = useRouter()
   const supabase = createClient()
-  const [mode, setMode] = useState<'login' | 'signup'>('login')
+  const [mode, setMode] = useState<'login' | 'signup' | 'forgot'>('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [fullName, setFullName] = useState('')
@@ -31,7 +31,14 @@ export default function LoginPage() {
     setMessage('')
     setLoading(true)
 
-    if (mode === 'signup') {
+    if (mode === 'forgot') {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      })
+      if (error) { setError(error.message); setLoading(false); return }
+      setMessage('Check your email for a password reset link.')
+      setLoading(false)
+    } else if (mode === 'signup') {
       const { error } = await supabase.auth.signUp({
         email,
         password,
@@ -70,39 +77,43 @@ export default function LoginPage() {
             display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24,
           }}>✈</div>
           <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 4 }}>
-            {mode === 'login' ? 'Welcome back' : 'Create your account'}
+            {mode === 'forgot' ? 'Reset password' : mode === 'login' ? 'Welcome back' : 'Create your account'}
           </h1>
           <p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>
-            {mode === 'login' ? 'Sign in to Point Tripper' : 'Start maximizing your points'}
+            {mode === 'forgot' ? 'Enter your email to receive a reset link' : mode === 'login' ? 'Sign in to Point Tripper' : 'Start maximizing your points'}
           </p>
         </div>
 
-        <button
-          onClick={handleGoogleLogin}
-          style={{
-            width: '100%', height: 44, padding: '10px 16px', marginBottom: 20,
-            border: '1.5px solid var(--border)', borderRadius: 'var(--radius-sm)',
-            backgroundColor: 'var(--bg-card)', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-            fontSize: 14, fontWeight: 500, color: 'var(--text)',
-          }}
-        >
-          <svg width="18" height="18" viewBox="0 0 18 18">
-            <path d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 01-1.8 2.72v2.26h2.92a8.78 8.78 0 002.68-6.62z" fill="#4285F4"/>
-            <path d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.8.54-1.83.86-3.04.86-2.34 0-4.32-1.58-5.03-3.71H.96v2.33A8.99 8.99 0 009 18z" fill="#34A853"/>
-            <path d="M3.97 10.71A5.41 5.41 0 013.68 9c0-.6.1-1.18.28-1.71V4.96H.96A8.99 8.99 0 000 9c0 1.45.35 2.82.96 4.04l3.01-2.33z" fill="#FBBC05"/>
-            <path d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.59C13.46.89 11.43 0 9 0A8.99 8.99 0 00.96 4.96l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z" fill="#EA4335"/>
-          </svg>
-          Continue with Google
-        </button>
+        {mode !== 'forgot' && (
+          <>
+            <button
+              onClick={handleGoogleLogin}
+              style={{
+                width: '100%', height: 44, padding: '10px 16px', marginBottom: 20,
+                border: '1.5px solid var(--border)', borderRadius: 'var(--radius-sm)',
+                backgroundColor: 'var(--bg-card)', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                fontSize: 14, fontWeight: 500, color: 'var(--text)',
+              }}
+            >
+              <svg width="18" height="18" viewBox="0 0 18 18">
+                <path d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 01-1.8 2.72v2.26h2.92a8.78 8.78 0 002.68-6.62z" fill="#4285F4"/>
+                <path d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.8.54-1.83.86-3.04.86-2.34 0-4.32-1.58-5.03-3.71H.96v2.33A8.99 8.99 0 009 18z" fill="#34A853"/>
+                <path d="M3.97 10.71A5.41 5.41 0 013.68 9c0-.6.1-1.18.28-1.71V4.96H.96A8.99 8.99 0 000 9c0 1.45.35 2.82.96 4.04l3.01-2.33z" fill="#FBBC05"/>
+                <path d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.59C13.46.89 11.43 0 9 0A8.99 8.99 0 00.96 4.96l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z" fill="#EA4335"/>
+              </svg>
+              Continue with Google
+            </button>
 
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20,
-        }}>
-          <div style={{ flex: 1, height: 1, backgroundColor: 'var(--border)' }} />
-          <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>or</span>
-          <div style={{ flex: 1, height: 1, backgroundColor: 'var(--border)' }} />
-        </div>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20,
+            }}>
+              <div style={{ flex: 1, height: 1, backgroundColor: 'var(--border)' }} />
+              <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>or</span>
+              <div style={{ flex: 1, height: 1, backgroundColor: 'var(--border)' }} />
+            </div>
+          </>
+        )}
 
         {mode === 'signup' && (
           <>
@@ -119,24 +130,47 @@ export default function LoginPage() {
         <input
           type="email" placeholder="you@email.com" value={email}
           onChange={(e) => setEmail(e.target.value)}
-          style={{ ...fieldInput, marginBottom: 12 }}
+          onKeyDown={(e) => { if (e.key === 'Enter' && mode === 'forgot') handleEmailAuth() }}
+          style={{ ...fieldInput, marginBottom: mode === 'forgot' ? 16 : 12 }}
         />
 
-        <label style={fieldLabel}>Password</label>
-        <div style={{ position: 'relative', marginBottom: 16 }}>
-          <input
-            type={showPassword ? 'text' : 'password'} placeholder={mode === 'signup' ? 'Min 6 characters' : 'Your password'}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') handleEmailAuth() }}
-            style={{ ...fieldInput, marginBottom: 0, paddingRight: 48 }}
-          />
-          <button
-            type="button"
-            onClick={() => setShowPassword(!showPassword)}
-            style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', fontSize: 13, padding: '4px 2px' }}
-          >{showPassword ? 'Hide' : 'Show'}</button>
-        </div>
+        {mode !== 'forgot' && (
+          <>
+            <label style={fieldLabel}>Password</label>
+            <div style={{ position: 'relative', marginBottom: 4 }}>
+              <input
+                type={showPassword ? 'text' : 'password'} placeholder={mode === 'signup' ? 'Min 6 characters' : 'Your password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleEmailAuth() }}
+                style={{ ...fieldInput, marginBottom: 0, paddingRight: 48 }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                title={showPassword ? 'Hide password' : 'Show password'}
+                style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', padding: '4px 2px', lineHeight: 1 }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                  {!showPassword && <line x1="1" y1="1" x2="23" y2="23"/>}
+                </svg>
+              </button>
+            </div>
+            {mode === 'login' && (
+              <div style={{ textAlign: 'right', marginBottom: 12 }}>
+                <span
+                  onClick={() => { setMode('forgot'); setError(''); setMessage('') }}
+                  style={{ fontSize: 13, color: 'var(--primary)', cursor: 'pointer' }}
+                >
+                  Forgot password?
+                </span>
+              </div>
+            )}
+            {mode === 'signup' && <div style={{ marginBottom: 12 }} />}
+          </>
+        )}
 
         {error && (
           <div style={{
@@ -158,26 +192,26 @@ export default function LoginPage() {
 
         <button
           onClick={handleEmailAuth}
-          disabled={loading || !email || !password}
+          disabled={loading || !email || (mode !== 'forgot' && !password)}
           style={{
             width: '100%', height: 44, padding: 12,
-            background: !email || !password ? 'var(--border)' : 'linear-gradient(135deg, var(--primary), var(--primary-hover))',
-            color: !email || !password ? 'var(--text-muted)' : 'var(--text-inverse)',
+            background: !email || (mode !== 'forgot' && !password) ? 'var(--border)' : 'linear-gradient(135deg, var(--primary), var(--primary-hover))',
+            color: !email || (mode !== 'forgot' && !password) ? 'var(--text-muted)' : 'var(--text-inverse)',
             border: 'none', borderRadius: 'var(--radius-sm)',
-            cursor: !email || !password ? 'default' : 'pointer',
+            cursor: !email || (mode !== 'forgot' && !password) ? 'default' : 'pointer',
             fontSize: 14, fontWeight: 600,
           }}
         >
-          {loading ? '...' : mode === 'login' ? 'Sign In' : 'Create Account'}
+          {loading ? '...' : mode === 'forgot' ? 'Send Reset Link' : mode === 'login' ? 'Sign In' : 'Create Account'}
         </button>
 
         <p style={{ textAlign: 'center', marginTop: 16, fontSize: 14, color: 'var(--text-secondary)' }}>
-          {mode === 'login' ? "Don't have an account? " : "Already have an account? "}
+          {mode === 'forgot' ? 'Remember your password? ' : mode === 'login' ? "Don't have an account? " : "Already have an account? "}
           <span
-            onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); setError(''); setMessage('') }}
+            onClick={() => { setMode(mode === 'signup' ? 'login' : mode === 'forgot' ? 'login' : 'signup'); setError(''); setMessage('') }}
             style={{ color: 'var(--primary)', cursor: 'pointer', fontWeight: 600 }}
           >
-            {mode === 'login' ? 'Sign up' : 'Sign in'}
+            {mode === 'forgot' ? 'Sign in' : mode === 'login' ? 'Sign up' : 'Sign in'}
           </span>
         </p>
       </div>

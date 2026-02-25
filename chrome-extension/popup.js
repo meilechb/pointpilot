@@ -1,4 +1,4 @@
-// PointPilot Chrome Extension - Popup
+// Point Tripper Chrome Extension - Popup
 const SUPABASE_URL = 'https://qlghqnkbkjzzdjlpccyr.supabase.co'
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFsZ2hxbmtia2p6emRqbHBjY3lyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE3ODI3NjgsImV4cCI6MjA4NzM1ODc2OH0.3s0m1TKi0-4PuZPGjvZCBdsH_Rfy7Mo9xNoLoUQ2BiQ'
 const API_BASE = 'https://www.pointtripper.com'
@@ -22,6 +22,7 @@ let state = {
   analyzeProgress: 0, // 0-100 for progress bar
   hasMorePayloads: false, // true if network payloads available for deeper scan
   showPassword: false,
+  addedFlightKeys: [], // track which flights have been added (by flightCode+dep+arr+time)
 }
 
 function setState(updates) {
@@ -134,7 +135,43 @@ async function readPageText(tabId) {
       target: { tabId },
       world: 'MAIN',
       func: () => {
-        const text = document.body?.innerText || ''
+        // Try to extract only the main flight results area, ignoring ads/popups/nav/footer
+        // Common selectors for flight result containers on booking sites
+        const resultSelectors = [
+          // Skyscanner
+          '[class*="FlightsResults"]',
+          '[class*="ResultList"]',
+          '[class*="day-list"]',
+          '[class*="ItineraryList"]',
+          'main [class*="itinerary"]',
+          // Google Flights
+          '[class*="gws-flights-results"]',
+          'ul[class*="result"]',
+          // United
+          '[class*="flight-result"]',
+          '[class*="FlightList"]',
+          // Delta
+          '[class*="search-results"]',
+          // AA
+          '[class*="results-grid"]',
+          // Generic
+          'main',
+          '[role="main"]',
+          '#main-content',
+          '#search-results',
+        ]
+
+        let resultText = ''
+        for (const sel of resultSelectors) {
+          const el = document.querySelector(sel)
+          if (el && el.innerText && el.innerText.length > 200) {
+            resultText = el.innerText
+            break
+          }
+        }
+
+        // If we found a focused result area, use it; otherwise fall back to body
+        const text = resultText || (document.body?.innerText || '')
         return text.replace(/\s{3,}/g, '\n\n').substring(0, 15000)
       },
     })
@@ -234,6 +271,17 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
+function flightKey(f) {
+  return `${f.flightCode || ''}|${f.departureAirport || ''}|${f.arrivalAirport || ''}|${formatTime(f.departureTime) || ''}`
+}
+
+function formatRoute(f) {
+  const dep = f.departureAirport || '?'
+  const arr = f.arrivalAirport || '?'
+  const stopovers = f.stopoverAirports && f.stopoverAirports.length > 0 ? f.stopoverAirports : []
+  return [dep, ...stopovers, arr].join(' → ')
+}
+
 // ---- Tier building ----
 function buildTiersFromFlight(flight) {
   const tiers = []
@@ -272,12 +320,12 @@ function render() {
     </div>`
   } else if (s === 'analyzing') {
     const pct = state.analyzeProgress || 0
-    screen.innerHTML = `<div style="padding:32px 16px;text-align:center;color:#6b7280">
+    screen.innerHTML = `<div style="padding:32px 16px;text-align:center">
       <div style="width:100%;height:6px;background:#e0e0f0;border-radius:3px;overflow:hidden;margin-bottom:16px">
         <div style="width:${pct}%;height:100%;background:linear-gradient(90deg,#4338ca,#6366f1);border-radius:3px;transition:width 0.3s ease"></div>
       </div>
-      <div style="font-weight:600;color:#1e1b4b;font-size:14px">Analyzing flights...</div>
-      <div style="margin-top:6px;font-size:11px;color:#9ca3af">${state.debugInfo || 'Reading flight data from this page'}</div>
+      <div style="font-weight:600;color:#1e1b4b;font-size:15px">Analyzing flights...</div>
+      <div style="margin-top:8px;font-size:13px;color:#4b5563">Filter results on the booking site for faster, more accurate detection</div>
     </div>`
   } else if (s === 'login') {
     screen.appendChild(renderLogin())
@@ -299,8 +347,8 @@ function renderHeader() {
   el.className = 'header'
   el.innerHTML = `
     <div class="header-logo">
-      <img src="icon.png" alt="PointPilot" />
-      <span>PointPilot</span>
+      <img src="icon.png" alt="Point Tripper" />
+      <span>Point Tripper</span>
     </div>
     ${state.userEmail ? `
       <div style="display:flex;align-items:center;gap:8px">
@@ -316,7 +364,7 @@ function renderHeader() {
 function renderLogin() {
   const el = document.createElement('div')
   el.innerHTML = `
-    <div class="login-title">Sign in to PointPilot</div>
+    <div class="login-title">Sign in to Point Tripper</div>
     <div class="login-sub">Log in to add flights to your trips</div>
     ${state.error ? `<div class="error">${state.error}</div>` : ''}
     <label>Email</label>
@@ -324,7 +372,13 @@ function renderLogin() {
     <label>Password</label>
     <div style="position:relative">
       <input type="${state.showPassword ? 'text' : 'password'}" id="password" placeholder="••••••••" autocomplete="current-password" style="padding-right:40px" />
-      <button type="button" id="togglePw" style="position:absolute;right:8px;top:50%;transform:translateY(-60%);background:none;border:none;cursor:pointer;color:#6b7280;font-size:13px;padding:4px">${state.showPassword ? 'Hide' : 'Show'}</button>
+      <button type="button" id="togglePw" style="position:absolute;right:8px;top:50%;transform:translateY(-60%);background:none;border:none;cursor:pointer;color:#6b7280;font-size:15px;padding:4px;line-height:1" title="${state.showPassword ? 'Hide password' : 'Show password'}">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+          <circle cx="12" cy="12" r="3"/>
+          ${state.showPassword ? '' : '<line x1="1" y1="1" x2="23" y2="23"/>'}
+        </svg>
+      </button>
     </div>
     <button class="btn" id="loginBtn">Sign In</button>
   `
@@ -336,7 +390,13 @@ function renderLogin() {
   el.querySelector('#togglePw').addEventListener('click', () => {
     state.showPassword = !state.showPassword
     passwordInput.type = state.showPassword ? 'text' : 'password'
-    el.querySelector('#togglePw').textContent = state.showPassword ? 'Hide' : 'Show'
+    const btn = el.querySelector('#togglePw')
+    btn.title = state.showPassword ? 'Hide password' : 'Show password'
+    btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+      <circle cx="12" cy="12" r="3"/>
+      ${state.showPassword ? '' : '<line x1="1" y1="1" x2="23" y2="23"/>'}
+    </svg>`
   })
 
   const doLogin = async () => {
@@ -374,8 +434,8 @@ function renderFlightPicker() {
       <div class="empty-state">
         <div class="empty-icon">✈️</div>
         <div class="empty-title">No flights detected</div>
-        ${state.error ? `<div style="font-size:10px;color:#dc2626;margin-top:8px;word-break:break-all;text-align:left">${state.error}</div>` : ''}
-        ${debug ? `<div style="font-size:9px;color:#6b7280;margin-top:6px;text-align:left;word-break:break-all;white-space:pre-wrap"><b>AI sent ${debug.payloadCount || '?'} payloads (${(debug.sizes||[]).join(',')} chars)</b>&#10;<b>Said:</b> ${esc(debug.aiSaid || debug.geminiSaid || '(empty)')}&#10;<b>Sample:</b> ${esc(debug.payloadSample || '(none)')}</div>` : ''}
+        ${state.error ? `<div style="font-size:13px;color:#dc2626;margin-top:8px;word-break:break-all;text-align:left">${state.error}</div>` : ''}
+        ${debug ? `<div style="font-size:11px;color:#4b5563;margin-top:6px;text-align:left;word-break:break-all;white-space:pre-wrap"><b>AI sent ${debug.payloadCount || '?'} payloads (${(debug.sizes||[]).join(',')} chars)</b>&#10;<b>Said:</b> ${esc(debug.aiSaid || debug.geminiSaid || '(empty)')}&#10;<b>Sample:</b> ${esc(debug.payloadSample || '(none)')}</div>` : ''}
         <button class="btn btn-secondary" id="retryBtn" style="margin-top:12px">Retry</button>
       </div>
     `
@@ -388,7 +448,7 @@ function renderFlightPicker() {
 
   // Tip when many flights
   const tip = flights.length > 10
-    ? `<div style="font-size:11px;color:#6b7280;margin-bottom:8px;background:#f5f3ff;padding:8px 10px;border-radius:6px">Tip: Filter results on the booking site first for faster detection.</div>`
+    ? `<div style="font-size:13px;color:#4b5563;margin-bottom:8px;background:#f5f3ff;padding:8px 10px;border-radius:6px">Tip: Filter results on the booking site first for faster detection.</div>`
     : ''
 
   el.innerHTML = `${tip}<div class="section-title">${flights.length} flight${flights.length !== 1 ? 's' : ''} detected — pick one</div>`
@@ -397,31 +457,26 @@ function renderFlightPicker() {
 
   flights.forEach((f, i) => {
     const card = document.createElement('div')
-    card.className = 'flight-card'
-    const price = formatPrice(f)
-    const tiers = buildTiersFromFlight(f)
-    const tierBadges = tiers.length > 1
-      ? tiers.map(t => {
-          const p = t.paymentType === 'points'
-            ? `${Math.round(t.pointsAmount||0).toLocaleString()}pts`
-            : `$${(t.cashAmount||0).toLocaleString()}`
-          return `<span class="badge">${t.label}: ${p}</span>`
-        }).join('')
-      : (price ? `<span class="badge">${price}</span>` : '')
+    const isAdded = state.addedFlightKeys.includes(flightKey(f))
+    card.className = 'flight-card' + (isAdded ? ' added' : '')
+
+    const stopsLabel = f.stops === 0 ? 'Nonstop' : (f.stops ? `${f.stops} stop${f.stops > 1 ? 's' : ''}` : '')
+    const depTime = formatTime(f.departureTime)
+    const arrTime = formatTime(f.arrivalTime)
 
     card.innerHTML = `
-      <div class="flight-route">
-        <span>${f.departureAirport || '?'}</span>
-        <span class="arrow">→</span>
-        <span>${f.arrivalAirport || '?'}</span>
-        ${f.stops === 0 ? '<span style="font-size:11px;color:#6b7280;font-weight:400">Nonstop</span>' : (f.stops ? `<span style="font-size:11px;color:#6b7280;font-weight:400">${f.stops} stop${f.stops > 1 ? 's' : ''}</span>` : '')}
+      <div class="flight-times">
+        ${depTime ? `<span class="time-big">${depTime}</span>` : ''}
+        ${depTime ? `<span class="time-arrow">→</span>` : ''}
+        ${arrTime ? `<span class="time-big">${arrTime}</span>` : ''}
+        ${f.duration ? `<span class="time-duration">${formatDuration(f.duration)}</span>` : ''}
+        ${stopsLabel ? `<span class="time-stops">${stopsLabel}</span>` : ''}
       </div>
       <div class="flight-meta">
+        <span class="flight-route-inline">${formatRoute(f)}</span>
         ${f.flightCode ? `<span>${f.flightCode}</span>` : ''}
         ${f.airlineName ? `<span>${f.airlineName}</span>` : ''}
-        ${f.departureTime ? `<span>${formatTime(f.departureTime)} → ${formatTime(f.arrivalTime)}</span>` : ''}
-        ${f.duration ? `<span>${formatDuration(f.duration)}</span>` : ''}
-        ${tierBadges}
+        ${isAdded ? `<span class="badge added-badge">Added</span>` : ''}
       </div>
     `
     card.addEventListener('click', () => selectFlight(f))
@@ -462,7 +517,7 @@ function renderDetails() {
 
   let summaryHTML = `
     <div class="segment-summary">
-      <div class="seg-route">${f.departureAirport || '?'} → ${f.arrivalAirport || '?'}</div>
+      <div class="seg-route">${formatRoute(f)}</div>
       <div class="seg-detail">
         ${f.flightCode ? `${f.flightCode} · ` : ''}${f.airlineName || ''}
         ${f.date ? ` · ${f.date}` : ''}
@@ -613,7 +668,7 @@ function renderTripPicker() {
       <div class="empty-state">
         <div class="empty-icon">🗺️</div>
         <div class="empty-title">No trips yet</div>
-        <div class="empty-sub">Create a trip on PointPilot first, then come back to add flights.</div>
+        <div class="empty-sub">Create a trip on Point Tripper first, then come back to add flights.</div>
       </div>
     `
     return el
@@ -695,8 +750,9 @@ async function addFlight(trip) {
 
   try {
     await addFlightToTrip(trip.id, flightData)
-    chrome.runtime.sendMessage({ type: 'CLEAR_FLIGHTS' })
-    setState({ saving: false, screen: 'success', selectedTripId: trip.id })
+    const key = flightKey(f)
+    const addedKeys = state.addedFlightKeys.includes(key) ? state.addedFlightKeys : [...state.addedFlightKeys, key]
+    setState({ saving: false, screen: 'success', selectedTripId: trip.id, addedFlightKeys: addedKeys })
   } catch (err) {
     if (state.screen === 'login') return
     setState({ saving: false, error: err.message })
@@ -711,13 +767,13 @@ function renderSuccess() {
     <div class="success-title">Flight added!</div>
     <div class="success-sub">Successfully added to "${trip?.name || 'your trip'}"</div>
     <a href="https://www.pointtripper.com/trip/${state.selectedTripId}" target="_blank" class="btn">
-      Open Trip in PointPilot
+      Open Trip in Point Tripper
     </a>
     <button class="btn btn-secondary" id="addAnotherBtn">Add Another Flight</button>
   `
   el.querySelector('#addAnotherBtn').addEventListener('click', () => {
+    // Reuse previously detected flights — no need to re-scan the page
     setState({ screen: 'flights', selectedFlight: null, selectedTiers: [], error: null })
-    goToFlights()
   })
   return el
 }
@@ -738,26 +794,46 @@ async function goToFlights(deepScan = false) {
     return
   }
 
-  setState({ screen: 'analyzing', analyzeProgress: 5, debugInfo: 'Reading page...' })
+  setState({ screen: 'analyzing', analyzeProgress: 2, debugInfo: 'Reading page...' })
+
+  // Smooth progress animation: creeps slowly toward target, never quite reaching it
+  let progressTarget = 8
+  let progressCurrent = 2
+  const progressInterval = setInterval(() => {
+    if (progressCurrent < progressTarget) {
+      const remaining = progressTarget - progressCurrent
+      // Very slow: 2% of remaining distance per tick — feels deliberate, never jumps
+      const step = Math.max(0.15, remaining * 0.02)
+      progressCurrent = Math.min(progressTarget, progressCurrent + step)
+      if (state.screen === 'analyzing') {
+        state.analyzeProgress = Math.round(progressCurrent)
+        render()
+      }
+    }
+  }, 200)
 
   try {
     if (!tabId) {
+      clearInterval(progressInterval)
       setState({ flights: [], screen: 'flights', error: 'Debug: no active tab' })
       return
     }
 
     // Step 1: Read page text (fast — this is what the user sees)
-    setState({ screen: 'analyzing', analyzeProgress: 15, debugInfo: 'Reading page text...' })
+    progressTarget = 12
+    setState({ screen: 'analyzing', debugInfo: 'Reading page text...' })
     let pageText = await readPageText(tabId)
 
     // Step 2: Check for network payloads
-    setState({ screen: 'analyzing', analyzeProgress: 25, debugInfo: 'Checking intercepted data...' })
+    progressTarget = 20
+    setState({ screen: 'analyzing', debugInfo: 'Checking intercepted data...' })
     const cachedPayloads = await loadRawPayloads()
     const pagePayloads = cachedPayloads.length > 0 ? cachedPayloads : await readPagePayloads(tabId)
 
     // If page text is too short and no network data, wait for SPA
     if (pageText.length < 3000 && pagePayloads.length === 0) {
-      setState({ screen: 'analyzing', analyzeProgress: 30, debugInfo: 'Waiting for page to load...' })
+      progressTarget = 30
+      setState({ screen: 'analyzing', debugInfo: 'Waiting for page to load...' })
       await sleep(2000)
       pageText = await readPageText(tabId)
     }
@@ -790,15 +866,18 @@ async function goToFlights(deepScan = false) {
     }
 
     if (payloads.length === 0) {
+      clearInterval(progressInterval)
       setState({ flights: [], screen: 'flights', error: `Debug: no data (tabId=${tabId})` })
       return
     }
 
-    setState({ screen: 'analyzing', analyzeProgress: 50, debugInfo: `Sending to AI (${debugSource})...` })
+    progressTarget = 70
+    setState({ screen: 'analyzing', debugInfo: `Analyzing flight data...` })
 
     const aiFlights = await parseFlightsWithAI(payloads, pageUrl)
 
-    setState({ screen: 'analyzing', analyzeProgress: 95, debugInfo: 'Done!' })
+    clearInterval(progressInterval)
+    setState({ screen: 'analyzing', analyzeProgress: 100, debugInfo: 'Done!' })
 
     if (aiFlights.length > 0) {
       storeFlights(aiFlights)
@@ -811,6 +890,7 @@ async function goToFlights(deepScan = false) {
       error: aiFlights.length === 0 ? `Debug: AI returned 0 flights (source: ${debugSource})` : null,
     })
   } catch (err) {
+    clearInterval(progressInterval)
     if (state.screen === 'login') return
     setState({ flights: existingFlights, screen: 'flights', error: `Error: ${err.message}` })
   }

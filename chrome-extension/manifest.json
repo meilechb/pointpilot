@@ -1,16 +1,18 @@
 {
   "manifest_version": 3,
-  "name": "PointPilot – Add Flight",
-  "version": "1.0",
-  "description": "Add flights from any booking site directly to your PointPilot trips.",
-  "permissions": ["activeTab", "storage", "scripting"],
+  "name": "Point Tripper – Add Flight",
+  "version": "1.1",
+  "description": "Add flights from any booking site directly to your Point Tripper trips.",
+  "permissions": ["activeTab", "storage", "scripting", "sidePanel"],
   "host_permissions": ["<all_urls>"],
   "action": {
-    "default_popup": "popup.html",
     "default_icon": {
       "48": "icon.png",
       "128": "icon.png"
     }
+  },
+  "side_panel": {
+    "default_path": "popup.html"
   },
   "background": {
     "service_worker": "background.js"
