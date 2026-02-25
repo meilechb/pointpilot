@@ -55,6 +55,7 @@ Rules:
 - Focus on flight SEARCH RESULTS (bookable options), not confirmation pages or unrelated content
 - When reading page text: look for flight cards showing departure/arrival airports, times, prices
 - Extract as many flights as you can find — aim for completeness
+- IMPORTANT: For flights with stops, you MUST populate stopoverAirports with the IATA codes of the connecting airports. Look for layover city/airport info in the flight data. If a flight has 1 stop via London Heathrow, set stopoverAirports to ["LHR"]. Never leave this null for flights with stops > 0 if the layover airport is available in the data.
 
 CRITICAL — Filtering rules for page text:
 - ONLY extract flights from the MAIN search results listing on the page

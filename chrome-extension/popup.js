@@ -320,12 +320,20 @@ function render() {
     </div>`
   } else if (s === 'analyzing') {
     const pct = state.analyzeProgress || 0
+    const showSkeleton = pct >= 55
     screen.innerHTML = `<div style="padding:32px 16px;text-align:center">
       <div style="width:100%;height:6px;background:#e0e0f0;border-radius:3px;overflow:hidden;margin-bottom:16px">
         <div style="width:${pct}%;height:100%;background:linear-gradient(90deg,#4338ca,#6366f1);border-radius:3px;transition:width 0.3s ease"></div>
       </div>
       <div style="font-weight:600;color:#1e1b4b;font-size:15px">Analyzing flights...</div>
       <div style="margin-top:8px;font-size:13px;color:#4b5563">Filter results on the booking site for faster, more accurate detection</div>
+      ${showSkeleton ? `
+        <div class="flight-list" style="margin-top:20px">
+          <div class="skeleton-card"></div>
+          <div class="skeleton-card"></div>
+          <div class="skeleton-card"></div>
+        </div>
+      ` : ''}
     </div>`
   } else if (s === 'login') {
     screen.appendChild(renderLogin())
@@ -460,7 +468,8 @@ function renderFlightPicker() {
     const isAdded = state.addedFlightKeys.includes(flightKey(f))
     card.className = 'flight-card' + (isAdded ? ' added' : '')
 
-    const stopsLabel = f.stops === 0 ? 'Nonstop' : (f.stops ? `${f.stops} stop${f.stops > 1 ? 's' : ''}` : '')
+    const stopAirports = f.stopoverAirports && f.stopoverAirports.length > 0 ? f.stopoverAirports.join(', ') : ''
+    const stopsLabel = f.stops === 0 ? 'Nonstop' : (f.stops ? `${f.stops} stop${f.stops > 1 ? 's' : ''}${stopAirports ? ` (${stopAirports})` : ''}` : '')
     const depTime = formatTime(f.departureTime)
     const arrTime = formatTime(f.arrivalTime)
 

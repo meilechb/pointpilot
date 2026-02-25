@@ -235,3 +235,39 @@ select:focus { border-color: #4338ca; }
 }
 .segment-summary .seg-route { font-weight: 700; font-size: 15px; margin-bottom: 2px; }
 .segment-summary .seg-detail { color: #374151; font-size: 13px; }
+
+/* Skeleton loading cards */
+.skeleton-card {
+  background: white;
+  border: 1.5px solid #e0e0f0;
+  border-radius: 10px;
+  padding: 12px;
+  overflow: hidden;
+  position: relative;
+}
+.skeleton-card::before {
+  content: '';
+  display: block;
+  height: 18px;
+  width: 60%;
+  background: #e8e6f0;
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+.skeleton-card::after {
+  content: '';
+  display: block;
+  height: 13px;
+  width: 40%;
+  background: #ede9fe;
+  border-radius: 4px;
+}
+@keyframes shimmer {
+  0% { background-position: -200px 0; }
+  100% { background-position: 200px 0; }
+}
+.skeleton-card::before, .skeleton-card::after {
+  background: linear-gradient(90deg, #e8e6f0 25%, #f5f3ff 50%, #e8e6f0 75%);
+  background-size: 400px 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
