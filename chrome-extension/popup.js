@@ -365,7 +365,7 @@ function renderFlightPicker() {
         <div class="empty-icon">✈️</div>
         <div class="empty-title">No flights detected</div>
         ${state.error ? `<div style="font-size:10px;color:#dc2626;margin-top:8px;word-break:break-all;text-align:left">${state.error}</div>` : ''}
-        ${debug ? `<div style="font-size:9px;color:#6b7280;margin-top:6px;text-align:left;word-break:break-all"><b>Gemini said:</b> ${debug.geminiSaid || '(empty)'}<br><b>Data sample:</b> ${debug.payloadSample || '(none)'}</div>` : ''}
+        ${debug ? `<div style="font-size:9px;color:#6b7280;margin-top:6px;text-align:left;word-break:break-all"><b>AI (${debug.payloadCount || '?'} payloads, sizes: ${(debug.sizes||[]).join(',')})</b><br><b>Said:</b> ${debug.geminiSaid || '(empty)'}<br><b>Sample:</b> ${debug.payloadSample || '(none)'}</div>` : ''}
         <button class="btn btn-secondary" id="retryBtn" style="margin-top:12px">Retry</button>
       </div>
     `

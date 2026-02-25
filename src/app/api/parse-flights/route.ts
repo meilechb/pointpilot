@@ -95,10 +95,10 @@ export async function POST(request: NextRequest) {
     .sort((a, b) => b.length - a.length) // prefer larger payloads (more data)
     .slice(0, 5)
 
-  // If nothing passed the keyword filter, try with relaxed filter (page text may not have keywords)
+  // If nothing passed the keyword filter, fall back to ALL payloads (no filter) — let Gemini decide
   const toSend = filtered.length > 0
     ? filtered
-    : payloads.filter(p => p && p.length > 200).map(p => p.substring(0, 60000)).slice(0, 3)
+    : payloads.filter(p => p && p.length > 50).map(p => p.substring(0, 60000)).slice(0, 5)
 
   if (toSend.length === 0) {
     return NextResponse.json({ flights: [] })
@@ -142,7 +142,7 @@ export async function POST(request: NextRequest) {
       console.log('[parse-flights] No JSON array found in response')
       return NextResponse.json({
         flights: [],
-        debug: { geminiSaid: text.substring(0, 300), payloadSample: toSend[0]?.substring(0, 200) },
+        debug: { geminiSaid: text.substring(0, 400), payloadSample: toSend[0]?.substring(0, 400), payloadCount: toSend.length, sizes: toSend.map(p => p.length) },
       }, { headers: { 'Access-Control-Allow-Origin': '*' } })
     }
 
@@ -150,7 +150,7 @@ export async function POST(request: NextRequest) {
     console.log(`[parse-flights] Extracted ${flights.length} flights`)
     return NextResponse.json({
       flights,
-      debug: flights.length === 0 ? { geminiSaid: text.substring(0, 300), payloadSample: toSend[0]?.substring(0, 200) } : undefined,
+      debug: flights.length === 0 ? { geminiSaid: text.substring(0, 400), payloadSample: toSend[0]?.substring(0, 400), payloadCount: toSend.length, sizes: toSend.map(p => p.length) } : undefined,
     }, {
       headers: { 'Access-Control-Allow-Origin': '*' },
     })
