@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
   }
 
   const genAI = new GoogleGenerativeAI(apiKey)
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-preview-05-20' })
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
 
   const isPageText = toSend.length === 1 && !toSend[0].startsWith('{') && !toSend[0].startsWith('[')
   const dataLabel = isPageText ? 'Visible page text from flight booking site' : 'Raw JSON data from airline API'
