@@ -107,6 +107,9 @@ export async function POST(request: NextRequest) {
     ...toSend.map((p, i) => toSend.length > 1 ? `--- Data ${i + 1} ---\n${p}` : p),
   ].join('\n')
 
+  console.log(`[parse-flights] Sending ${toSend.length} payload(s) to Gemini. Sizes: ${toSend.map(p => p.length).join(', ')}. URL: ${url}`)
+  console.log(`[parse-flights] First 500 chars of first payload: ${toSend[0]?.substring(0, 500)}`)
+
   try {
     const result = await model.generateContent([
       { text: SYSTEM_PROMPT },
@@ -114,14 +117,17 @@ export async function POST(request: NextRequest) {
     ])
 
     const text = result.response.text().trim()
+    console.log(`[parse-flights] Gemini response (first 500 chars): ${text.substring(0, 500)}`)
 
     // Extract JSON array from response (strip any markdown fences if present)
     const jsonMatch = text.match(/\[[\s\S]*\]/)
     if (!jsonMatch) {
+      console.log('[parse-flights] No JSON array found in response')
       return NextResponse.json({ flights: [] })
     }
 
     const flights = JSON.parse(jsonMatch[0])
+    console.log(`[parse-flights] Extracted ${flights.length} flights`)
     return NextResponse.json({ flights }, {
       headers: { 'Access-Control-Allow-Origin': '*' },
     })
