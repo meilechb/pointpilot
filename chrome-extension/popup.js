@@ -462,7 +462,7 @@ function renderFlightPicker() {
   el.innerHTML = `${tip}
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
       <div class="section-title" style="margin-bottom:0">${flights.length} flight${flights.length !== 1 ? 's' : ''} detected — pick one</div>
-      <button class="btn btn-sm btn-secondary" id="rescanBtn" style="margin:0;flex-shrink:0">Scan this tab</button>
+      <button class="btn btn-sm btn-secondary" id="rescanBtn" style="margin:0;flex-shrink:0">Refresh results</button>
     </div>`
   const list = document.createElement('div')
   list.className = 'flight-list'
