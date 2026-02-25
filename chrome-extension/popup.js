@@ -7,7 +7,7 @@ const app = document.getElementById('app')
 
 // State
 let state = {
-  screen: 'loading', // loading | login | flights | details | selectTrip | success
+  screen: 'loading', // loading | login | analyzing | flights | details | selectTrip | success
   token: null,
   userEmail: null,
   flights: [],
@@ -16,6 +16,7 @@ let state = {
   trips: [],
   selectedTripId: null,
   error: null,
+  debugInfo: null,
   saving: false,
 }
 
@@ -247,7 +248,7 @@ function render() {
     screen.innerHTML = `<div style="padding:32px 16px;text-align:center;color:#6b7280">
       <div class="spinner" style="border-color:rgba(67,56,202,0.3);border-top-color:#4338ca;display:inline-block;width:24px;height:24px;border-width:3px"></div>
       <div style="margin-top:14px;font-weight:600;color:#1e1b4b;font-size:14px">Analyzing flights...</div>
-      <div style="margin-top:6px;font-size:12px">Reading flight data from this page</div>
+      <div style="margin-top:6px;font-size:11px;color:#9ca3af">${state.debugInfo || 'Reading flight data from this page'}</div>
     </div>`
   } else if (s === 'login') {
     screen.appendChild(renderLogin())
@@ -336,9 +337,14 @@ function renderFlightPicker() {
       <div class="empty-state">
         <div class="empty-icon">✈️</div>
         <div class="empty-title">No flights detected</div>
-        <div class="empty-sub">Browse to a flight results page and the extension will automatically detect flights. You can also search on Google Flights, United, Delta, or other airline sites.</div>
+        ${state.error ? `<div style="font-size:10px;color:#dc2626;margin-top:8px;word-break:break-all;text-align:left">${state.error}</div>` : ''}
+        <button class="btn btn-secondary" id="retryBtn" style="margin-top:12px">Retry</button>
       </div>
     `
+    el.querySelector('#retryBtn')?.addEventListener('click', () => {
+      setState({ error: null })
+      goToFlights()
+    })
     return el
   }
 
@@ -691,16 +697,19 @@ async function goToFlights() {
   try {
     // Strategy 1: try to read network payloads stored by injected.js
     let payloads = []
+    let debugSource = ''
 
     // First check background cache
     const cachedPayloads = await loadRawPayloads()
     if (cachedPayloads.length > 0) {
       payloads = cachedPayloads
+      debugSource = `cache(${cachedPayloads.length})`
     } else if (tabId) {
       // Try to read directly from the page's MAIN world
       const pagePayloads = await readPagePayloads(tabId)
       if (pagePayloads.length > 0) {
         payloads = pagePayloads
+        debugSource = `mainworld(${pagePayloads.length})`
       }
     }
 
@@ -709,13 +718,17 @@ async function goToFlights() {
       const pageText = await readPageText(tabId)
       if (pageText.length > 200) {
         payloads = [{ payload: pageText }]
+        debugSource = `pagetext(${pageText.length}chars)`
       }
     }
 
     if (payloads.length === 0) {
-      setState({ flights: [], screen: 'flights' })
+      setState({ flights: [], screen: 'flights', error: `Debug: no data (tabId=${tabId}, url=${pageUrl.substring(0,40)})` })
       return
     }
+
+    // Show source in analyzing screen
+    setState({ screen: 'analyzing', debugInfo: `Reading ${debugSource}...` })
 
     const aiFlights = await parseFlightsWithAI(payloads, pageUrl)
 
@@ -723,9 +736,9 @@ async function goToFlights() {
       storeFlights(aiFlights)
     }
 
-    setState({ flights: aiFlights, screen: 'flights' })
+    setState({ flights: aiFlights, screen: 'flights', error: aiFlights.length === 0 ? `Debug: AI returned 0 flights (source: ${debugSource})` : null })
   } catch (err) {
-    setState({ flights: existingFlights, screen: 'flights' })
+    setState({ flights: existingFlights, screen: 'flights', error: `Error: ${err.message}` })
   }
 }
 
