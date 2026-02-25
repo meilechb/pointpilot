@@ -32,11 +32,32 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     chrome.action.setBadgeBackgroundColor({ color: '#4338CA', tabId })
   }
 
+  // --- PAYLOADS_DUMP_DONE: content script finished forwarding on-demand payloads ---
+  if (msg.type === 'PAYLOADS_DUMP_DONE') {
+    // Nothing to do — payloads were already received via RAW_PAYLOAD messages above
+  }
+
   // --- Popup asking for raw payloads to send to AI ---
   if (msg.type === 'GET_RAW_PAYLOADS') {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       const tabId = tabs[0]?.id
-      sendResponse({ payloads: rawPayloadCache[tabId] || [] })
+      if (!tabId) { sendResponse({ payloads: [] }); return }
+
+      const cached = rawPayloadCache[tabId] || []
+      if (cached.length > 0) {
+        // Already have payloads — return immediately
+        sendResponse({ payloads: cached })
+        return
+      }
+
+      // No cached payloads — ask content script to dump from MAIN world
+      // then wait a moment for the RAW_PAYLOAD messages to come in
+      chrome.tabs.sendMessage(tabId, { type: 'REQUEST_PAYLOADS_DUMP' }, () => {
+        // Wait 300ms for the dump messages to arrive, then return whatever we got
+        setTimeout(() => {
+          sendResponse({ payloads: rawPayloadCache[tabId] || [] })
+        }, 300)
+      })
     })
     return true // async response
   }

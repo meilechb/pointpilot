@@ -1,14 +1,15 @@
 // content.js — runs in isolated world, bridges injected.js <-> background
 
-// 1. Inject the MAIN world script so it can wrap fetch/XHR before page scripts run
+// 1. Inject the MAIN world script as early as possible
 const script = document.createElement('script')
 script.src = chrome.runtime.getURL('injected.js')
 script.onload = () => script.remove()
 ;(document.head || document.documentElement).prepend(script)
 
-// 2. Forward raw payloads from injected.js to background
+// 2. Forward raw payloads from injected.js to background (real-time)
 window.addEventListener('message', (event) => {
   if (event.source !== window) return
+
   if (event.data?.type === 'POINTPILOT_RAW_PAYLOAD') {
     chrome.runtime.sendMessage({
       type: 'RAW_PAYLOAD',
@@ -16,9 +17,27 @@ window.addEventListener('message', (event) => {
       payload: event.data.payload,
     })
   }
+
+  // On-demand dump response: forward all stored payloads to background
+  if (event.data?.type === 'POINTPILOT_PAYLOADS_DUMP') {
+    const payloads = event.data.payloads || []
+    payloads.forEach(({ url, payload }) => {
+      chrome.runtime.sendMessage({ type: 'RAW_PAYLOAD', url, payload })
+    })
+    // Signal done
+    chrome.runtime.sendMessage({ type: 'PAYLOADS_DUMP_DONE', count: payloads.length })
+  }
 })
 
-// 3. JSON-LD scraping — runs once after page load (lightweight, accurate where present)
+// 3. Listen for background asking us to do an on-demand dump
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg.type === 'REQUEST_PAYLOADS_DUMP') {
+    window.postMessage({ type: 'POINTPILOT_GET_PAYLOADS' }, '*')
+    sendResponse({ ok: true })
+  }
+})
+
+// 4. JSON-LD scraping — lightweight, accurate where present
 function scrapeJsonLd() {
   const flights = []
   document.querySelectorAll('script[type="application/ld+json"]').forEach(el => {

@@ -6,6 +6,9 @@
   if (window.__pointpilotInjected) return
   window.__pointpilotInjected = true
 
+  // Store payloads on window so content.js can read them on-demand
+  window.__pointpilotPayloads = window.__pointpilotPayloads || []
+
   const FLIGHT_KEYWORDS = ['flight', 'airport', 'depart', 'arriv', 'cabin', 'miles', 'fare', 'itinerary', 'segment', 'carrier']
   const seenUrls = new Set()
 
@@ -21,10 +24,14 @@
   }
 
   function maybeForward(url, jsonString) {
-    // Dedupe by URL so we don't re-send the same endpoint response
     if (seenUrls.has(url)) return
     if (!looksLikeFlight(jsonString)) return
     seenUrls.add(url)
+    // Store on window for on-demand access
+    window.__pointpilotPayloads.push({ url, payload: jsonString })
+    // Keep only latest 10
+    if (window.__pointpilotPayloads.length > 10) window.__pointpilotPayloads.shift()
+    // Also post message for immediate forwarding
     window.postMessage({ type: 'POINTPILOT_RAW_PAYLOAD', url, payload: jsonString }, '*')
   }
 
@@ -37,8 +44,7 @@
       const clone = res.clone()
       clone.text().then(text => {
         try {
-          // Only forward if it's valid JSON
-          JSON.parse(text)
+          JSON.parse(text) // only forward valid JSON
           maybeForward(url, text)
         } catch (_) {}
       }).catch(() => {})
@@ -57,11 +63,19 @@
     this.addEventListener('load', function () {
       try {
         const text = this.responseText
-        // Only forward if it's valid JSON
-        JSON.parse(text)
+        JSON.parse(text) // only forward valid JSON
         maybeForward(this._ppUrl || '', text)
       } catch (_) {}
     })
     return origSend.apply(this, args)
   }
+
+  // ---- On-demand dump: content.js asks for all stored payloads ----
+  window.addEventListener('message', (event) => {
+    if (event.source !== window) return
+    if (event.data?.type === 'POINTPILOT_GET_PAYLOADS') {
+      const payloads = window.__pointpilotPayloads || []
+      window.postMessage({ type: 'POINTPILOT_PAYLOADS_DUMP', payloads }, '*')
+    }
+  })
 })()
