@@ -24,6 +24,7 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
 
   const handleEmailAuth = async () => {
     setError('')
@@ -122,13 +123,20 @@ export default function LoginPage() {
         />
 
         <label style={fieldLabel}>Password</label>
-        <input
-          type="password" placeholder={mode === 'signup' ? 'Min 6 characters' : 'Your password'}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') handleEmailAuth() }}
-          style={{ ...fieldInput, marginBottom: 16 }}
-        />
+        <div style={{ position: 'relative', marginBottom: 16 }}>
+          <input
+            type={showPassword ? 'text' : 'password'} placeholder={mode === 'signup' ? 'Min 6 characters' : 'Your password'}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') handleEmailAuth() }}
+            style={{ ...fieldInput, marginBottom: 0, paddingRight: 48 }}
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', fontSize: 13, padding: '4px 2px' }}
+          >{showPassword ? 'Hide' : 'Show'}</button>
+        </div>
 
         {error && (
           <div style={{

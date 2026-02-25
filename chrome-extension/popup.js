@@ -12,13 +12,16 @@ let state = {
   userEmail: null,
   flights: [],
   selectedFlight: null,
-  selectedTiers: [], // array of tier objects to save
+  selectedTiers: [],
   trips: [],
   selectedTripId: null,
   error: null,
   debugInfo: null,
   lastDebug: null,
   saving: false,
+  analyzeProgress: 0, // 0-100 for progress bar
+  hasMorePayloads: false, // true if network payloads available for deeper scan
+  showPassword: false,
 }
 
 function setState(updates) {
@@ -36,13 +39,11 @@ async function loadAuth() {
   })
 }
 
-// Save auth directly to chrome.storage (bypasses background service worker lifecycle)
 function saveAuth(access_token, refresh_token, user_email) {
   return new Promise(resolve => {
     chrome.storage.local.set({ access_token, refresh_token, user_email }, resolve)
   })
 }
-
 
 async function login(email, password) {
   const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
@@ -62,8 +63,6 @@ function logout() {
   chrome.storage.local.remove(['access_token', 'refresh_token', 'user_email'])
   setState({ token: null, userEmail: null, screen: 'login', error: null })
 }
-
-// ---- Auth error helper ----
 
 function handleAuthError() {
   chrome.storage.local.remove(['access_token', 'refresh_token', 'user_email'])
@@ -116,7 +115,6 @@ async function loadRawPayloads() {
   })
 }
 
-// Read window.__pointpilotPayloads directly from the page's MAIN world
 async function readPagePayloads(tabId) {
   try {
     const results = await chrome.scripting.executeScript({
@@ -130,16 +128,14 @@ async function readPagePayloads(tabId) {
   }
 }
 
-// Grab visible page text as fallback when no network payloads were intercepted
 async function readPageText(tabId) {
   try {
     const results = await chrome.scripting.executeScript({
       target: { tabId },
       world: 'MAIN',
       func: () => {
-        // Get text content, clean up whitespace
         const text = document.body?.innerText || ''
-        return text.replace(/\s{3,}/g, '\n\n').substring(0, 30000)
+        return text.replace(/\s{3,}/g, '\n\n').substring(0, 15000)
       },
     })
     return results?.[0]?.result || ''
@@ -234,17 +230,16 @@ function getBookingSite() {
   })
 }
 
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
 // ---- Tier building ----
-// Build tier options from a flight (could be one tier or multiple)
 function buildTiersFromFlight(flight) {
   const tiers = []
-
-  // If there are explicit pricingTiers, use those
   if (flight.pricingTiers && flight.pricingTiers.length > 0) {
     return flight.pricingTiers
   }
-
-  // Build from top-level price fields
   if (flight.cashAmount || flight.pointsAmount) {
     tiers.push({
       id: crypto.randomUUID(),
@@ -255,7 +250,6 @@ function buildTiersFromFlight(flight) {
       feesAmount: flight.feesAmount || null,
     })
   }
-
   return tiers
 }
 
@@ -265,7 +259,6 @@ function render() {
   app.innerHTML = ''
   const s = state.screen
 
-  // Header always shown (except on loading screen)
   if (s !== 'loading') {
     app.appendChild(renderHeader())
   }
@@ -278,9 +271,12 @@ function render() {
       <div class="spinner" style="border-color:rgba(67,56,202,0.3);border-top-color:#4338ca;display:inline-block"></div>
     </div>`
   } else if (s === 'analyzing') {
+    const pct = state.analyzeProgress || 0
     screen.innerHTML = `<div style="padding:32px 16px;text-align:center;color:#6b7280">
-      <div class="spinner" style="border-color:rgba(67,56,202,0.3);border-top-color:#4338ca;display:inline-block;width:24px;height:24px;border-width:3px"></div>
-      <div style="margin-top:14px;font-weight:600;color:#1e1b4b;font-size:14px">Analyzing flights...</div>
+      <div style="width:100%;height:6px;background:#e0e0f0;border-radius:3px;overflow:hidden;margin-bottom:16px">
+        <div style="width:${pct}%;height:100%;background:linear-gradient(90deg,#4338ca,#6366f1);border-radius:3px;transition:width 0.3s ease"></div>
+      </div>
+      <div style="font-weight:600;color:#1e1b4b;font-size:14px">Analyzing flights...</div>
       <div style="margin-top:6px;font-size:11px;color:#9ca3af">${state.debugInfo || 'Reading flight data from this page'}</div>
     </div>`
   } else if (s === 'login') {
@@ -326,13 +322,22 @@ function renderLogin() {
     <label>Email</label>
     <input type="email" id="email" placeholder="you@example.com" autocomplete="email" />
     <label>Password</label>
-    <input type="password" id="password" placeholder="••••••••" autocomplete="current-password" />
+    <div style="position:relative">
+      <input type="${state.showPassword ? 'text' : 'password'}" id="password" placeholder="••••••••" autocomplete="current-password" style="padding-right:40px" />
+      <button type="button" id="togglePw" style="position:absolute;right:8px;top:50%;transform:translateY(-60%);background:none;border:none;cursor:pointer;color:#6b7280;font-size:13px;padding:4px">${state.showPassword ? 'Hide' : 'Show'}</button>
+    </div>
     <button class="btn" id="loginBtn">Sign In</button>
   `
 
   const emailInput = el.querySelector('#email')
   const passwordInput = el.querySelector('#password')
   const loginBtn = el.querySelector('#loginBtn')
+
+  el.querySelector('#togglePw').addEventListener('click', () => {
+    state.showPassword = !state.showPassword
+    passwordInput.type = state.showPassword ? 'text' : 'password'
+    el.querySelector('#togglePw').textContent = state.showPassword ? 'Hide' : 'Show'
+  })
 
   const doLogin = async () => {
     const email = emailInput.value.trim()
@@ -343,11 +348,9 @@ function renderLogin() {
     try {
       const data = await login(email, password)
       const userEmail = data.user?.email || email
-      // Save directly to storage and wait for it to complete
       await saveAuth(data.access_token, data.refresh_token, userEmail)
       state.token = data.access_token
       state.userEmail = userEmail
-      // Go straight to flight detection — don't call setState here to avoid re-rendering login
       await goToFlights()
     } catch (err) {
       loginBtn.disabled = false
@@ -377,13 +380,18 @@ function renderFlightPicker() {
       </div>
     `
     el.querySelector('#retryBtn')?.addEventListener('click', () => {
-      setState({ error: null })
+      setState({ error: null, lastDebug: null })
       goToFlights()
     })
     return el
   }
 
-  el.innerHTML = `<div class="section-title">${flights.length} flight${flights.length !== 1 ? 's' : ''} detected — pick one</div>`
+  // Tip when many flights
+  const tip = flights.length > 10
+    ? `<div style="font-size:11px;color:#6b7280;margin-bottom:8px;background:#f5f3ff;padding:8px 10px;border-radius:6px">Tip: Filter results on the booking site first for faster detection.</div>`
+    : ''
+
+  el.innerHTML = `${tip}<div class="section-title">${flights.length} flight${flights.length !== 1 ? 's' : ''} detected — pick one</div>`
   const list = document.createElement('div')
   list.className = 'flight-list'
 
@@ -421,6 +429,20 @@ function renderFlightPicker() {
   })
 
   el.appendChild(list)
+
+  // "Scan deeper" button if we have network payloads we haven't used yet
+  if (state.hasMorePayloads) {
+    const moreBtn = document.createElement('button')
+    moreBtn.className = 'btn btn-secondary'
+    moreBtn.style.marginTop = '10px'
+    moreBtn.textContent = 'Scan deeper (analyze raw API data)'
+    moreBtn.addEventListener('click', () => {
+      setState({ hasMorePayloads: false })
+      goToFlights(true) // deep scan
+    })
+    el.appendChild(moreBtn)
+  }
+
   return el
 }
 
@@ -438,7 +460,6 @@ function renderDetails() {
   const tiers = buildTiersFromFlight(f)
   const el = document.createElement('div')
 
-  // Segment summary
   let summaryHTML = `
     <div class="segment-summary">
       <div class="seg-route">${f.departureAirport || '?'} → ${f.arrivalAirport || '?'}</div>
@@ -451,7 +472,6 @@ function renderDetails() {
     </div>
   `
 
-  // Tier selection
   let tierHTML = ''
   if (tiers.length === 0) {
     tierHTML = `
@@ -519,7 +539,6 @@ function renderDetails() {
     <button class="btn btn-secondary" id="backBtn" style="margin-top:8px">← Back</button>
   `
 
-  // Payment type toggle for manual entry
   const paymentTypeEl = el.querySelector('#paymentType')
   const priceLabelEl = el.querySelector('#priceLabel')
   const feesRowEl = el.querySelector('#feesRow')
@@ -531,7 +550,6 @@ function renderDetails() {
     })
   }
 
-  // Tier checkboxes styling
   el.querySelectorAll('.tier-card input[type="checkbox"]').forEach(cb => {
     const card = cb.closest('.tier-card')
     if (cb.checked) card.classList.add('selected')
@@ -545,7 +563,6 @@ function renderDetails() {
   })
 
   el.querySelector('#nextBtn').addEventListener('click', async () => {
-    // Collect selected tiers
     let selectedTiers = []
     const tierCheckboxes = el.querySelectorAll('.tier-grid input[type="checkbox"]')
     if (tierCheckboxes.length > 0) {
@@ -559,7 +576,6 @@ function renderDetails() {
     } else if (tiers.length === 1) {
       selectedTiers = tiers
     } else {
-      // Manual entry
       const payType = paymentTypeEl?.value || 'cash'
       const amount = parseFloat(el.querySelector('#priceAmount')?.value || '0') || null
       const fees = parseFloat(el.querySelector('#feesAmount')?.value || '0') || null
@@ -576,7 +592,6 @@ function renderDetails() {
     const bookingSite = el.querySelector('#bookingSite')?.value.trim() || ''
     const updatedFlight = { ...state.selectedFlight, bookingSite }
 
-    // Load trips
     try {
       const trips = await fetchTrips()
       setState({ trips, selectedTiers, selectedFlight: updatedFlight, screen: 'selectTrip', error: null })
@@ -641,20 +656,15 @@ async function addFlight(trip) {
 
   const f = state.selectedFlight
   const tiers = state.selectedTiers
-
-  // Build the flight object
-  // Determine primary payment type and amounts from first selected tier
   const primaryTier = tiers[0]
   const additionalTiers = tiers.slice(1)
 
-  // Find which leg index this flight belongs to (auto-detect by airports, default 0)
   let legIndex = 0
   if (trip.legs && trip.legs.length > 1) {
     const depMatch = trip.legs.findIndex(l =>
       l.from?.toUpperCase() === (f.departureAirport || '').toUpperCase()
     )
     if (depMatch >= 0) legIndex = depMatch
-    // Otherwise default to 0 — user can edit in app
   }
 
   const segment = {
@@ -714,11 +724,7 @@ function renderSuccess() {
 
 // ---- Init ----
 
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms))
-}
-
-async function goToFlights() {
+async function goToFlights(deepScan = false) {
   const tab = await getCurrentTab()
   const tabId = tab?.id
   const pageUrl = tab?.url || ''
@@ -726,13 +732,13 @@ async function goToFlights() {
   // Get already-parsed flights (JSON-LD hits from content.js)
   const existingFlights = await loadFlights()
 
-  // If we already have parsed flights cached, show them immediately
-  if (existingFlights.length > 0) {
+  // If we already have parsed flights cached, show them immediately (unless deep scanning)
+  if (existingFlights.length > 0 && !deepScan) {
     setState({ flights: existingFlights, screen: 'flights' })
     return
   }
 
-  setState({ screen: 'analyzing' })
+  setState({ screen: 'analyzing', analyzeProgress: 5, debugInfo: 'Reading page...' })
 
   try {
     if (!tabId) {
@@ -740,41 +746,47 @@ async function goToFlights() {
       return
     }
 
-    setState({ screen: 'analyzing', debugInfo: 'Reading page...' })
+    // Step 1: Read page text (fast — this is what the user sees)
+    setState({ screen: 'analyzing', analyzeProgress: 15, debugInfo: 'Reading page text...' })
+    let pageText = await readPageText(tabId)
 
-    // Read network payloads first (most structured data)
+    // Step 2: Check for network payloads
+    setState({ screen: 'analyzing', analyzeProgress: 25, debugInfo: 'Checking intercepted data...' })
     const cachedPayloads = await loadRawPayloads()
     const pagePayloads = cachedPayloads.length > 0 ? cachedPayloads : await readPagePayloads(tabId)
 
-    // Read page text
-    let pageText = await readPageText(tabId)
-
-    // If page text is very short, the SPA may not have rendered yet — wait and retry once
-    if (pageText.length < 5000 && pagePayloads.length === 0) {
-      setState({ screen: 'analyzing', debugInfo: 'Waiting for page to load...' })
-      await sleep(2500)
+    // If page text is too short and no network data, wait for SPA
+    if (pageText.length < 3000 && pagePayloads.length === 0) {
+      setState({ screen: 'analyzing', analyzeProgress: 30, debugInfo: 'Waiting for page to load...' })
+      await sleep(2000)
       pageText = await readPageText(tabId)
-      // Also re-check for network payloads after wait
-      const freshPayloads = await readPagePayloads(tabId)
-      if (freshPayloads.length > pagePayloads.length) {
-        pagePayloads.length = 0
-        pagePayloads.push(...freshPayloads)
-      }
     }
 
-    // Build payload list: prefer network JSON (more structured), fall back to page text
+    // Strategy: send page text only for fast initial scan
+    // If deepScan requested, also include network payloads
     let payloads = []
     let debugSource = ''
+    let hasMore = false
 
-    if (pagePayloads.length > 0) {
+    if (deepScan && pagePayloads.length > 0) {
+      // Deep scan: send network payloads + page text
       payloads = pagePayloads
       debugSource = `network(${pagePayloads.length})`
-    }
-
-    if (pageText.length > 500) {
-      // Always include page text — it shows what the user actually sees
-      payloads = [...payloads, { payload: pageText }]
-      debugSource = debugSource ? `${debugSource}+page(${pageText.length}ch)` : `pagetext(${pageText.length}ch)`
+      if (pageText.length > 500) {
+        payloads = [...payloads, { payload: pageText }]
+        debugSource += `+page`
+      }
+    } else {
+      // Fast scan: page text only (much smaller, faster AI response)
+      if (pageText.length > 500) {
+        payloads = [{ payload: pageText }]
+        debugSource = `pagetext(${pageText.length}ch)`
+        hasMore = pagePayloads.length > 0
+      } else if (pagePayloads.length > 0) {
+        // No page text, use network payloads
+        payloads = pagePayloads
+        debugSource = `network(${pagePayloads.length})`
+      }
     }
 
     if (payloads.length === 0) {
@@ -782,17 +794,23 @@ async function goToFlights() {
       return
     }
 
-    setState({ screen: 'analyzing', debugInfo: `Analyzing ${debugSource}...` })
+    setState({ screen: 'analyzing', analyzeProgress: 50, debugInfo: `Sending to AI (${debugSource})...` })
 
     const aiFlights = await parseFlightsWithAI(payloads, pageUrl)
+
+    setState({ screen: 'analyzing', analyzeProgress: 95, debugInfo: 'Done!' })
 
     if (aiFlights.length > 0) {
       storeFlights(aiFlights)
     }
 
-    setState({ flights: aiFlights, screen: 'flights', error: aiFlights.length === 0 ? `Debug: AI returned 0 flights (source: ${debugSource})` : null })
+    setState({
+      flights: aiFlights,
+      screen: 'flights',
+      hasMorePayloads: hasMore && aiFlights.length > 0,
+      error: aiFlights.length === 0 ? `Debug: AI returned 0 flights (source: ${debugSource})` : null,
+    })
   } catch (err) {
-    // If auth handler already redirected to login, don't overwrite that state
     if (state.screen === 'login') return
     setState({ flights: existingFlights, screen: 'flights', error: `Error: ${err.message}` })
   }

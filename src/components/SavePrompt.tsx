@@ -28,6 +28,7 @@ export default function SavePrompt({ trigger }: Props) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [fullName, setFullName] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
@@ -159,12 +160,19 @@ export default function SavePrompt({ trigger }: Props) {
               onChange={(e) => setEmail(e.target.value)}
               style={{ ...fieldInput, marginBottom: 8 }}
             />
-            <input
-              type="password" placeholder="Password (min 6 chars)" value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter' && email && password) handleSignup() }}
-              style={{ ...fieldInput, marginBottom: 12 }}
-            />
+            <div style={{ position: 'relative', marginBottom: 12 }}>
+              <input
+                type={showPassword ? 'text' : 'password'} placeholder="Password (min 6 chars)" value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter' && email && password) handleSignup() }}
+                style={{ ...fieldInput, marginBottom: 0, paddingRight: 48 }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', fontSize: 13, padding: '4px 2px' }}
+              >{showPassword ? 'Hide' : 'Show'}</button>
+            </div>
 
             {error && (
               <div style={{

@@ -88,17 +88,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ flights: [] })
   }
 
-  // Filter to payloads that look like flight data, truncate each, keep best 5
+  // Filter to payloads that look like flight data, truncate each, keep best 3
+  // Keep payloads small (15K each) for faster AI response
   const filtered = payloads
     .filter(p => p && p.length > 200 && looksLikeFlightData(p))
-    .map(p => p.substring(0, 60000))
+    .map(p => p.substring(0, 15000))
     .sort((a, b) => b.length - a.length)
-    .slice(0, 5)
+    .slice(0, 3)
 
   // If nothing passed the keyword filter, fall back to ALL payloads (no filter)
   const toSend = filtered.length > 0
     ? filtered
-    : payloads.filter(p => p && p.length > 50).map(p => p.substring(0, 60000)).slice(0, 5)
+    : payloads.filter(p => p && p.length > 50).map(p => p.substring(0, 15000)).slice(0, 3)
 
   if (toSend.length === 0) {
     return NextResponse.json({ flights: [] })
