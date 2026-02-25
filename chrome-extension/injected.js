@@ -9,7 +9,11 @@
   // Store payloads on window so content.js can read them on-demand
   window.__pointpilotPayloads = window.__pointpilotPayloads || []
 
-  const FLIGHT_KEYWORDS = ['flight', 'airport', 'depart', 'arriv', 'cabin', 'miles', 'fare', 'itinerary', 'segment', 'carrier']
+  const FLIGHT_KEYWORDS = [
+    'flight', 'airport', 'depart', 'arriv', 'cabin', 'miles', 'fare',
+    'itinerary', 'segment', 'carrier', 'origin', 'destination', 'duration',
+    'layover', 'stopover', 'airline', 'iata', 'aircraft',
+  ]
   const seenUrls = new Set()
 
   function looksLikeFlight(text) {
@@ -18,7 +22,7 @@
     const lower = text.toLowerCase()
     for (const kw of FLIGHT_KEYWORDS) {
       if (lower.includes(kw)) matches++
-      if (matches >= 3) return true
+      if (matches >= 2) return true
     }
     return false
   }
@@ -70,12 +74,4 @@
     return origSend.apply(this, args)
   }
 
-  // ---- On-demand dump: content.js asks for all stored payloads ----
-  window.addEventListener('message', (event) => {
-    if (event.source !== window) return
-    if (event.data?.type === 'POINTPILOT_GET_PAYLOADS') {
-      const payloads = window.__pointpilotPayloads || []
-      window.postMessage({ type: 'POINTPILOT_PAYLOADS_DUMP', payloads }, '*')
-    }
-  })
 })()

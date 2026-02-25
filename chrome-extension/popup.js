@@ -1,7 +1,7 @@
 // PointPilot Chrome Extension - Popup
 const SUPABASE_URL = 'https://qlghqnkbkjzzdjlpccyr.supabase.co'
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFsZ2hxbmtia2p6emRqbHBjY3lyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE3ODI3NjgsImV4cCI6MjA4NzM1ODc2OH0.3s0m1TKi0-4PuZPGjvZCBdsH_Rfy7Mo9xNoLoUQ2BiQ'
-const API_BASE = 'https://pointpilot.vercel.app'
+const API_BASE = 'https://www.pointtripper.com'
 
 const app = document.getElementById('app')
 
@@ -29,11 +29,19 @@ function setState(updates) {
 
 async function loadAuth() {
   return new Promise(resolve => {
-    chrome.runtime.sendMessage({ type: 'GET_AUTH' }, result => {
+    chrome.storage.local.get(['access_token', 'refresh_token', 'user_email'], result => {
       resolve(result || {})
     })
   })
 }
+
+// Save auth directly to chrome.storage (bypasses background service worker lifecycle)
+function saveAuth(access_token, refresh_token, user_email) {
+  return new Promise(resolve => {
+    chrome.storage.local.set({ access_token, refresh_token, user_email }, resolve)
+  })
+}
+
 
 async function login(email, password) {
   const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
@@ -50,8 +58,15 @@ async function login(email, password) {
 }
 
 function logout() {
-  chrome.runtime.sendMessage({ type: 'CLEAR_AUTH' })
+  chrome.storage.local.remove(['access_token', 'refresh_token', 'user_email'])
   setState({ token: null, userEmail: null, screen: 'login', error: null })
+}
+
+// ---- Auth error helper ----
+
+function handleAuthError() {
+  chrome.storage.local.remove(['access_token', 'refresh_token', 'user_email'])
+  setState({ token: null, userEmail: null, screen: 'login', error: 'Session expired. Please sign in again.' })
 }
 
 // ---- API calls ----
@@ -60,6 +75,7 @@ async function fetchTrips() {
   const res = await fetch(`${API_BASE}/api/trips`, {
     headers: { Authorization: `Bearer ${state.token}` },
   })
+  if (res.status === 401) { handleAuthError(); throw new Error('Session expired') }
   if (!res.ok) throw new Error('Failed to load trips')
   return res.json()
 }
@@ -73,6 +89,7 @@ async function addFlightToTrip(tripId, flightData) {
     },
     body: JSON.stringify(flightData),
   })
+  if (res.status === 401) { handleAuthError(); throw new Error('Session expired') }
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
     throw new Error(err.error || 'Failed to add flight')
@@ -121,7 +138,7 @@ async function readPageText(tabId) {
       func: () => {
         // Get text content, clean up whitespace
         const text = document.body?.innerText || ''
-        return text.replace(/\s{3,}/g, '\n\n').substring(0, 80000)
+        return text.replace(/\s{3,}/g, '\n\n').substring(0, 30000)
       },
     })
     return results?.[0]?.result || ''
@@ -131,6 +148,7 @@ async function readPageText(tabId) {
 }
 
 async function parseFlightsWithAI(payloads, pageUrl) {
+  if (!state.token) throw new Error('Not logged in')
   const res = await fetch(`${API_BASE}/api/parse-flights`, {
     method: 'POST',
     headers: {
@@ -142,7 +160,11 @@ async function parseFlightsWithAI(payloads, pageUrl) {
       url: pageUrl,
     }),
   })
-  if (!res.ok) return []
+  if (res.status === 401) { handleAuthError(); throw new Error('Session expired') }
+  if (!res.ok) {
+    const body = await res.text().catch(() => '')
+    throw new Error(`API error ${res.status}: ${body.substring(0, 200)}`)
+  }
   const data = await res.json()
   return data.flights || []
 }
@@ -309,16 +331,16 @@ function renderLogin() {
     loginBtn.innerHTML = '<span class="spinner"></span>Signing in...'
     try {
       const data = await login(email, password)
-      chrome.runtime.sendMessage({
-        type: 'SET_AUTH',
-        access_token: data.access_token,
-        refresh_token: data.refresh_token,
-        user_email: data.user?.email || email,
-      })
+      const userEmail = data.user?.email || email
+      // Save directly to storage and wait for it to complete
+      await saveAuth(data.access_token, data.refresh_token, userEmail)
       state.token = data.access_token
-      state.userEmail = data.user?.email || email
+      state.userEmail = userEmail
+      // Go straight to flight detection — don't call setState here to avoid re-rendering login
       await goToFlights()
     } catch (err) {
+      loginBtn.disabled = false
+      loginBtn.textContent = 'Sign In'
       setState({ error: err.message })
     }
   }
@@ -539,14 +561,14 @@ function renderDetails() {
     }
 
     const bookingSite = el.querySelector('#bookingSite')?.value.trim() || ''
-    state.selectedFlight.bookingSite = bookingSite
-    state.selectedTiers = selectedTiers
+    const updatedFlight = { ...state.selectedFlight, bookingSite }
 
     // Load trips
     try {
       const trips = await fetchTrips()
-      setState({ trips, selectedTiers, screen: 'selectTrip', error: null })
+      setState({ trips, selectedTiers, selectedFlight: updatedFlight, screen: 'selectTrip', error: null })
     } catch (err) {
+      if (state.screen === 'login') return
       setState({ error: err.message })
     }
   })
@@ -645,7 +667,7 @@ async function addFlight(trip) {
     pointsAmount: primaryTier.pointsAmount,
     feesAmount: primaryTier.feesAmount,
     defaultTierLabel: primaryTier.label,
-    pricingTiers: additionalTiers.length > 0 ? [primaryTier, ...additionalTiers] : [],
+    pricingTiers: [primaryTier, ...additionalTiers],
   }
 
   try {
@@ -653,6 +675,7 @@ async function addFlight(trip) {
     chrome.runtime.sendMessage({ type: 'CLEAR_FLIGHTS' })
     setState({ saving: false, screen: 'success', selectedTripId: trip.id })
   } catch (err) {
+    if (state.screen === 'login') return
     setState({ saving: false, error: err.message })
   }
 }
@@ -664,7 +687,7 @@ function renderSuccess() {
     <div class="success-icon">✅</div>
     <div class="success-title">Flight added!</div>
     <div class="success-sub">Successfully added to "${trip?.name || 'your trip'}"</div>
-    <a href="https://pointpilot.vercel.app/trip/${state.selectedTripId}" target="_blank" class="btn">
+    <a href="https://www.pointtripper.com/trip/${state.selectedTripId}" target="_blank" class="btn">
       Open Trip in PointPilot
     </a>
     <button class="btn btn-secondary" id="addAnotherBtn">Add Another Flight</button>
@@ -738,6 +761,8 @@ async function goToFlights() {
 
     setState({ flights: aiFlights, screen: 'flights', error: aiFlights.length === 0 ? `Debug: AI returned 0 flights (source: ${debugSource})` : null })
   } catch (err) {
+    // If auth handler already redirected to login, don't overwrite that state
+    if (state.screen === 'login') return
     setState({ flights: existingFlights, screen: 'flights', error: `Error: ${err.message}` })
   }
 }

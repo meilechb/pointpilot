@@ -2,13 +2,23 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 
-const FLIGHT_KEYWORDS = ['flight', 'airport', 'depart', 'arriv', 'cabin', 'miles', 'price', 'fare', 'itinerary', 'segment', 'carrier']
+const FLIGHT_KEYWORDS = [
+  'flight', 'airport', 'depart', 'arriv', 'cabin', 'miles', 'price', 'fare',
+  'itinerary', 'segment', 'carrier', 'origin', 'destination', 'duration',
+  'layover', 'stopover', 'airline', 'iata', 'aircraft', 'gate', 'terminal',
+]
 
 const SYSTEM_PROMPT = `You are a flight data extractor. You will receive data from a flight booking website — either raw JSON from API calls or visible page text. Extract all flight search result options and return them as a JSON array.
 
+Different booking sites use different field names. Common patterns:
+- Skyscanner: "legs" array with "origin"/"destination" (IATA codes), "departure"/"arrival" (ISO timestamps), "durationInMinutes", "stopCount", "carriers"
+- United.com: "flightLegs" or segments with "departureAirport"/"arrivalAirport", "departureDateTime", "arrivalDateTime"
+- Google Flights: "flights" with departure/arrival IATA codes and times
+- Delta, AA: Similar structured JSON with flight numbers, times, prices
+
 For each flight found, return an object with these exact fields (use null for missing values):
 {
-  "flightCode": string | null,        // e.g. "UA123", "DL456"
+  "flightCode": string | null,        // e.g. "UA123", "DL456" — combine carrier code + flight number
   "airlineName": string | null,       // e.g. "United Airlines"
   "departureAirport": string | null,  // IATA code, e.g. "JFK"
   "arrivalAirport": string | null,    // IATA code, e.g. "LHR"
@@ -18,7 +28,7 @@ For each flight found, return an object with these exact fields (use null for mi
   "arrivalDate": string | null,       // "YYYY-MM-DD" arrival date
   "duration": number | null,          // total flight duration in minutes
   "stops": number | null,             // 0 = nonstop, 1 = one stop, etc.
-  "cashAmount": number | null,        // lowest cash price in USD (number only)
+  "cashAmount": number | null,        // lowest cash price in USD (number only, no currency symbols)
   "pointsAmount": number | null,      // points/miles required (number only)
   "feesAmount": number | null,        // taxes + fees in USD (number only)
   "cabinClass": string | null,        // e.g. "Economy", "Business", "First"
@@ -38,17 +48,19 @@ Rules:
 - Each unique flight route+time combination is one entry
 - If a flight has multiple cabin options (Economy/Business/First), list them all in pricingTiers
 - If pricing is in points/miles, set paymentType to "points" and put the value in pointsAmount
+- Prices may be in minor currency units (e.g. 45000 = $450.00) — divide by 100 if they seem too large
 - Deduplicate: do not return the same flight twice
 - If no flight data is found at all, return []
 - Focus on flight SEARCH RESULTS (bookable options), not confirmation pages or unrelated content
-- When reading page text: look for flight cards showing departure/arrival airports, times, prices`
+- When reading page text: look for flight cards showing departure/arrival airports, times, prices
+- Extract as many flights as you can find — aim for completeness`
 
 function looksLikeFlightData(payload: string): boolean {
   const lower = payload.toLowerCase()
   let matches = 0
   for (const kw of FLIGHT_KEYWORDS) {
     if (lower.includes(kw)) matches++
-    if (matches >= 3) return true
+    if (matches >= 2) return true
   }
   return false
 }
@@ -110,8 +122,10 @@ export async function POST(request: NextRequest) {
     ...toSend.map((p, i) => toSend.length > 1 ? `--- Data ${i + 1} ---\n${p}` : p),
   ].join('\n')
 
-  console.log(`[parse-flights] Sending ${toSend.length} payload(s) to Gemini. Sizes: ${toSend.map(p => p.length).join(', ')}. URL: ${url}`)
-  console.log(`[parse-flights] First 500 chars of first payload: ${toSend[0]?.substring(0, 500)}`)
+  console.log(`[parse-flights] Received ${payloads.length} payloads, filtered to ${toSend.length}. Sizes: ${toSend.map(p => p.length).join(', ')}. URL: ${url}`)
+  console.log(`[parse-flights] All received payload sizes: ${payloads.map(p => p?.length ?? 0).join(', ')}`)
+  console.log(`[parse-flights] First payload starts with: ${payloads[0]?.substring(0, 300)}`)
+  console.log(`[parse-flights] First 300 chars of first SENT payload: ${toSend[0]?.substring(0, 300)}`)
 
   try {
     const result = await model.generateContent([

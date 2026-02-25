@@ -1,43 +1,29 @@
 // content.js — runs in isolated world, bridges injected.js <-> background
 
 // 1. Inject the MAIN world script as early as possible
+// Use document.documentElement (always available at document_start) not document.head
 const script = document.createElement('script')
 script.src = chrome.runtime.getURL('injected.js')
 script.onload = () => script.remove()
-;(document.head || document.documentElement).prepend(script)
+document.documentElement.prepend(script)
 
 // 2. Forward raw payloads from injected.js to background (real-time)
 window.addEventListener('message', (event) => {
   if (event.source !== window) return
-
   if (event.data?.type === 'POINTPILOT_RAW_PAYLOAD') {
-    chrome.runtime.sendMessage({
-      type: 'RAW_PAYLOAD',
-      url: event.data.url,
-      payload: event.data.payload,
-    })
-  }
-
-  // On-demand dump response: forward all stored payloads to background
-  if (event.data?.type === 'POINTPILOT_PAYLOADS_DUMP') {
-    const payloads = event.data.payloads || []
-    payloads.forEach(({ url, payload }) => {
-      chrome.runtime.sendMessage({ type: 'RAW_PAYLOAD', url, payload })
-    })
-    // Signal done
-    chrome.runtime.sendMessage({ type: 'PAYLOADS_DUMP_DONE', count: payloads.length })
+    try {
+      chrome.runtime.sendMessage({
+        type: 'RAW_PAYLOAD',
+        url: event.data.url,
+        payload: event.data.payload,
+      })
+    } catch (_) {
+      // Extension context invalidated (e.g. extension reloaded) — ignore
+    }
   }
 })
 
-// 3. Listen for background asking us to do an on-demand dump
-chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-  if (msg.type === 'REQUEST_PAYLOADS_DUMP') {
-    window.postMessage({ type: 'POINTPILOT_GET_PAYLOADS' }, '*')
-    sendResponse({ ok: true })
-  }
-})
-
-// 4. JSON-LD scraping — lightweight, accurate where present
+// 3. JSON-LD scraping — runs once on load, then watches for dynamic inserts
 function scrapeJsonLd() {
   const flights = []
   document.querySelectorAll('script[type="application/ld+json"]').forEach(el => {
@@ -71,12 +57,28 @@ function scrapeJsonLd() {
     } catch (_) {}
   })
   if (flights.length > 0) {
-    chrome.runtime.sendMessage({ type: 'FLIGHTS_DETECTED', flights })
+    try {
+      chrome.runtime.sendMessage({ type: 'FLIGHTS_DETECTED', flights })
+    } catch (_) {}
   }
 }
 
+// Run after page load and watch for dynamic JSON-LD inserts
 if (document.readyState === 'complete') {
   scrapeJsonLd()
 } else {
   window.addEventListener('load', scrapeJsonLd)
 }
+
+// Watch for dynamically inserted JSON-LD script tags
+const observer = new MutationObserver((mutations) => {
+  for (const mutation of mutations) {
+    for (const node of mutation.addedNodes) {
+      if (node.nodeName === 'SCRIPT' && node.type === 'application/ld+json') {
+        scrapeJsonLd()
+        return
+      }
+    }
+  }
+})
+observer.observe(document.documentElement, { childList: true, subtree: true })
