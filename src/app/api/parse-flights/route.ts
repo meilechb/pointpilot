@@ -4,7 +4,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai'
 
 const FLIGHT_KEYWORDS = ['flight', 'airport', 'depart', 'arriv', 'cabin', 'miles', 'price', 'fare', 'itinerary', 'segment', 'carrier']
 
-const SYSTEM_PROMPT = `You are a flight data extractor. You will receive raw JSON data intercepted from airline booking websites. Extract all flight options and return them as a JSON array.
+const SYSTEM_PROMPT = `You are a flight data extractor. You will receive data from a flight booking website — either raw JSON from API calls or visible page text. Extract all flight search result options and return them as a JSON array.
 
 For each flight found, return an object with these exact fields (use null for missing values):
 {
@@ -22,7 +22,7 @@ For each flight found, return an object with these exact fields (use null for mi
   "pointsAmount": number | null,      // points/miles required (number only)
   "feesAmount": number | null,        // taxes + fees in USD (number only)
   "cabinClass": string | null,        // e.g. "Economy", "Business", "First"
-  "pricingTiers": [                   // all available cabin/price options
+  "pricingTiers": [                   // all available cabin/price options for this flight
     {
       "label": string,                // e.g. "Economy", "Business", "Economy Saver"
       "paymentType": "cash" | "points",
@@ -34,13 +34,14 @@ For each flight found, return an object with these exact fields (use null for mi
 }
 
 Rules:
-- Return ONLY a valid JSON array, no markdown, no explanation
+- Return ONLY a valid JSON array, no markdown, no explanation, no code fences
 - Each unique flight route+time combination is one entry
 - If a flight has multiple cabin options (Economy/Business/First), list them all in pricingTiers
 - If pricing is in points/miles, set paymentType to "points" and put the value in pointsAmount
 - Deduplicate: do not return the same flight twice
-- If the JSON contains no flight data at all, return []
-- Focus on flight SEARCH RESULTS (itinerary options the user can book), not booking confirmations`
+- If no flight data is found at all, return []
+- Focus on flight SEARCH RESULTS (bookable options), not confirmation pages or unrelated content
+- When reading page text: look for flight cards showing departure/arrival airports, times, prices`
 
 function looksLikeFlightData(payload: string): boolean {
   const lower = payload.toLowerCase()
@@ -72,14 +73,19 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ flights: [] })
   }
 
-  // Filter to payloads that look like flight data, truncate to 50KB each, keep best 5
+  // Filter to payloads that look like flight data, truncate each, keep best 5
   const filtered = payloads
     .filter(p => p && p.length > 200 && looksLikeFlightData(p))
-    .map(p => p.substring(0, 50000))
+    .map(p => p.substring(0, 60000))
     .sort((a, b) => b.length - a.length) // prefer larger payloads (more data)
     .slice(0, 5)
 
-  if (filtered.length === 0) {
+  // If nothing passed the keyword filter, try with relaxed filter (page text may not have keywords)
+  const toSend = filtered.length > 0
+    ? filtered
+    : payloads.filter(p => p && p.length > 200).map(p => p.substring(0, 60000)).slice(0, 3)
+
+  if (toSend.length === 0) {
     return NextResponse.json({ flights: [] })
   }
 
@@ -91,11 +97,14 @@ export async function POST(request: NextRequest) {
   const genAI = new GoogleGenerativeAI(apiKey)
   const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
 
+  const isPageText = toSend.length === 1 && !toSend[0].startsWith('{') && !toSend[0].startsWith('[')
+  const dataLabel = isPageText ? 'Visible page text from flight booking site' : 'Raw JSON data from airline API'
+
   const userMessage = [
     `Site: ${url || 'unknown'}`,
     '',
-    'Raw JSON data from airline API:',
-    ...filtered.map((p, i) => `--- Payload ${i + 1} ---\n${p}`),
+    dataLabel + ':',
+    ...toSend.map((p, i) => toSend.length > 1 ? `--- Data ${i + 1} ---\n${p}` : p),
   ].join('\n')
 
   try {

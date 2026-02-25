@@ -97,6 +97,38 @@ async function loadRawPayloads() {
   })
 }
 
+// Read window.__pointpilotPayloads directly from the page's MAIN world
+async function readPagePayloads(tabId) {
+  try {
+    const results = await chrome.scripting.executeScript({
+      target: { tabId },
+      world: 'MAIN',
+      func: () => window.__pointpilotPayloads || [],
+    })
+    return results?.[0]?.result || []
+  } catch (_) {
+    return []
+  }
+}
+
+// Grab visible page text as fallback when no network payloads were intercepted
+async function readPageText(tabId) {
+  try {
+    const results = await chrome.scripting.executeScript({
+      target: { tabId },
+      world: 'MAIN',
+      func: () => {
+        // Get text content, clean up whitespace
+        const text = document.body?.innerText || ''
+        return text.replace(/\s{3,}/g, '\n\n').substring(0, 80000)
+      },
+    })
+    return results?.[0]?.result || ''
+  } catch (_) {
+    return ''
+  }
+}
+
 async function parseFlightsWithAI(payloads, pageUrl) {
   const res = await fetch(`${API_BASE}/api/parse-flights`, {
     method: 'POST',
@@ -105,7 +137,7 @@ async function parseFlightsWithAI(payloads, pageUrl) {
       Authorization: `Bearer ${state.token}`,
     },
     body: JSON.stringify({
-      payloads: payloads.map(p => p.payload),
+      payloads: payloads.map(p => (typeof p === 'string' ? p : p.payload)),
       url: pageUrl,
     }),
   })
@@ -114,10 +146,10 @@ async function parseFlightsWithAI(payloads, pageUrl) {
   return data.flights || []
 }
 
-function getCurrentTabUrl() {
+function getCurrentTab() {
   return new Promise(resolve => {
     chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
-      resolve(tabs[0]?.url || '')
+      resolve(tabs[0] || null)
     })
   })
 }
@@ -641,43 +673,58 @@ function renderSuccess() {
 // ---- Init ----
 
 async function goToFlights() {
-  // First get any already-parsed flights (e.g. from JSON-LD)
+  const tab = await getCurrentTab()
+  const tabId = tab?.id
+  const pageUrl = tab?.url || ''
+
+  // Get already-parsed flights (JSON-LD hits from content.js)
   const existingFlights = await loadFlights()
 
-  // Check if there are raw payloads to send to AI
-  const rawPayloads = await loadRawPayloads()
-
-  if (rawPayloads.length === 0) {
-    // No raw data to parse — show what we have (or empty state)
+  // If we already have parsed flights cached, show them immediately
+  if (existingFlights.length > 0) {
     setState({ flights: existingFlights, screen: 'flights' })
     return
   }
 
-  // Show "analyzing" state while AI parses
   setState({ screen: 'analyzing' })
 
   try {
-    const pageUrl = await getCurrentTabUrl()
-    const aiFlights = await parseFlightsWithAI(rawPayloads, pageUrl)
+    // Strategy 1: try to read network payloads stored by injected.js
+    let payloads = []
 
-    // Store AI results in background cache
+    // First check background cache
+    const cachedPayloads = await loadRawPayloads()
+    if (cachedPayloads.length > 0) {
+      payloads = cachedPayloads
+    } else if (tabId) {
+      // Try to read directly from the page's MAIN world
+      const pagePayloads = await readPagePayloads(tabId)
+      if (pagePayloads.length > 0) {
+        payloads = pagePayloads
+      }
+    }
+
+    // Strategy 2 (fallback): send visible page text to AI
+    if (payloads.length === 0 && tabId) {
+      const pageText = await readPageText(tabId)
+      if (pageText.length > 200) {
+        payloads = [{ payload: pageText }]
+      }
+    }
+
+    if (payloads.length === 0) {
+      setState({ flights: [], screen: 'flights' })
+      return
+    }
+
+    const aiFlights = await parseFlightsWithAI(payloads, pageUrl)
+
     if (aiFlights.length > 0) {
       storeFlights(aiFlights)
     }
 
-    // Merge: AI flights + any JSON-LD flights (dedupe by key)
-    const allFlights = [...aiFlights]
-    const keys = new Set(aiFlights.map(f =>
-      `${f.flightCode || ''}|${f.departureAirport || ''}|${f.arrivalAirport || ''}|${f.departureTime || ''}`
-    ))
-    for (const f of existingFlights) {
-      const k = `${f.flightCode || ''}|${f.departureAirport || ''}|${f.arrivalAirport || ''}|${f.departureTime || ''}`
-      if (!keys.has(k)) allFlights.push(f)
-    }
-
-    setState({ flights: allFlights, screen: 'flights' })
+    setState({ flights: aiFlights, screen: 'flights' })
   } catch (err) {
-    // AI failed — fall back to whatever we have
     setState({ flights: existingFlights, screen: 'flights' })
   }
 }
