@@ -64,7 +64,10 @@ export async function POST(request: NextRequest) {
   )
 
   const { data: { user }, error: authError } = await supabase.auth.getUser()
-  if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (authError || !user) {
+    console.error('[parse-flights] Auth failed:', authError?.message, '| SUPABASE_URL set:', !!process.env.NEXT_PUBLIC_SUPABASE_URL, '| token length:', token?.length)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
 
   const body = await request.json()
   const { payloads, url } = body as { payloads: string[], url: string }
