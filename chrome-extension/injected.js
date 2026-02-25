@@ -14,7 +14,7 @@
     'itinerary', 'segment', 'carrier', 'origin', 'destination', 'duration',
     'layover', 'stopover', 'airline', 'iata', 'aircraft',
   ]
-  const seenUrls = new Set()
+  const seenKeys = new Set()
 
   function looksLikeFlight(text) {
     if (text.length < 200) return false
@@ -28,9 +28,11 @@
   }
 
   function maybeForward(url, jsonString) {
-    if (seenUrls.has(url)) return
+    // Deduplicate by URL + first 200 chars of payload (handles same-URL paginated calls)
+    const key = url + '|' + jsonString.substring(0, 200)
+    if (seenKeys.has(key)) return
     if (!looksLikeFlight(jsonString)) return
-    seenUrls.add(url)
+    seenKeys.add(key)
     // Store on window for on-demand access
     window.__pointpilotPayloads.push({ url, payload: jsonString })
     // Keep only latest 10
