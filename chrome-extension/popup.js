@@ -7,7 +7,7 @@ const app = document.getElementById('app')
 
 // State
 let state = {
-  screen: 'loading', // loading | login | analyzing | flights | details | selectTrip | success
+  screen: 'loading', // loading | login | analyzing | flights | details | selectTrip | success | paywall
   token: null,
   userEmail: null,
   flights: [],
@@ -23,6 +23,7 @@ let state = {
   hasMorePayloads: false, // true if network payloads available for deeper scan
   showPassword: false,
   addedFlightKeys: [], // track which flights have been added (by flightCode+dep+arr+time)
+  subscription: null, // { plan, canScan, scansUsed, scansLimit }
 }
 
 function setState(updates) {
@@ -271,6 +272,20 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
+async function checkSubscription() {
+  if (!state.token) return null
+  try {
+    const res = await fetch(`${API_BASE}/api/subscription`, {
+      headers: { Authorization: `Bearer ${state.token}` },
+    })
+    if (res.status === 401) { handleAuthError(); return null }
+    if (!res.ok) return null
+    return await res.json()
+  } catch {
+    return null
+  }
+}
+
 function flightKey(f) {
   return `${f.flightCode || ''}|${f.departureAirport || ''}|${f.arrivalAirport || ''}|${formatTime(f.departureTime) || ''}`
 }
@@ -345,6 +360,8 @@ function render() {
     screen.appendChild(renderTripPicker())
   } else if (s === 'success') {
     screen.appendChild(renderSuccess())
+  } else if (s === 'paywall') {
+    screen.appendChild(renderPaywall())
   }
 
   app.appendChild(screen)
@@ -360,6 +377,7 @@ function renderHeader() {
     </div>
     ${state.userEmail ? `
       <div style="display:flex;align-items:center;gap:8px">
+        ${state.subscription?.plan === 'pro' ? '<span style="background:#d4a847;color:#1a1a2e;font-size:10px;font-weight:800;padding:2px 6px;border-radius:4px;letter-spacing:0.5px">PRO</span>' : ''}
         <span class="header-user">${state.userEmail}</span>
         <button class="btn-link" id="logoutBtn">Sign out</button>
       </div>
@@ -501,7 +519,7 @@ function renderFlightPicker() {
   // Rescan button — clears cache and re-analyzes the current tab
   el.querySelector('#rescanBtn')?.addEventListener('click', () => {
     chrome.runtime.sendMessage({ type: 'CLEAR_FLIGHTS' })
-    setState({ flights: [], error: null, lastDebug: null, hasMorePayloads: false })
+    setState({ flights: [], error: null, lastDebug: null, hasMorePayloads: false, subscription: null })
     goToFlights()
   })
 
@@ -798,6 +816,39 @@ function renderSuccess() {
   return el
 }
 
+function renderPaywall() {
+  const el = document.createElement('div')
+  const sub = state.subscription
+  const used = sub?.scansUsed || 0
+  const limit = sub?.scansLimit || 1
+  el.innerHTML = `
+    <div style="text-align:center;padding:20px 0">
+      <div style="font-size:40px;margin-bottom:12px">🔒</div>
+      <div style="font-size:18px;font-weight:700;color:#1e1b4b;margin-bottom:8px">Free scan limit reached</div>
+      <div style="font-size:14px;color:#374151;margin-bottom:20px;line-height:1.5">
+        You've used your <strong>${limit} free scan</strong> this month.<br>
+        Upgrade to Pro for <strong>unlimited</strong> flight detection.
+      </div>
+      <div style="background:#f5f3ff;border-radius:10px;padding:16px;margin-bottom:20px;text-align:left">
+        <div style="font-weight:700;font-size:15px;color:#4338ca;margin-bottom:8px">Point Tripper Pro</div>
+        <div style="font-size:24px;font-weight:800;color:#1e1b4b;margin-bottom:4px">$4.99<span style="font-size:14px;font-weight:400;color:#374151">/month</span></div>
+        <div style="font-size:13px;color:#374151;line-height:1.6;margin-top:8px">
+          ✓ Unlimited flight scans<br>
+          ✓ All booking sites<br>
+          ✓ Priority support
+        </div>
+      </div>
+      <a href="https://www.pointtripper.com/pricing" target="_blank" class="btn" style="text-decoration:none">
+        Upgrade to Pro
+      </a>
+      <div style="margin-top:12px;font-size:13px;color:#4b5563">
+        ${used}/${limit} scans used this month — resets next month
+      </div>
+    </div>
+  `
+  return el
+}
+
 // ---- Init ----
 
 async function goToFlights(deepScan = false) {
@@ -811,6 +862,20 @@ async function goToFlights(deepScan = false) {
   // If we already have parsed flights cached, show them immediately (unless deep scanning)
   if (existingFlights.length > 0 && !deepScan) {
     setState({ flights: existingFlights, screen: 'flights' })
+    return
+  }
+
+  // Check subscription before scanning (skip if we already checked recently)
+  if (!state.subscription) {
+    const sub = await checkSubscription()
+    if (sub) {
+      state.subscription = sub
+    }
+  }
+
+  // If free user hit the limit, show paywall
+  if (state.subscription && !state.subscription.canScan) {
+    setState({ screen: 'paywall' })
     return
   }
 
@@ -912,6 +977,12 @@ async function goToFlights(deepScan = false) {
   } catch (err) {
     clearInterval(progressInterval)
     if (state.screen === 'login') return
+    // If scan limit error, show paywall
+    if (err.message === 'scan_limit' || err.message?.includes('scan_limit') || err.message?.includes('Free plan limit')) {
+      state.subscription = { plan: 'free', canScan: false, scansUsed: 1, scansLimit: 1 }
+      setState({ screen: 'paywall' })
+      return
+    }
     setState({ flights: existingFlights, screen: 'flights', error: `Error: ${err.message}` })
   }
 }

@@ -58,6 +58,7 @@ export default function Nav() {
         <a href="/trips" className="nav-link">My Trips</a>
         <a href="/wallet" className="nav-link">My Points</a>
         <a href="/news" className="nav-link">News</a>
+        <a href="/pricing" className="nav-link">Extension</a>
         {!loading && (
           user ? (
             <div
@@ -142,6 +143,7 @@ export default function Nav() {
         <a href="/trips" style={mobileLinkStyle} onClick={() => setMenuOpen(false)}>My Trips</a>
         <a href="/wallet" style={mobileLinkStyle} onClick={() => setMenuOpen(false)}>My Points</a>
         <a href="/news" style={mobileLinkStyle} onClick={() => setMenuOpen(false)}>News</a>
+        <a href="/pricing" style={mobileLinkStyle} onClick={() => setMenuOpen(false)}>Extension</a>
         {user ? (
           <>
             <a href="/account" style={mobileLinkStyle} onClick={() => setMenuOpen(false)}>Account</a>

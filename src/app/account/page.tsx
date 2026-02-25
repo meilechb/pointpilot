@@ -5,9 +5,24 @@ import { useAuth } from '@/components/AuthProvider'
 import { createClient } from '@/lib/supabase'
 import { loadTrips, loadWallet } from '@/lib/dataService'
 
+type SubInfo = {
+  plan: string
+  status: string
+  currentPeriodEnd: string | null
+  cancelAtPeriodEnd: boolean
+  scansUsed: number
+  scansLimit: number
+  canScan: boolean
+}
+
 export default function AccountPage() {
-  const { user, loading, signOut } = useAuth()
+  const { user, session, loading, signOut } = useAuth()
   const supabase = createClient()
+
+  // Subscription
+  const [sub, setSub] = useState<SubInfo | null>(null)
+  const [subLoading, setSubLoading] = useState(false)
+  const [portalLoading, setPortalLoading] = useState(false)
 
   // Profile editing
   const [displayName, setDisplayName] = useState('')
@@ -45,6 +60,19 @@ export default function AccountPage() {
       setLocalCounts({ trips: trips.length, flights, wallet: wallet.length })
     })
   }, [dataCleared])
+
+  // Fetch subscription info
+  useEffect(() => {
+    if (!session?.access_token) return
+    setSubLoading(true)
+    fetch('/api/subscription', {
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    })
+      .then(r => r.json())
+      .then(data => setSub(data))
+      .catch(() => {})
+      .finally(() => setSubLoading(false))
+  }, [session])
 
   if (loading) {
     return (
@@ -127,6 +155,20 @@ export default function AccountPage() {
       await supabase.from('wallet').delete().eq('user_id', user.id)
     }
     setDataCleared(prev => !prev)
+  }
+
+  const handleManageSubscription = async () => {
+    if (!session?.access_token) return
+    setPortalLoading(true)
+    try {
+      const res = await fetch('/api/subscription/portal', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      })
+      const data = await res.json()
+      if (data.url) window.location.href = data.url
+    } catch {}
+    setPortalLoading(false)
   }
 
   const handleDeleteAccount = async () => {
@@ -232,6 +274,75 @@ export default function AccountPage() {
             {isGoogleUser ? 'Google' : 'Email & Password'}
           </span>
         </div>
+      </div>
+
+      {/* Subscription */}
+      <div style={cardStyle}>
+        <h2 style={{ fontSize: 17, fontWeight: 700, marginBottom: 16 }}>Subscription</h2>
+        {subLoading ? (
+          <div style={{ fontSize: 14, color: 'var(--text-muted)' }}>Loading...</div>
+        ) : sub ? (
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+              <span style={{
+                display: 'inline-block', padding: '5px 14px', borderRadius: 20,
+                fontSize: 13, fontWeight: 700,
+                backgroundColor: sub.plan === 'pro' ? 'var(--primary-light)' : 'var(--bg)',
+                color: sub.plan === 'pro' ? 'var(--primary)' : 'var(--text-muted)',
+                border: sub.plan === 'pro' ? 'none' : '1px solid var(--border)',
+              }}>
+                {sub.plan === 'pro' ? 'Pro' : 'Free'}
+              </span>
+              {sub.plan === 'pro' && sub.cancelAtPeriodEnd && (
+                <span style={{ fontSize: 13, color: 'var(--warning)' }}>
+                  Cancels at period end
+                </span>
+              )}
+            </div>
+
+            {sub.plan === 'pro' ? (
+              <div>
+                <div style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 12 }}>
+                  {sub.currentPeriodEnd
+                    ? `${sub.cancelAtPeriodEnd ? 'Active until' : 'Renews'} ${new Date(sub.currentPeriodEnd).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`
+                    : 'Unlimited flight scans'}
+                </div>
+                <button
+                  onClick={handleManageSubscription}
+                  disabled={portalLoading}
+                  style={{
+                    padding: '9px 18px', fontSize: 14, fontWeight: 600,
+                    color: 'var(--primary)', backgroundColor: 'var(--primary-light)',
+                    border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+                  }}
+                >
+                  {portalLoading ? 'Loading...' : 'Manage Subscription'}
+                </button>
+              </div>
+            ) : (
+              <div>
+                <div style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 12 }}>
+                  {sub.scansUsed}/{sub.scansLimit} scan{sub.scansLimit !== 1 ? 's' : ''} used this month
+                </div>
+                <a
+                  href="/pricing"
+                  style={{
+                    display: 'inline-block', padding: '9px 18px', fontSize: 14, fontWeight: 600,
+                    background: 'linear-gradient(135deg, var(--primary), var(--primary-hover))',
+                    color: 'var(--text-inverse)', borderRadius: 'var(--radius-sm)',
+                    textDecoration: 'none',
+                  }}
+                >
+                  Upgrade to Pro — $4.99/mo
+                </a>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div style={{ fontSize: 14, color: 'var(--text-muted)' }}>
+            <a href="/pricing" style={{ color: 'var(--primary)', fontWeight: 600 }}>Upgrade to Pro</a> for unlimited flight scans with the Chrome extension.
+          </div>
+        )}
       </div>
 
       {/* Security (email users only) */}
