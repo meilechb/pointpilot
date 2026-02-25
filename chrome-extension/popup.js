@@ -459,7 +459,11 @@ function renderFlightPicker() {
     ? `<div style="font-size:13px;color:#4b5563;margin-bottom:8px;background:#f5f3ff;padding:8px 10px;border-radius:6px">Tip: Filter results on the booking site first for faster detection.</div>`
     : ''
 
-  el.innerHTML = `${tip}<div class="section-title">${flights.length} flight${flights.length !== 1 ? 's' : ''} detected — pick one</div>`
+  el.innerHTML = `${tip}
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <div class="section-title" style="margin-bottom:0">${flights.length} flight${flights.length !== 1 ? 's' : ''} detected — pick one</div>
+      <button class="btn btn-sm btn-secondary" id="rescanBtn" style="margin:0;flex-shrink:0">Scan this tab</button>
+    </div>`
   const list = document.createElement('div')
   list.className = 'flight-list'
 
@@ -493,6 +497,13 @@ function renderFlightPicker() {
   })
 
   el.appendChild(list)
+
+  // Rescan button — clears cache and re-analyzes the current tab
+  el.querySelector('#rescanBtn')?.addEventListener('click', () => {
+    chrome.runtime.sendMessage({ type: 'CLEAR_FLIGHTS' })
+    setState({ flights: [], error: null, lastDebug: null, hasMorePayloads: false })
+    goToFlights()
+  })
 
   // "Scan deeper" button if we have network payloads we haven't used yet
   if (state.hasMorePayloads) {
