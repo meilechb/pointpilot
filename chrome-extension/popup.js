@@ -370,20 +370,47 @@ function render() {
 function renderHeader() {
   const el = document.createElement('div')
   el.className = 'header'
+  const isPro = state.subscription?.plan === 'pro'
   el.innerHTML = `
     <div class="header-logo">
       <img src="icon.png" alt="Point Tripper" />
       <span>Point Tripper</span>
+      ${isPro ? '<span style="background:linear-gradient(135deg,#d4a847,#E8C36A);color:#1a1a2e;font-size:10px;font-weight:800;padding:2px 7px;border-radius:4px;letter-spacing:0.5px;margin-left:4px">PRO</span>' : ''}
     </div>
     ${state.userEmail ? `
-      <div style="display:flex;align-items:center;gap:8px">
-        ${state.subscription?.plan === 'pro' ? '<span style="background:#d4a847;color:#1a1a2e;font-size:10px;font-weight:800;padding:2px 6px;border-radius:4px;letter-spacing:0.5px">PRO</span>' : ''}
-        <span class="header-user">${state.userEmail}</span>
-        <button class="btn-link" id="logoutBtn">Sign out</button>
+      <div style="position:relative">
+        <button id="accountMenuBtn" style="background:none;border:1px solid #e5e7eb;border-radius:6px;padding:5px 10px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px;color:#374151">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0112 0v1"/></svg>
+          <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 5L6 8L9 5"/></svg>
+        </button>
+        <div id="accountMenu" style="display:none;position:absolute;top:100%;right:0;margin-top:4px;background:white;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.15);border:1px solid #e5e7eb;min-width:200px;z-index:100;overflow:hidden">
+          <div style="padding:10px 14px;border-bottom:1px solid #f3f4f6;font-size:12px;color:#6b7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${state.userEmail}</div>
+          ${isPro ? `
+            <div style="padding:8px 14px;border-bottom:1px solid #f3f4f6;display:flex;align-items:center;gap:6px">
+              <span style="background:linear-gradient(135deg,#d4a847,#E8C36A);color:#1a1a2e;font-size:10px;font-weight:800;padding:2px 7px;border-radius:4px;letter-spacing:0.5px">PRO</span>
+              <span style="font-size:12px;color:#374151">Active</span>
+            </div>
+          ` : `
+            <a href="https://www.pointtripper.com/pricing?email=${encodeURIComponent(state.userEmail)}" target="_blank" id="menuUpgrade" style="display:block;padding:8px 14px;border-bottom:1px solid #f3f4f6;font-size:13px;color:#4338ca;font-weight:600;text-decoration:none">Upgrade to Pro</a>
+          `}
+          <a href="https://www.pointtripper.com/account" target="_blank" id="menuAccount" style="display:block;padding:8px 14px;border-bottom:1px solid #f3f4f6;font-size:13px;color:#374151;text-decoration:none">Manage Account</a>
+          <button id="menuLogout" style="display:block;width:100%;padding:8px 14px;font-size:13px;color:#dc2626;text-align:left;background:none;border:none;cursor:pointer">Sign Out</button>
+        </div>
       </div>
     ` : ''}
   `
-  el.querySelector('#logoutBtn')?.addEventListener('click', logout)
+  // Toggle account menu
+  const menuBtn = el.querySelector('#accountMenuBtn')
+  const menu = el.querySelector('#accountMenu')
+  if (menuBtn && menu) {
+    menuBtn.addEventListener('click', (e) => {
+      e.stopPropagation()
+      menu.style.display = menu.style.display === 'none' ? 'block' : 'none'
+    })
+    // Close on outside click
+    document.addEventListener('click', () => { menu.style.display = 'none' })
+  }
+  el.querySelector('#menuLogout')?.addEventListener('click', logout)
   return el
 }
 

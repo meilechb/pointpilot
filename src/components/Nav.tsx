@@ -10,7 +10,6 @@ export default function Nav() {
   const dropdownRef = useRef<HTMLDivElement>(null)
   const dropdownTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
@@ -54,11 +53,10 @@ export default function Nav() {
 
       {/* Desktop nav */}
       <div className="nav-links">
-        <a href="/trip/new" className="nav-link">New Trip</a>
-        <a href="/trips" className="nav-link">My Trips</a>
-        <a href="/wallet" className="nav-link">My Points</a>
+        <a href="/trips" className="nav-link">Trips</a>
+        <a href="/wallet" className="nav-link">Wallet</a>
         <a href="/news" className="nav-link">News</a>
-        <a href="/pricing" className="nav-link">Extension</a>
+        <a href="/pricing" className="nav-link">Chrome Extension</a>
         {!loading && (
           user ? (
             <div
@@ -67,19 +65,35 @@ export default function Nav() {
               onMouseLeave={handleMouseLeave}
               style={{ position: 'relative', marginLeft: 8 }}
             >
-              <a href="/account" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <button
+                className="nav-link"
+                onClick={() => setDropdownOpen(!dropdownOpen)}
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: 4,
+                  color: 'inherit', fontSize: 'inherit', fontWeight: 'inherit',
+                  padding: 0,
+                }}
+              >
                 Account
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                   <path d="M3 5L6 8L9 5" />
                 </svg>
-              </a>
+              </button>
               {dropdownOpen && (
                 <div style={{
                   position: 'absolute', top: '100%', right: 0, marginTop: 4,
                   backgroundColor: 'var(--bg-card)', borderRadius: 'var(--radius-sm)',
                   boxShadow: 'var(--shadow-lg)', border: '1px solid var(--border-light)',
-                  minWidth: 160, overflow: 'hidden', zIndex: 200,
+                  minWidth: 180, overflow: 'hidden', zIndex: 200,
                 }}>
+                  <div style={{
+                    padding: '10px 16px', fontSize: 13, color: 'var(--text-muted)',
+                    borderBottom: '1px solid var(--border-light)',
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  }}>
+                    {user.email}
+                  </div>
                   <a href="/account" style={{
                     display: 'block', padding: '10px 16px', fontSize: 14, fontWeight: 500,
                     color: 'var(--text)', textDecoration: 'none',
@@ -139,11 +153,10 @@ export default function Nav() {
 
       {/* Mobile menu */}
       <div className={`mobile-menu ${menuOpen ? 'open' : ''}`}>
-        <a href="/trip/new" style={mobileLinkStyle} onClick={() => setMenuOpen(false)}>New Trip</a>
-        <a href="/trips" style={mobileLinkStyle} onClick={() => setMenuOpen(false)}>My Trips</a>
-        <a href="/wallet" style={mobileLinkStyle} onClick={() => setMenuOpen(false)}>My Points</a>
+        <a href="/trips" style={mobileLinkStyle} onClick={() => setMenuOpen(false)}>Trips</a>
+        <a href="/wallet" style={mobileLinkStyle} onClick={() => setMenuOpen(false)}>Wallet</a>
         <a href="/news" style={mobileLinkStyle} onClick={() => setMenuOpen(false)}>News</a>
-        <a href="/pricing" style={mobileLinkStyle} onClick={() => setMenuOpen(false)}>Extension</a>
+        <a href="/pricing" style={mobileLinkStyle} onClick={() => setMenuOpen(false)}>Chrome Extension</a>
         {user ? (
           <>
             <a href="/account" style={mobileLinkStyle} onClick={() => setMenuOpen(false)}>Account</a>
