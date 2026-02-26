@@ -81,10 +81,29 @@ function PricingContent() {
         <h1 style={{ fontSize: 32, fontWeight: 800, marginBottom: 12, lineHeight: 1.2 }}>
           Add flights to your trips in one click
         </h1>
-        <p style={{ fontSize: 16, color: 'var(--text-secondary)', maxWidth: 540, margin: '0 auto', lineHeight: 1.6 }}>
+        <p style={{ fontSize: 16, color: 'var(--text-secondary)', maxWidth: 540, margin: '0 auto 24px', lineHeight: 1.6 }}>
           Stop copying flight details by hand. Point Tripper&apos;s Chrome extension automatically detects flights
           from any search results page and lets you save them to your trips instantly.
         </p>
+        <a
+          href="https://chromewebstore.google.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 8,
+            padding: '13px 28px',
+            background: 'linear-gradient(135deg, var(--primary), var(--primary-hover))',
+            color: 'white', border: 'none', borderRadius: 'var(--radius-sm)',
+            fontWeight: 600, fontSize: 15, textDecoration: 'none',
+          }}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+            <polyline points="7 10 12 15 17 10" />
+            <line x1="12" y1="15" x2="12" y2="3" />
+          </svg>
+          Download Chrome Extension
+        </a>
       </div>
 
       {/* How it works */}
