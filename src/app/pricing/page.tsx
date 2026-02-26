@@ -157,11 +157,8 @@ function PricingContent() {
             </div>
           </div>
 
-          <div style={{ marginBottom: 24 }}>
-            {checkItem('1 flight scan per month')}
-            {checkItem('Auto-detect flights from any page')}
-            {checkItem('Save flights to your trips')}
-            {checkItem('No credit card required')}
+          <div style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 24, textAlign: 'center' }}>
+            Try it out with 1 free scan each month. No credit card required.
           </div>
 
           <a
