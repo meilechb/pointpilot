@@ -13,7 +13,7 @@ import { getCityName } from '@/utils/airportUtils'
 import { analyzeItinerary } from '@/utils/bookingAnalyzer'
 import { optimizeTrip, getRelevantSweetSpots, type BookingStrategy } from '@/utils/tripOptimizer'
 import SavePrompt from '@/components/SavePrompt'
-import { loadTripById, saveTrip as saveTripRemote } from '@/lib/dataService'
+import { loadTripById, saveTrip as saveTripRemote, loadWallet } from '@/lib/dataService'
 
 function formatShortDate(dateStr: string): string {
   if (!dateStr) return ''
@@ -52,19 +52,36 @@ export default function TripDetail() {
   const [editReturnDate, setEditReturnDate] = useState<Date | null>(null)
   const [editTravelers, setEditTravelers] = useState(1)
   const [editDateFlexibility, setEditDateFlexibility] = useState('exact')
+  const [wallet, setWallet] = useState<any[]>([])
+  const [compareIds, setCompareIds] = useState<string[]>([])
+  const [showCompare, setShowCompare] = useState(false)
+  const [emailTarget, setEmailTarget] = useState<any>(null)
+  const [emailAddress, setEmailAddress] = useState('')
+  const [emailSending, setEmailSending] = useState(false)
+  const [emailSent, setEmailSent] = useState(false)
 
   useEffect(() => {
     setTripLoading(true)
-    loadTripById(params.id as string).then(found => {
+    Promise.all([
+      loadTripById(params.id as string),
+      loadWallet(),
+    ]).then(([found, walletData]) => {
       if (found && !found.itineraries) found.itineraries = []
       setTrip(found)
+      setWallet(walletData || [])
+      // Keep localStorage wallet in sync for legacy code paths
+      if (walletData && walletData.length > 0) {
+        localStorage.setItem('wallet', JSON.stringify(walletData))
+      }
       setTripLoading(false)
     })
   }, [params.id])
 
   const saveTrip = (updatedTrip: any) => {
     setTrip({ ...updatedTrip })
-    saveTripRemote(updatedTrip)
+    saveTripRemote(updatedTrip).catch(err => {
+      console.error('Failed to save trip to Supabase:', err)
+    })
   }
 
   const parseDate = (dateStr: string): Date | null => {
@@ -733,7 +750,29 @@ export default function TripDetail() {
 
       {/* Optimize Tab */}
       {activeTab === 'optimize' && (
-        <OptimizerPanel trip={trip} />
+        <OptimizerPanel trip={trip} wallet={wallet} onSaveStrategy={(strategy: BookingStrategy) => {
+          const assignments: Record<string, string[]> = {}
+          strategy.bookings.forEach(b => {
+            const key = String(b.legIndex)
+            if (!assignments[key]) assignments[key] = []
+            if (b.flightId && !assignments[key].includes(b.flightId)) {
+              assignments[key].push(b.flightId)
+            }
+          })
+          const itinerary = {
+            id: crypto.randomUUID(),
+            name: strategy.name,
+            createdAt: new Date().toISOString(),
+            assignments,
+            totals: { cash: strategy.totalCash, points: strategy.totalPoints, fees: 0 },
+            travelers: trip.travelers || 1,
+          }
+          const updatedTrip = { ...trip }
+          if (!updatedTrip.itineraries) updatedTrip.itineraries = []
+          updatedTrip.itineraries.push(itinerary)
+          saveTrip(updatedTrip)
+          setActiveTab('itineraries')
+        }} />
       )}
 
       {/* Itineraries Tab */}
@@ -762,15 +801,160 @@ export default function TripDetail() {
               </button>
             </div>
           ) : (
-            trip.itineraries.map((itinerary: any) => (
-              <ItineraryCard
-                key={itinerary.id}
-                itinerary={itinerary}
-                trip={trip}
-                onDelete={() => handleDeleteItinerary(itinerary.id)}
-                onRename={(name: string) => handleRenameItinerary(itinerary.id, name)}
-              />
-            ))
+            <>
+              {/* Toolbar: Compare + bulk actions */}
+              {trip.itineraries.length >= 2 && (
+                <div style={{
+                  display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center',
+                }}>
+                  {!showCompare ? (
+                    <button
+                      onClick={() => { setShowCompare(true); setCompareIds([]) }}
+                      style={{
+                        padding: '8px 16px', border: '1px solid var(--primary)',
+                        borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+                        backgroundColor: 'var(--primary-light)', fontSize: 13, fontWeight: 600,
+                        color: 'var(--primary)', transition: 'all 0.15s',
+                      }}
+                    >
+                      Compare Itineraries
+                    </button>
+                  ) : (
+                    <>
+                      <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+                        Select 2–3 itineraries to compare:
+                      </span>
+                      <button
+                        onClick={() => setShowCompare(false)}
+                        style={{
+                          padding: '6px 14px', border: '1px solid var(--border)',
+                          borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+                          backgroundColor: 'var(--bg-card)', fontSize: 13, color: 'var(--text-muted)',
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* Compare view */}
+              {showCompare && compareIds.length >= 2 && (
+                <CompareView
+                  itineraries={trip.itineraries.filter((it: any) => compareIds.includes(it.id))}
+                  trip={trip}
+                  wallet={wallet}
+                  onClose={() => { setShowCompare(false); setCompareIds([]) }}
+                />
+              )}
+
+              {/* Itinerary cards */}
+              {trip.itineraries.map((itinerary: any) => (
+                <ItineraryCard
+                  key={itinerary.id}
+                  itinerary={itinerary}
+                  trip={trip}
+                  wallet={wallet}
+                  onDelete={() => handleDeleteItinerary(itinerary.id)}
+                  onRename={(name: string) => handleRenameItinerary(itinerary.id, name)}
+                  onPrint={() => printItinerary(itinerary, trip, wallet)}
+                  onEmail={() => { setEmailTarget(itinerary); setEmailAddress(''); setEmailSent(false) }}
+                  compareMode={showCompare}
+                  compareSelected={compareIds.includes(itinerary.id)}
+                  onCompareToggle={() => {
+                    setCompareIds(prev =>
+                      prev.includes(itinerary.id)
+                        ? prev.filter(id => id !== itinerary.id)
+                        : prev.length < 3 ? [...prev, itinerary.id] : prev
+                    )
+                  }}
+                />
+              ))}
+            </>
+          )}
+
+          {/* Email modal */}
+          {emailTarget && (
+            <div style={{
+              position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
+            }} onClick={() => setEmailTarget(null)}>
+              <div style={{
+                backgroundColor: 'var(--bg-card)', borderRadius: 'var(--radius-lg)',
+                padding: 28, maxWidth: 420, width: '90%', boxShadow: 'var(--shadow-lg)',
+              }} onClick={(e) => e.stopPropagation()}>
+                <div style={{ fontWeight: 700, fontSize: 18, marginBottom: 4 }}>Email Itinerary</div>
+                <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16 }}>
+                  Send &quot;{emailTarget.name}&quot; to someone
+                </div>
+                {emailSent ? (
+                  <div style={{ textAlign: 'center', padding: 20 }}>
+                    <div style={{ fontSize: 28, marginBottom: 8 }}>✓</div>
+                    <div style={{ fontWeight: 600, marginBottom: 4 }}>Email Sent!</div>
+                    <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+                      The itinerary has been sent to {emailAddress}
+                    </div>
+                    <button onClick={() => setEmailTarget(null)} style={{
+                      marginTop: 16, padding: '8px 24px',
+                      background: 'var(--primary)', color: 'white', border: 'none',
+                      borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontWeight: 600,
+                    }}>Done</button>
+                  </div>
+                ) : (
+                  <>
+                    <input
+                      type="email"
+                      placeholder="recipient@example.com"
+                      value={emailAddress}
+                      onChange={(e) => setEmailAddress(e.target.value)}
+                      style={{
+                        width: '100%', padding: '10px 12px', fontSize: 14,
+                        border: '1.5px solid var(--border)', borderRadius: 'var(--radius-sm)',
+                        backgroundColor: 'var(--bg-input)', color: 'var(--text)',
+                        outline: 'none', marginBottom: 12,
+                      }}
+                    />
+                    <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                      <button onClick={() => setEmailTarget(null)} style={{
+                        padding: '8px 16px', border: '1px solid var(--border)',
+                        borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+                        backgroundColor: 'var(--bg-card)', fontSize: 13, color: 'var(--text-muted)',
+                      }}>Cancel</button>
+                      <button
+                        disabled={!emailAddress || emailSending}
+                        onClick={async () => {
+                          setEmailSending(true)
+                          try {
+                            const res = await fetch('/api/email-itinerary', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                to: emailAddress,
+                                itinerary: emailTarget,
+                                trip: { tripName: trip.tripName, legs: trip.legs, travelers: trip.travelers },
+                                flights: trip.flights,
+                              }),
+                            })
+                            if (res.ok) setEmailSent(true)
+                            else alert('Failed to send email')
+                          } catch { alert('Failed to send email') }
+                          setEmailSending(false)
+                        }}
+                        style={{
+                          padding: '8px 20px', border: 'none',
+                          borderRadius: 'var(--radius-sm)', cursor: emailAddress && !emailSending ? 'pointer' : 'not-allowed',
+                          background: emailAddress && !emailSending ? 'var(--primary)' : 'var(--border)',
+                          color: 'white', fontSize: 13, fontWeight: 600,
+                        }}
+                      >
+                        {emailSending ? 'Sending...' : 'Send'}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
           )}
         </>
       )}
@@ -780,13 +964,13 @@ export default function TripDetail() {
   )
 }
 
-function OptimizerPanel({ trip }: { trip: any }) {
+function OptimizerPanel({ trip, wallet: walletProp, onSaveStrategy }: { trip: any; wallet: any[]; onSaveStrategy: (s: BookingStrategy) => void }) {
   const [strategies, setStrategies] = useState<BookingStrategy[]>([])
   const [loading, setLoading] = useState(false)
   const [hasRun, setHasRun] = useState(false)
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
-  const wallet: any[] = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('wallet') || '[]') : []
+  const wallet = walletProp
   const hasWallet = wallet.length > 0
   const hasFlights = trip.flights.length > 0
   const hasAssignedFlights = trip.flights.some((f: any) => f.legIndex !== null && f.legIndex !== undefined)
@@ -1063,6 +1247,24 @@ function OptimizerPanel({ trip }: { trip: any }) {
                   </div>
                 )}
               </div>
+
+              {/* Save as itinerary button */}
+              <button
+                onClick={() => onSaveStrategy(strategy)}
+                style={{
+                  marginTop: 14, padding: '10px 20px', width: '100%',
+                  background: 'linear-gradient(135deg, var(--primary), var(--primary-hover))',
+                  color: 'var(--text-inverse)', border: 'none',
+                  borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+                  fontSize: 14, fontWeight: 600,
+                  boxShadow: '0 2px 8px rgba(67, 56, 202, 0.3)',
+                  transition: 'transform 0.15s, box-shadow 0.15s',
+                }}
+                onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(67, 56, 202, 0.4)' }}
+                onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(67, 56, 202, 0.3)' }}
+              >
+                Save as Itinerary
+              </button>
             </div>
           )}
         </div>
@@ -1101,11 +1303,228 @@ function OptimizerPanel({ trip }: { trip: any }) {
   )
 }
 
-function ItineraryCard({ itinerary, trip, onDelete, onRename }: {
+function printItinerary(itinerary: any, trip: any, wallet: any[]) {
+  const travelers = itinerary.travelers || 1
+  const totals = itinerary.totals || { cash: 0, points: 0, fees: 0 }
+  const flightMap: Record<string, any> = {}
+  trip.flights.forEach((f: any) => { flightMap[f.id] = f })
+
+  const steps = analyzeItinerary(itinerary.assignments, trip.flights, wallet, travelers)
+
+  const legsHtml = trip.legs.map((leg: any, i: number) => {
+    const flightIds = itinerary.assignments?.[i] || []
+    const flights = flightIds.map((id: string) => flightMap[id]).filter(Boolean)
+    const flightsHtml = flights.length === 0
+      ? '<div style="color:#888;padding:8px;border:1px dashed #ddd;border-radius:6px">No flights assigned</div>'
+      : flights.map((f: any) => {
+        const segs = f.segments || []
+        const firstSeg = segs[0] || {}
+        const lastSeg = segs[segs.length - 1] || firstSeg
+        const airline = firstSeg.airline || ''
+        const flightNum = firstSeg.flightNumber || ''
+        const route = `${firstSeg.departureAirport || '?'} → ${lastSeg.arrivalAirport || '?'}`
+        const price = f.paymentType === 'cash'
+          ? `$${(f.cashAmount || 0).toLocaleString()}`
+          : `${(f.pointsAmount || 0).toLocaleString()} pts + $${(f.feesAmount || 0).toLocaleString()}`
+        return `<div style="padding:8px 12px;background:#f9f9fb;border-radius:6px;margin-bottom:4px;border:1px solid #e5e7eb">
+          <div style="font-weight:600;font-size:14px">${airline} ${flightNum}</div>
+          <div style="font-size:13px;color:#555">${route} — ${price}</div>
+        </div>`
+      }).join('')
+
+    return `<div style="margin-bottom:16px">
+      <div style="font-weight:700;font-size:13px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">
+        Leg ${i + 1}: ${getCityName(leg.from)} → ${getCityName(leg.to)}
+      </div>
+      ${flightsHtml}
+    </div>`
+  }).join('')
+
+  const stepsHtml = steps.map((step, i) => {
+    return `<div style="display:flex;gap:10px;margin-bottom:6px;padding:8px 12px;background:#f9f9fb;border-radius:6px;border:1px solid #e5e7eb">
+      <div style="width:24px;height:24px;border-radius:50%;background:#e0e7ff;color:#4338ca;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0">${i + 1}</div>
+      <div>
+        <div style="font-size:12px;color:#888">${step.flightLabel}</div>
+        <div style="font-size:13px">${step.message}</div>
+      </div>
+    </div>`
+  }).join('')
+
+  const html = `<!DOCTYPE html><html><head><title>${itinerary.name} — ${trip.tripName}</title>
+    <style>body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:700px;margin:0 auto;padding:32px;color:#1a1a2e}
+    @media print{body{padding:16px}}</style></head><body>
+    <h1 style="font-size:22px;margin-bottom:4px">${itinerary.name}</h1>
+    <div style="font-size:14px;color:#666;margin-bottom:20px">${trip.tripName} — ${travelers} traveler${travelers > 1 ? 's' : ''}</div>
+    <div style="display:flex;gap:20px;margin-bottom:24px;padding:14px 16px;background:#f0f0f8;border-radius:8px">
+      ${totals.cash > 0 ? `<div><div style="font-size:12px;color:#888">Cash</div><div style="font-weight:700">$${(totals.cash * travelers).toLocaleString()}</div></div>` : ''}
+      ${totals.points > 0 ? `<div><div style="font-size:12px;color:#888">Points</div><div style="font-weight:700;color:#4338ca">${(totals.points * travelers).toLocaleString()}</div></div>` : ''}
+      ${totals.fees > 0 ? `<div><div style="font-size:12px;color:#888">Fees</div><div style="font-weight:700">$${(totals.fees * travelers).toLocaleString()}</div></div>` : ''}
+    </div>
+    <h2 style="font-size:16px;margin-bottom:12px">Flight Details</h2>
+    ${legsHtml}
+    ${steps.length > 0 ? `<h2 style="font-size:16px;margin-bottom:12px;margin-top:24px">How to Book</h2>${stepsHtml}` : ''}
+    <div style="margin-top:24px;font-size:12px;color:#aaa;border-top:1px solid #e5e7eb;padding-top:12px">
+      Generated by Point Tripper — pointtripper.com
+    </div>
+  </body></html>`
+
+  const printWindow = window.open('', '_blank')
+  if (printWindow) {
+    printWindow.document.write(html)
+    printWindow.document.close()
+    printWindow.print()
+  }
+}
+
+function CompareView({ itineraries, trip, wallet, onClose }: {
+  itineraries: any[]
+  trip: any
+  wallet: any[]
+  onClose: () => void
+}) {
+  const flightMap: Record<string, any> = {}
+  trip.flights.forEach((f: any) => { flightMap[f.id] = f })
+
+  return (
+    <div style={{
+      backgroundColor: 'var(--bg-card)',
+      borderRadius: 'var(--radius-lg)',
+      border: '2px solid var(--primary)',
+      padding: 20,
+      marginBottom: 20,
+      overflow: 'auto',
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <div style={{ fontWeight: 700, fontSize: 17 }}>Side-by-Side Comparison</div>
+        <button onClick={onClose} style={{
+          padding: '6px 14px', border: '1px solid var(--border)',
+          borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+          backgroundColor: 'var(--bg-card)', fontSize: 13, color: 'var(--text-muted)',
+        }}>Close</button>
+      </div>
+
+      {/* Comparison table */}
+      <div style={{ display: 'grid', gridTemplateColumns: `140px repeat(${itineraries.length}, 1fr)`, gap: 0, fontSize: 13 }}>
+        {/* Header row */}
+        <div style={{ padding: '10px 8px', fontWeight: 700, color: 'var(--text-muted)', borderBottom: '2px solid var(--border)' }}>
+        </div>
+        {itineraries.map(it => (
+          <div key={it.id} style={{
+            padding: '10px 12px', fontWeight: 700, fontSize: 14,
+            borderBottom: '2px solid var(--border)',
+            backgroundColor: 'var(--primary-light)',
+            textAlign: 'center',
+          }}>
+            {it.name}
+          </div>
+        ))}
+
+        {/* Cash row */}
+        <div style={{ padding: '10px 8px', fontWeight: 600, borderBottom: '1px solid var(--border-light)' }}>Cash</div>
+        {itineraries.map(it => {
+          const t = it.totals || { cash: 0, points: 0, fees: 0 }
+          const tv = it.travelers || 1
+          return (
+            <div key={it.id} style={{ padding: '10px 12px', textAlign: 'center', borderBottom: '1px solid var(--border-light)', fontWeight: 700 }}>
+              {t.cash > 0 ? `$${(t.cash * tv).toLocaleString()}` : '—'}
+            </div>
+          )
+        })}
+
+        {/* Points row */}
+        <div style={{ padding: '10px 8px', fontWeight: 600, borderBottom: '1px solid var(--border-light)' }}>Points</div>
+        {itineraries.map(it => {
+          const t = it.totals || { cash: 0, points: 0, fees: 0 }
+          const tv = it.travelers || 1
+          return (
+            <div key={it.id} style={{ padding: '10px 12px', textAlign: 'center', borderBottom: '1px solid var(--border-light)', fontWeight: 700, color: 'var(--primary)' }}>
+              {t.points > 0 ? `${(t.points * tv).toLocaleString()}` : '—'}
+            </div>
+          )
+        })}
+
+        {/* Fees row */}
+        <div style={{ padding: '10px 8px', fontWeight: 600, borderBottom: '1px solid var(--border-light)' }}>Fees</div>
+        {itineraries.map(it => {
+          const t = it.totals || { cash: 0, points: 0, fees: 0 }
+          const tv = it.travelers || 1
+          return (
+            <div key={it.id} style={{ padding: '10px 12px', textAlign: 'center', borderBottom: '1px solid var(--border-light)', color: 'var(--text-muted)' }}>
+              {t.fees > 0 ? `$${(t.fees * tv).toLocaleString()}` : '—'}
+            </div>
+          )
+        })}
+
+        {/* Leg rows */}
+        {trip.legs.map((leg: any, i: number) => (
+          <>
+            <div key={`leg-${i}`} style={{
+              padding: '10px 8px', fontWeight: 600,
+              borderBottom: '1px solid var(--border-light)',
+              backgroundColor: 'var(--bg)',
+            }}>
+              Leg {i + 1}
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 400 }}>
+                {getCityName(leg.from)} → {getCityName(leg.to)}
+              </div>
+            </div>
+            {itineraries.map(it => {
+              const flightIds = it.assignments?.[i] || []
+              const flights = flightIds.map((id: string) => flightMap[id]).filter(Boolean)
+              return (
+                <div key={`${it.id}-leg-${i}`} style={{
+                  padding: '10px 12px',
+                  borderBottom: '1px solid var(--border-light)',
+                  backgroundColor: 'var(--bg)',
+                }}>
+                  {flights.length === 0 ? (
+                    <span style={{ color: 'var(--text-muted)' }}>—</span>
+                  ) : flights.map((f: any) => {
+                    const seg = f.segments?.[0] || {}
+                    return (
+                      <div key={f.id} style={{ marginBottom: 2 }}>
+                        <div style={{ fontWeight: 600 }}>{seg.airline} {seg.flightNumber}</div>
+                        <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>
+                          {f.paymentType === 'cash'
+                            ? `$${(f.cashAmount || 0).toLocaleString()}`
+                            : `${(f.pointsAmount || 0).toLocaleString()} pts`
+                          }
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )
+            })}
+          </>
+        ))}
+
+        {/* Booking steps count */}
+        <div style={{ padding: '10px 8px', fontWeight: 600 }}>Booking Steps</div>
+        {itineraries.map(it => {
+          const steps = analyzeItinerary(it.assignments, trip.flights, wallet, it.travelers || 1)
+          return (
+            <div key={it.id} style={{ padding: '10px 12px', textAlign: 'center' }}>
+              {steps.length} step{steps.length !== 1 ? 's' : ''}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function ItineraryCard({ itinerary, trip, wallet, onDelete, onRename, onPrint, onEmail, compareMode, compareSelected, onCompareToggle }: {
   itinerary: any
   trip: any
+  wallet: any[]
   onDelete: () => void
   onRename: (name: string) => void
+  onPrint: () => void
+  onEmail: () => void
+  compareMode?: boolean
+  compareSelected?: boolean
+  onCompareToggle?: () => void
 }) {
   const [expanded, setExpanded] = useState(false)
   const [editing, setEditing] = useState(false)
@@ -1120,7 +1539,6 @@ function ItineraryCard({ itinerary, trip, onDelete, onRename }: {
   const savedDate = new Date(itinerary.createdAt)
   const dateStr = savedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
 
-  const wallet = JSON.parse(typeof window !== 'undefined' ? localStorage.getItem('wallet') || '[]' : '[]')
   const steps = expanded ? analyzeItinerary(itinerary.assignments, trip.flights, wallet, travelers) : []
   const hasShortfall = steps.some(s => s.type === 'shortfall')
   const hasWallet = wallet.length > 0
@@ -1138,27 +1556,39 @@ function ItineraryCard({ itinerary, trip, onDelete, onRename }: {
     }}>
       {/* Header */}
       <div
-        onClick={() => setExpanded(!expanded)}
+        onClick={() => compareMode ? onCompareToggle?.() : setExpanded(!expanded)}
         style={{
           padding: '14px 18px', cursor: 'pointer',
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          ...(compareMode && compareSelected ? { backgroundColor: 'var(--primary-light)' } : {}),
         }}
       >
-        <div>
-          {editing ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {compareMode && (
             <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              onBlur={() => { onRename(name); setEditing(false) }}
-              onKeyDown={(e) => { if (e.key === 'Enter') { onRename(name); setEditing(false) } }}
+              type="checkbox"
+              checked={compareSelected}
+              onChange={() => onCompareToggle?.()}
               onClick={(e) => e.stopPropagation()}
-              autoFocus
-              style={{ fontWeight: 700, fontSize: 16, padding: '2px 8px', width: 200 }}
+              style={{ width: 18, height: 18, accentColor: 'var(--primary)' }}
             />
-          ) : (
-            <div style={{ fontWeight: 700, fontSize: 16 }}>{itinerary.name}</div>
           )}
-          <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>Saved {dateStr}</div>
+          <div>
+            {editing ? (
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                onBlur={() => { onRename(name); setEditing(false) }}
+                onKeyDown={(e) => { if (e.key === 'Enter') { onRename(name); setEditing(false) } }}
+                onClick={(e) => e.stopPropagation()}
+                autoFocus
+                style={{ fontWeight: 700, fontSize: 16, padding: '2px 8px', width: 200 }}
+              />
+            ) : (
+              <div style={{ fontWeight: 700, fontSize: 16 }}>{itinerary.name}</div>
+            )}
+            <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>Saved {dateStr}</div>
+          </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           <div style={{ textAlign: 'right' }}>
@@ -1302,7 +1732,33 @@ function ItineraryCard({ itinerary, trip, onDelete, onRename }: {
           )}
 
           {/* Actions */}
-          <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
+          <div style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap' }}>
+            <button
+              onClick={(e) => { e.stopPropagation(); onPrint() }}
+              style={{
+                padding: '6px 14px', border: '1px solid var(--border)',
+                borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+                backgroundColor: 'var(--bg-card)', fontSize: 13, color: 'var(--text-secondary)',
+                fontWeight: 500, transition: 'border-color 0.15s',
+              }}
+              onMouseOver={(e) => e.currentTarget.style.borderColor = 'var(--primary)'}
+              onMouseOut={(e) => e.currentTarget.style.borderColor = 'var(--border)'}
+            >
+              Print
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); onEmail() }}
+              style={{
+                padding: '6px 14px', border: '1px solid var(--border)',
+                borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+                backgroundColor: 'var(--bg-card)', fontSize: 13, color: 'var(--text-secondary)',
+                fontWeight: 500, transition: 'border-color 0.15s',
+              }}
+              onMouseOver={(e) => e.currentTarget.style.borderColor = 'var(--primary)'}
+              onMouseOut={(e) => e.currentTarget.style.borderColor = 'var(--border)'}
+            >
+              Email
+            </button>
             <button
               onClick={(e) => { e.stopPropagation(); setEditing(true) }}
               style={{
