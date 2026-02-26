@@ -56,8 +56,19 @@ function PricingContent() {
     </div>
   )
 
+  const card: React.CSSProperties = {
+    backgroundColor: 'var(--bg-card)',
+    borderRadius: 'var(--radius-lg)',
+    boxShadow: 'var(--shadow)',
+    border: '1px solid var(--border-light)',
+    padding: 28,
+    flex: 1,
+    minWidth: 280,
+    maxWidth: 380,
+  }
+
   return (
-    <div style={{ maxWidth: 800, margin: '0 auto', padding: '48px 20px 80px' }}>
+    <div style={{ maxWidth: 860, margin: '0 auto', padding: '48px 20px 80px' }}>
       {/* Hero */}
       <div style={{ textAlign: 'center', marginBottom: 48 }}>
         <div style={{
@@ -71,7 +82,7 @@ function PricingContent() {
           Add flights to your trips in one click
         </h1>
         <p style={{ fontSize: 16, color: 'var(--text-secondary)', maxWidth: 540, margin: '0 auto', lineHeight: 1.6 }}>
-          Stop copying flight details by hand. Point Tripper's Chrome extension automatically detects flights
+          Stop copying flight details by hand. Point Tripper&apos;s Chrome extension automatically detects flights
           from any search results page and lets you save them to your trips instantly.
         </p>
       </div>
@@ -129,35 +140,80 @@ function PricingContent() {
         </div>
       )}
 
-      {/* Single pricing card */}
-      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 48 }}>
+      {/* Two pricing cards */}
+      <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', justifyContent: 'center', marginBottom: 48 }}>
+
+        {/* Try Free card */}
+        <div style={card}>
+          <div style={{ textAlign: 'center', marginBottom: 20 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
+              Try it free
+            </div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, justifyContent: 'center', marginBottom: 4 }}>
+              <span style={{ fontSize: 36, fontWeight: 800 }}>$0</span>
+            </div>
+            <div style={{ fontSize: 14, color: 'var(--text-secondary)' }}>
+              1 free scan to test it out
+            </div>
+          </div>
+
+          <div style={{ marginBottom: 24 }}>
+            {checkItem('1 flight scan per month')}
+            {checkItem('Auto-detect flights from any page')}
+            {checkItem('Save flights to your trips')}
+            {checkItem('No credit card required')}
+          </div>
+
+          <a
+            href="https://chromewebstore.google.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'block', textAlign: 'center', padding: '12px 20px',
+              border: '1.5px solid var(--primary)', color: 'var(--primary)',
+              borderRadius: 'var(--radius-sm)', fontWeight: 600, fontSize: 14,
+              textDecoration: 'none',
+            }}
+          >
+            Try It Free
+          </a>
+          <div style={{ textAlign: 'center', fontSize: 12, color: 'var(--text-muted)', marginTop: 8 }}>
+            Install from Chrome Web Store
+          </div>
+        </div>
+
+        {/* Pro card */}
         <div style={{
-          backgroundColor: 'var(--bg-card)',
-          borderRadius: 'var(--radius-lg)',
-          boxShadow: 'var(--shadow)',
+          ...card,
           border: '2px solid var(--primary)',
-          padding: 32,
-          width: '100%',
-          maxWidth: 420,
           position: 'relative',
         }}>
+          <div style={{
+            position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)',
+            padding: '4px 14px', borderRadius: 20,
+            background: 'linear-gradient(135deg, var(--primary), var(--primary-hover))',
+            color: 'white', fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap',
+          }}>
+            Recommended
+          </div>
+
           <div style={{ textAlign: 'center', marginBottom: 20 }}>
             <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
               Point Tripper Pro
             </div>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, justifyContent: 'center', marginBottom: 4 }}>
-              <span style={{ fontSize: 40, fontWeight: 800 }}>$4.99</span>
+              <span style={{ fontSize: 36, fontWeight: 800 }}>$4.99</span>
               <span style={{ fontSize: 14, color: 'var(--text-muted)' }}>/month</span>
             </div>
             <div style={{ fontSize: 14, color: 'var(--text-secondary)' }}>
-              Try it free with 1 scan — then upgrade for unlimited access
+              Unlimited flight detection
             </div>
           </div>
 
           <div style={{ marginBottom: 24 }}>
             {checkItem('Unlimited flight scans')}
-            {checkItem('Automatically detect flights from any booking page')}
-            {checkItem('Save flights to your trips with one click')}
+            {checkItem('Auto-detect flights from any page')}
+            {checkItem('Save flights to your trips')}
             {checkItem('Compare cash vs. points pricing')}
             {checkItem('Works on any airline or travel site')}
             {checkItem('Priority support')}
@@ -172,40 +228,57 @@ function PricingContent() {
             </div>
           )}
 
-          {/* CTA: Get access / upgrade */}
           <button
             onClick={handleUpgrade}
             disabled={loading}
             style={{
-              width: '100%', padding: '13px 20px', marginBottom: 10,
+              width: '100%', padding: '13px 20px',
               background: 'linear-gradient(135deg, var(--primary), var(--primary-hover))',
               color: 'white', border: 'none', borderRadius: 'var(--radius-sm)',
               fontWeight: 600, fontSize: 15, cursor: loading ? 'default' : 'pointer',
               opacity: loading ? 0.6 : 1,
             }}
           >
-            {loading ? 'Redirecting...' : user ? 'Get Access to the Extension' : 'Sign in to get started'}
+            {loading ? 'Redirecting...' : user ? 'Get Pro Access' : 'Sign in to upgrade'}
           </button>
-
-          {/* CTA: Try it free */}
-          <a
-            href="https://chromewebstore.google.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              display: 'block', textAlign: 'center', padding: '12px 20px', marginBottom: 10,
-              border: '1.5px solid var(--primary)', color: 'var(--primary)',
-              borderRadius: 'var(--radius-sm)', fontWeight: 600, fontSize: 14,
-              textDecoration: 'none',
-            }}
-          >
-            Try It Free — Download Extension
-          </a>
-
-          <div style={{ textAlign: 'center', fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>
-            1 free scan included — no credit card required to try
+          <div style={{ textAlign: 'center', fontSize: 12, color: 'var(--text-muted)', marginTop: 8 }}>
+            Cancel anytime from your account
           </div>
         </div>
+      </div>
+
+      {/* Download CTA banner */}
+      <div style={{
+        maxWidth: 560, margin: '0 auto 48px', padding: '24px 28px',
+        backgroundColor: 'var(--bg-card)', borderRadius: 'var(--radius-lg)',
+        border: '1px solid var(--border-light)', boxShadow: 'var(--shadow-sm)',
+        textAlign: 'center',
+      }}>
+        <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 6 }}>
+          Already have an account?
+        </div>
+        <div style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 16, lineHeight: 1.5 }}>
+          Download the Chrome extension and sign in to start scanning flights.
+        </div>
+        <a
+          href="https://chromewebstore.google.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 8,
+            padding: '11px 24px',
+            backgroundColor: 'var(--bg)', border: '1.5px solid var(--border)',
+            borderRadius: 'var(--radius-sm)', fontWeight: 600, fontSize: 14,
+            color: 'var(--text)', textDecoration: 'none',
+          }}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+            <polyline points="7 10 12 15 17 10" />
+            <line x1="12" y1="15" x2="12" y2="3" />
+          </svg>
+          Download Chrome Extension
+        </a>
       </div>
 
       {/* FAQ */}
@@ -232,7 +305,7 @@ function PricingContent() {
           },
           {
             q: 'How do I install the extension?',
-            a: 'Click the "Download Extension" button above to install from the Chrome Web Store. After installing, click the extension icon on any flight search page to get started.',
+            a: 'Click "Try It Free" or "Download Chrome Extension" above to install from the Chrome Web Store. After installing, click the extension icon on any flight search page to get started.',
           },
         ].map((faq, i) => (
           <div key={i} style={{
