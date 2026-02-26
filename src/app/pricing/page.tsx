@@ -1,16 +1,32 @@
 'use client'
 
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { useAuth } from '@/components/AuthProvider'
 
 export default function PricingPage() {
-  const { user, session } = useAuth()
+  return (
+    <Suspense>
+      <PricingContent />
+    </Suspense>
+  )
+}
+
+function PricingContent() {
+  const { user, session, signOut } = useAuth()
+  const searchParams = useSearchParams()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
+  // Extension passes ?email= so we can warn if wrong account is logged in
+  const expectedEmail = searchParams.get('email')
+  const wrongAccount = expectedEmail && user && user.email !== expectedEmail
+
   const handleUpgrade = async () => {
     if (!user || !session) {
-      window.location.href = '/login'
+      window.location.href = expectedEmail
+        ? `/login?redirect=${encodeURIComponent('/pricing?email=' + encodeURIComponent(expectedEmail))}`
+        : '/login?redirect=/pricing'
       return
     }
 
@@ -100,6 +116,30 @@ export default function PricingPage() {
           ))}
         </div>
       </div>
+
+      {/* Wrong account warning */}
+      {wrongAccount && (
+        <div style={{
+          maxWidth: 560, margin: '0 auto 24px', padding: '14px 18px',
+          backgroundColor: '#FEF3C7', border: '1px solid #F59E0B', borderRadius: 'var(--radius)',
+          fontSize: 14, lineHeight: 1.6,
+        }}>
+          <strong>Wrong account.</strong> You're logged in as <strong>{user.email}</strong>, but the extension
+          is signed in as <strong>{expectedEmail}</strong>.{' '}
+          <button
+            onClick={async () => {
+              await signOut()
+              window.location.href = `/login?redirect=${encodeURIComponent('/pricing?email=' + encodeURIComponent(expectedEmail!))}`
+            }}
+            style={{
+              background: 'none', border: 'none', color: '#B45309',
+              textDecoration: 'underline', cursor: 'pointer', fontWeight: 600, fontSize: 14, padding: 0,
+            }}
+          >
+            Switch account
+          </button>
+        </div>
+      )}
 
       {/* Pricing Cards */}
       <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', justifyContent: 'center', marginBottom: 48 }}>

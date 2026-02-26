@@ -838,7 +838,7 @@ function renderPaywall() {
           ✓ Priority support
         </div>
       </div>
-      <a href="https://www.pointtripper.com/pricing" target="_blank" class="btn" style="text-decoration:none">
+      <a href="https://www.pointtripper.com/pricing?email=${encodeURIComponent(state.userEmail || '')}" target="_blank" class="btn" style="text-decoration:none">
         Upgrade to Pro
       </a>
       <div style="margin-top:12px;font-size:13px;color:#4b5563">
