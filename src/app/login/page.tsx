@@ -62,7 +62,14 @@ function LoginForm() {
     } else {
       const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) { setError(error.message); setLoading(false); return }
-      router.push(redirectTo || '/')
+      // Signal Chrome to save credentials
+      if ((window as any).PasswordCredential) {
+        try {
+          const cred = new (window as any).PasswordCredential({ id: email, password })
+          await navigator.credentials.store(cred)
+        } catch (_) {}
+      }
+      window.location.href = redirectTo || '/'
     }
   }
 
@@ -129,7 +136,7 @@ function LoginForm() {
         )}
 
         <form
-          action="#"
+          action="/login"
           method="POST"
           onSubmit={(e) => { e.preventDefault(); handleEmailAuth() }}
           autoComplete="on"

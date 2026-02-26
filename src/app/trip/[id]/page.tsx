@@ -1316,55 +1316,142 @@ function printItinerary(itinerary: any, trip: any, wallet: any[]) {
     const flightIds = itinerary.assignments?.[i] || []
     const flights = flightIds.map((id: string) => flightMap[id]).filter(Boolean)
     const flightsHtml = flights.length === 0
-      ? '<div style="color:#888;padding:8px;border:1px dashed #ddd;border-radius:6px">No flights assigned</div>'
+      ? '<div style="color:#888;padding:12px 14px;border:1px dashed #ddd;border-radius:8px;font-size:13px">No flights assigned</div>'
       : flights.map((f: any) => {
         const segs = f.segments || []
         const firstSeg = segs[0] || {}
         const lastSeg = segs[segs.length - 1] || firstSeg
-        const airline = firstSeg.airline || ''
-        const flightNum = firstSeg.flightNumber || ''
-        const route = `${firstSeg.departureAirport || '?'} → ${lastSeg.arrivalAirport || '?'}`
-        const price = f.paymentType === 'cash'
-          ? `$${(f.cashAmount || 0).toLocaleString()}`
-          : `${(f.pointsAmount || 0).toLocaleString()} pts + $${(f.feesAmount || 0).toLocaleString()}`
-        return `<div style="padding:8px 12px;background:#f9f9fb;border-radius:6px;margin-bottom:4px;border:1px solid #e5e7eb">
-          <div style="font-weight:600;font-size:14px">${airline} ${flightNum}</div>
-          <div style="font-size:13px;color:#555">${route} — ${price}</div>
+        const airline = firstSeg.airlineName || firstSeg.airline || ''
+        const flightNum = firstSeg.flightNumber || firstSeg.flightCode || ''
+        const depTime = formatTime(firstSeg.departureTime) || '—'
+        const arrTime = formatTime(lastSeg.arrivalTime) || '—'
+        const depAirport = firstSeg.departureAirport || '?'
+        const arrAirport = lastSeg.arrivalAirport || '?'
+        const depDate = formatDate(firstSeg.date) || ''
+        const totalTime = calculateTotalTime(segs)
+        const flyingTime = calculateFlyingTime(segs)
+        const stopsLabel = getStopsLabel(segs)
+        const layovers = calculateLayovers(segs)
+        const cabin = firstSeg.cabinClass || firstSeg.cabin || ''
+        const stopsColor = stopsLabel === 'Nonstop' ? '#16a34a' : '#888'
+
+        let priceDisplay = ''
+        let priceColor = '#1a1a2e'
+        let feesDisplay = ''
+        if (f.paymentType === 'cash' && f.cashAmount) {
+          priceDisplay = `$${f.cashAmount.toLocaleString()}`
+        } else if (f.paymentType === 'points' && f.pointsAmount) {
+          priceDisplay = `${f.pointsAmount.toLocaleString()} pts`
+          priceColor = '#4338ca'
+          if (f.feesAmount) feesDisplay = `+ $${f.feesAmount} fees`
+        }
+
+        // Build detail chips
+        const chips: string[] = []
+        if (totalTime) chips.push(`<span style="padding:2px 8px;border-radius:10px;background:#f5f3ff;color:#555;font-size:11px">Total: ${totalTime}</span>`)
+        if (flyingTime && flyingTime !== totalTime) chips.push(`<span style="padding:2px 8px;border-radius:10px;background:#f5f3ff;color:#555;font-size:11px">Flying: ${flyingTime}</span>`)
+        if (cabin) chips.push(`<span style="padding:2px 8px;border-radius:10px;background:#e0e7ff;color:#4338ca;font-size:11px;font-weight:500">${cabin}</span>`)
+        layovers.forEach(l => chips.push(`<span style="padding:2px 8px;border-radius:10px;background:#fef3c7;color:#92400e;font-size:11px">${l.duration} in ${l.airport}</span>`))
+
+        return `<div style="background:#f9f9fb;border-radius:10px;border:1px solid #e5e7eb;padding:14px 16px;margin-bottom:8px">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+            <div>
+              <div style="font-weight:700;font-size:15px;color:#1a1a2e">${airline} ${flightNum}</div>
+              ${depDate ? `<div style="font-size:12px;color:#888;margin-top:1px">${depDate}</div>` : ''}
+            </div>
+            <div style="text-align:right">
+              <div style="font-weight:700;font-size:15px;color:${priceColor}">${priceDisplay}</div>
+              ${feesDisplay ? `<div style="font-size:12px;color:#888">${feesDisplay}</div>` : ''}
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;padding:8px 12px;background:white;border-radius:8px">
+            <div style="text-align:center">
+              <div style="font-weight:700;font-size:16px">${depTime}</div>
+              <div style="font-size:11px;color:#888">${depAirport}</div>
+            </div>
+            <div style="flex:1;text-align:center">
+              <div style="font-size:11px;color:#888;margin-bottom:2px">${totalTime || ''}</div>
+              <div style="height:1px;background:#ddd;margin:0 8px;position:relative">
+                <span style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:10px;color:#888;background:white;padding:0 4px">✈</span>
+              </div>
+              <div style="font-size:11px;margin-top:2px;font-weight:500;color:${stopsColor}">${stopsLabel}</div>
+            </div>
+            <div style="text-align:center">
+              <div style="font-weight:700;font-size:16px">${arrTime}</div>
+              <div style="font-size:11px;color:#888">${arrAirport}</div>
+            </div>
+          </div>
+          ${chips.length > 0 ? `<div style="display:flex;gap:6px;flex-wrap:wrap">${chips.join('')}</div>` : ''}
         </div>`
       }).join('')
 
-    return `<div style="margin-bottom:16px">
-      <div style="font-weight:700;font-size:13px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">
-        Leg ${i + 1}: ${getCityName(leg.from)} → ${getCityName(leg.to)}
+    return `<div style="margin-bottom:20px">
+      <div style="font-weight:700;font-size:12px;color:#888;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:10px;display:flex;align-items:center;gap:8px">
+        <span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:#e0e7ff;color:#4338ca;font-size:11px;font-weight:700">${i + 1}</span>
+        ${getCityName(leg.from)} (${leg.from}) → ${getCityName(leg.to)} (${leg.to})
       </div>
       ${flightsHtml}
     </div>`
   }).join('')
 
   const stepsHtml = steps.map((step, i) => {
-    return `<div style="display:flex;gap:10px;margin-bottom:6px;padding:8px 12px;background:#f9f9fb;border-radius:6px;border:1px solid #e5e7eb">
-      <div style="width:24px;height:24px;border-radius:50%;background:#e0e7ff;color:#4338ca;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0">${i + 1}</div>
-      <div>
-        <div style="font-size:12px;color:#888">${step.flightLabel}</div>
-        <div style="font-size:13px">${step.message}</div>
+    const bgColor = step.type === 'shortfall' ? '#fef2f2' : step.type === 'cash' ? '#f0fdf4' : '#e0e7ff'
+    const numColor = step.type === 'shortfall' ? '#dc2626' : step.type === 'cash' ? '#16a34a' : '#4338ca'
+    const borderColor = step.type === 'shortfall' ? '#fecaca' : '#e5e7eb'
+    const textColor = step.type === 'shortfall' ? '#dc2626' : '#1a1a2e'
+    return `<div style="display:flex;gap:12px;margin-bottom:8px;padding:10px 12px;background:white;border-radius:8px;border:1px solid ${borderColor}">
+      <div style="width:24px;height:24px;border-radius:50%;background:${bgColor};color:${numColor};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0">${i + 1}</div>
+      <div style="flex:1">
+        <div style="font-size:12px;color:#888;margin-bottom:2px">${step.flightLabel}</div>
+        <div style="font-size:13px;color:${textColor}">${step.message}</div>
       </div>
     </div>`
   }).join('')
 
+  // Summary chips
+  const allFlights: any[] = []
+  trip.legs.forEach((_: any, i: number) => {
+    const ids = itinerary.assignments?.[i] || []
+    ids.forEach((id: string) => { if (flightMap[id]) allFlights.push(flightMap[id]) })
+  })
+  const totalStops = allFlights.reduce((sum: number, f: any) => sum + Math.max(0, (f.segments?.length || 1) - 1), 0)
+  const legCount = trip.legs?.length || 0
+
   const html = `<!DOCTYPE html><html><head><title>${itinerary.name} — ${trip.tripName}</title>
-    <style>body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:700px;margin:0 auto;padding:32px;color:#1a1a2e}
-    @media print{body{padding:16px}}</style></head><body>
-    <h1 style="font-size:22px;margin-bottom:4px">${itinerary.name}</h1>
-    <div style="font-size:14px;color:#666;margin-bottom:20px">${trip.tripName} — ${travelers} traveler${travelers > 1 ? 's' : ''}</div>
-    <div style="display:flex;gap:20px;margin-bottom:24px;padding:14px 16px;background:#f0f0f8;border-radius:8px">
-      ${totals.cash > 0 ? `<div><div style="font-size:12px;color:#888">Cash</div><div style="font-weight:700">$${(totals.cash * travelers).toLocaleString()}</div></div>` : ''}
-      ${totals.points > 0 ? `<div><div style="font-size:12px;color:#888">Points</div><div style="font-weight:700;color:#4338ca">${(totals.points * travelers).toLocaleString()}</div></div>` : ''}
-      ${totals.fees > 0 ? `<div><div style="font-size:12px;color:#888">Fees</div><div style="font-weight:700">$${(totals.fees * travelers).toLocaleString()}</div></div>` : ''}
+    <style>
+      body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 700px; margin: 0 auto; padding: 32px; color: #1a1a2e; }
+      @media print { body { padding: 16px; } }
+    </style></head><body>
+    <div style="border:1px solid #e5e7eb;border-radius:12px;overflow:hidden">
+      <div style="padding:16px 20px;border-bottom:1px solid #e5e7eb">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div>
+            <div style="font-weight:700;font-size:18px;margin-bottom:2px">${itinerary.name}</div>
+            <div style="font-size:12px;color:#888">${trip.tripName} — ${travelers} traveler${travelers > 1 ? 's' : ''}</div>
+          </div>
+          <div style="text-align:right">
+            ${totals.cash > 0 ? `<div style="font-size:16px;font-weight:700">$${(totals.cash * travelers).toLocaleString()}</div>` : ''}
+            ${totals.points > 0 ? `<div style="font-size:16px;font-weight:700;color:#4338ca">${(totals.points * travelers).toLocaleString()} pts</div>` : ''}
+            ${totals.fees > 0 ? `<div style="font-size:12px;color:#888">+ $${(totals.fees * travelers).toLocaleString()} fees</div>` : ''}
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+          <span style="font-size:12px;padding:3px 10px;border-radius:12px;background:#f5f3ff;color:#555;font-weight:500">${legCount} leg${legCount !== 1 ? 's' : ''}</span>
+          <span style="font-size:12px;padding:3px 10px;border-radius:12px;background:${totalStops === 0 ? '#f0fdf4' : '#f5f3ff'};color:${totalStops === 0 ? '#16a34a' : '#555'};font-weight:500">${totalStops === 0 ? 'All nonstop' : `${totalStops} stop${totalStops !== 1 ? 's' : ''} total`}</span>
+          ${travelers > 1 ? `<span style="font-size:12px;padding:3px 10px;border-radius:12px;background:#f5f3ff;color:#555;font-weight:500">${travelers} travelers</span>` : ''}
+        </div>
+      </div>
+      <div style="padding:20px">
+        ${legsHtml}
+        ${steps.length > 0 ? `
+          <div style="margin-top:20px;padding:16px;background:#f9f9fb;border-radius:10px;border:1px solid #e5e7eb">
+            <div style="font-weight:700;font-size:15px;margin-bottom:12px">How to Book</div>
+            ${stepsHtml}
+          </div>
+        ` : ''}
+      </div>
     </div>
-    <h2 style="font-size:16px;margin-bottom:12px">Flight Details</h2>
-    ${legsHtml}
-    ${steps.length > 0 ? `<h2 style="font-size:16px;margin-bottom:12px;margin-top:24px">How to Book</h2>${stepsHtml}` : ''}
-    <div style="margin-top:24px;font-size:12px;color:#aaa;border-top:1px solid #e5e7eb;padding-top:12px">
+    <div style="margin-top:16px;font-size:12px;color:#aaa;text-align:center">
       Generated by Point Tripper — pointtripper.com
     </div>
   </body></html>`
