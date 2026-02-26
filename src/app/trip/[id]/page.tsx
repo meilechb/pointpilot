@@ -69,10 +69,7 @@ export default function TripDetail() {
       if (found && !found.itineraries) found.itineraries = []
       setTrip(found)
       setWallet(walletData || [])
-      // Keep localStorage wallet in sync for legacy code paths
-      if (walletData && walletData.length > 0) {
-        localStorage.setItem('wallet', JSON.stringify(walletData))
-      }
+      // No longer caching wallet in unscoped localStorage — dataService handles scoping
       setTripLoading(false)
     })
   }, [params.id])

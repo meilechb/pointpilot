@@ -9,6 +9,10 @@ async function getUser() {
   return user
 }
 
+// localStorage keys scoped per user to prevent cross-account data leaks
+function tripsKey(userId?: string) { return userId ? `trips_${userId}` : 'trips_anon' }
+function walletKey(userId?: string) { return userId ? `wallet_${userId}` : 'wallet_anon' }
+
 // --------------- TRIPS ---------------
 // App in-memory shape:
 //   { id, tripName, tripType, departureCity, destinationCity, stops, legs[], departureDate, returnDate, travelers, dateFlexibility, flights[], itineraries[] }
@@ -145,9 +149,7 @@ export async function loadTripById(tripId: string): Promise<any | null> {
       .limit(1)
 
     if (error || !tripRows || tripRows.length === 0) {
-      // Fall back to localStorage
-      const local = JSON.parse(localStorage.getItem('trips') || '[]')
-      return local.find((t: any) => t.id === tripId) ?? null
+      return null
     }
 
     const [{ data: legRows }, { data: flightRows }, { data: itinRows }] = await Promise.all([
@@ -158,7 +160,7 @@ export async function loadTripById(tripId: string): Promise<any | null> {
 
     return assembleTrip(tripRows[0], legRows || [], flightRows || [], itinRows || [])
   }
-  const local = JSON.parse(localStorage.getItem('trips') || '[]')
+  const local = JSON.parse(localStorage.getItem(tripsKey()) || '[]')
   return local.find((t: any) => t.id === tripId) ?? null
 }
 
@@ -173,7 +175,7 @@ export async function loadTrips(): Promise<any[]> {
 
     if (error) {
       console.error('Failed to load trips:', error)
-      return JSON.parse(localStorage.getItem('trips') || '[]')
+      return []
     }
 
     if (!tripRows || tripRows.length === 0) return []
@@ -193,18 +195,19 @@ export async function loadTrips(): Promise<any[]> {
       return assembleTrip(tripRow, legs, flights, itins)
     })
   }
-  return JSON.parse(localStorage.getItem('trips') || '[]')
+  return JSON.parse(localStorage.getItem(tripsKey()) || '[]')
 }
 
 export async function saveTrip(trip: any): Promise<void> {
   const user = await getUser()
 
-  // localStorage cache
-  const local = JSON.parse(localStorage.getItem('trips') || '[]')
+  // localStorage cache (scoped by user)
+  const key = tripsKey(user?.id)
+  const local = JSON.parse(localStorage.getItem(key) || '[]')
   const idx = local.findIndex((t: any) => t.id === trip.id)
   if (idx >= 0) local[idx] = trip
   else local.push(trip)
-  localStorage.setItem('trips', JSON.stringify(local))
+  localStorage.setItem(key, JSON.stringify(local))
 
   if (!user) return
 
@@ -243,8 +246,9 @@ export async function saveTrip(trip: any): Promise<void> {
 
 export async function deleteTrip(tripId: string): Promise<void> {
   const user = await getUser()
-  const local = JSON.parse(localStorage.getItem('trips') || '[]')
-  localStorage.setItem('trips', JSON.stringify(local.filter((t: any) => t.id !== tripId)))
+  const key = tripsKey(user?.id)
+  const local = JSON.parse(localStorage.getItem(key) || '[]')
+  localStorage.setItem(key, JSON.stringify(local.filter((t: any) => t.id !== tripId)))
 
   if (!user) return
   const sb = getSupabase()
@@ -293,20 +297,21 @@ export async function loadWallet(): Promise<any[]> {
       .eq('user_id', user.id)
     if (error) {
       console.error('Failed to load wallet:', error)
-      return JSON.parse(localStorage.getItem('wallet') || '[]')
+      return []
     }
     return (data || []).map(walletRowToEntry)
   }
-  return JSON.parse(localStorage.getItem('wallet') || '[]')
+  return JSON.parse(localStorage.getItem(walletKey()) || '[]')
 }
 
 export async function saveWalletEntry(entry: any): Promise<void> {
   const user = await getUser()
-  const local = JSON.parse(localStorage.getItem('wallet') || '[]')
+  const key = walletKey(user?.id)
+  const local = JSON.parse(localStorage.getItem(key) || '[]')
   const idx = local.findIndex((e: any) => e.id === entry.id)
   if (idx >= 0) local[idx] = entry
   else local.push(entry)
-  localStorage.setItem('wallet', JSON.stringify(local))
+  localStorage.setItem(key, JSON.stringify(local))
 
   if (!user) return
   const { error } = await getSupabase()
@@ -317,7 +322,7 @@ export async function saveWalletEntry(entry: any): Promise<void> {
 
 export async function saveAllWalletEntries(entries: any[]): Promise<void> {
   const user = await getUser()
-  localStorage.setItem('wallet', JSON.stringify(entries))
+  localStorage.setItem(walletKey(user?.id), JSON.stringify(entries))
 
   if (!user) return
   const sb = getSupabase()
@@ -333,8 +338,9 @@ export async function saveAllWalletEntries(entries: any[]): Promise<void> {
 
 export async function deleteWalletEntry(entryId: string): Promise<void> {
   const user = await getUser()
-  const local = JSON.parse(localStorage.getItem('wallet') || '[]')
-  localStorage.setItem('wallet', JSON.stringify(local.filter((e: any) => e.id !== entryId)))
+  const key = walletKey(user?.id)
+  const local = JSON.parse(localStorage.getItem(key) || '[]')
+  localStorage.setItem(key, JSON.stringify(local.filter((e: any) => e.id !== entryId)))
 
   if (!user) return
   const { error } = await getSupabase().from('wallet').delete().eq('id', entryId)
@@ -343,6 +349,7 @@ export async function deleteWalletEntry(entryId: string): Promise<void> {
 
 // --------------- MIGRATION ---------------
 // Call after login to push any localStorage data to Supabase
+// Reads from both old unscoped keys ("trips") and anon keys ("trips_anon")
 
 export async function migrateLocalDataToSupabase(): Promise<void> {
   const user = await getUser()
@@ -350,27 +357,49 @@ export async function migrateLocalDataToSupabase(): Promise<void> {
 
   const sb = getSupabase()
 
-  // Migrate trips
-  const localTrips: any[] = JSON.parse(localStorage.getItem('trips') || '[]')
-  if (localTrips.length > 0) {
+  // Collect trips from old unscoped key + anon key (deduplicated)
+  const oldTrips: any[] = JSON.parse(localStorage.getItem('trips') || '[]')
+  const anonTrips: any[] = JSON.parse(localStorage.getItem('trips_anon') || '[]')
+  const allLocalTrips = [...oldTrips]
+  for (const t of anonTrips) {
+    if (!allLocalTrips.some((existing: any) => existing.id === t.id)) {
+      allLocalTrips.push(t)
+    }
+  }
+
+  if (allLocalTrips.length > 0) {
     const { data: existingTrips } = await sb.from('trips').select('id').eq('user_id', user.id)
     const existingIds = new Set((existingTrips || []).map((t: any) => t.id))
-    const newTrips = localTrips.filter(t => !existingIds.has(t.id))
+    const newTrips = allLocalTrips.filter(t => !existingIds.has(t.id))
     for (const trip of newTrips) {
       await saveTrip(trip)
     }
   }
 
-  // Migrate wallet
-  const localWallet: any[] = JSON.parse(localStorage.getItem('wallet') || '[]')
-  if (localWallet.length > 0) {
+  // Collect wallet from old unscoped key + anon key
+  const oldWallet: any[] = JSON.parse(localStorage.getItem('wallet') || '[]')
+  const anonWallet: any[] = JSON.parse(localStorage.getItem('wallet_anon') || '[]')
+  const allLocalWallet = [...oldWallet]
+  for (const e of anonWallet) {
+    if (!allLocalWallet.some((existing: any) => existing.id === e.id)) {
+      allLocalWallet.push(e)
+    }
+  }
+
+  if (allLocalWallet.length > 0) {
     const { data: existingWallet } = await sb.from('wallet').select('id').eq('user_id', user.id)
     const existingIds = new Set((existingWallet || []).map((w: any) => w.id))
-    const newEntries = localWallet.filter(e => !existingIds.has(e.id))
+    const newEntries = allLocalWallet.filter(e => !existingIds.has(e.id))
     if (newEntries.length > 0) {
       const rows = newEntries.map(e => walletEntryToRow(e, user.id))
       const { error } = await sb.from('wallet').insert(rows)
       if (error) console.error('Failed to migrate wallet:', error)
     }
   }
+
+  // Clean up old unscoped keys and anon keys after migration
+  localStorage.removeItem('trips')
+  localStorage.removeItem('wallet')
+  localStorage.removeItem('trips_anon')
+  localStorage.removeItem('wallet_anon')
 }

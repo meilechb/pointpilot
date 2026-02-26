@@ -147,10 +147,19 @@ export default function AccountPage() {
 
   const handleClearData = async () => {
     if (!confirm('This will delete all your saved trips, flights, and wallet entries. This cannot be undone. Continue?')) return
+    // Clear all possible localStorage keys (scoped + legacy)
     localStorage.removeItem('trips')
+    localStorage.removeItem('trips_anon')
     localStorage.removeItem('flights')
     localStorage.removeItem('wallet')
+    localStorage.removeItem('wallet_anon')
     if (user) {
+      localStorage.removeItem(`trips_${user.id}`)
+      localStorage.removeItem(`wallet_${user.id}`)
+      // Delete child records first, then trips (cascade should handle it but be safe)
+      await supabase.from('itineraries').delete().eq('user_id', user.id)
+      await supabase.from('flights').delete().eq('user_id', user.id)
+      await supabase.from('legs').delete().eq('user_id', user.id)
       await supabase.from('trips').delete().eq('user_id', user.id)
       await supabase.from('wallet').delete().eq('user_id', user.id)
     }
@@ -184,8 +193,14 @@ export default function AccountPage() {
         return
       }
       localStorage.removeItem('trips')
+      localStorage.removeItem('trips_anon')
       localStorage.removeItem('flights')
       localStorage.removeItem('wallet')
+      localStorage.removeItem('wallet_anon')
+      if (user) {
+        localStorage.removeItem(`trips_${user.id}`)
+        localStorage.removeItem(`wallet_${user.id}`)
+      }
       await supabase.auth.signOut()
       window.location.href = '/'
     } catch {

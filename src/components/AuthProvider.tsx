@@ -47,6 +47,11 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   }, [])
 
   const signOut = async () => {
+    // Clear user-scoped localStorage cache before signing out
+    if (user?.id) {
+      localStorage.removeItem(`trips_${user.id}`)
+      localStorage.removeItem(`wallet_${user.id}`)
+    }
     await supabase.auth.signOut()
     setUser(null)
     setSession(null)
