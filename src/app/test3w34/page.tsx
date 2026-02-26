@@ -77,6 +77,13 @@ export default function NewHomepage() {
         padding: '100px 20px 80px', textAlign: 'center',
       }}>
         <div style={{ maxWidth: 900, margin: '0 auto' }}>
+          <div style={{
+            display: 'inline-block', padding: '4px 14px', borderRadius: 20,
+            backgroundColor: 'rgba(212, 168, 71, 0.15)', color: 'var(--accent)',
+            fontSize: 13, fontWeight: 600, marginBottom: 20, letterSpacing: 0.5,
+          }}>
+            Ditch the spreadsheets
+          </div>
           <h1 style={{
             fontSize: 44, fontWeight: 800, color: 'var(--text-inverse)',
             lineHeight: 1.15, marginBottom: 16, letterSpacing: -0.5,
