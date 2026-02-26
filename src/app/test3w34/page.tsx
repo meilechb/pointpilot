@@ -81,13 +81,13 @@ export default function NewHomepage() {
             fontSize: 44, fontWeight: 800, color: 'var(--text-inverse)',
             lineHeight: 1.15, marginBottom: 16, letterSpacing: -0.5,
           }}>
-            Plan flights with points.<br />Know exactly how to book.
+            Flight planning, visualized.
           </h1>
           <p style={{
             fontSize: 18, color: 'rgba(255,255,255,0.6)', lineHeight: 1.6,
             maxWidth: 480, margin: '0 auto 36px',
           }}>
-            Organize options, compare cash vs. points, and get step-by-step booking instructions.
+            Stop juggling spreadsheets and browser tabs! Organize all of your booking options, compare cash vs. points, and see exactly which combo saves you the most.
           </p>
 
           <div style={{ maxWidth: 380, margin: '0 auto', display: 'flex', gap: 0 }}>
@@ -224,9 +224,9 @@ export default function NewHomepage() {
       {/* ===== FEATURE HIGHLIGHTS ===== */}
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '72px 20px' }}>
         <div style={{ textAlign: 'center', marginBottom: 44 }}>
-          <h2 style={{ fontSize: 28, fontWeight: 800, marginBottom: 10 }}>Built for award travelers</h2>
-          <p style={{ fontSize: 16, color: 'var(--text-secondary)', maxWidth: 400, margin: '0 auto' }}>
-            Every feature designed around how you actually plan trips.
+          <h2 style={{ fontSize: 28, fontWeight: 800, marginBottom: 10 }}>The trip planner built for points travelers</h2>
+          <p style={{ fontSize: 16, color: 'var(--text-secondary)', maxWidth: 480, margin: '0 auto' }}>
+            Organize flights. Maximize points. Book confidently.
           </p>
         </div>
 
