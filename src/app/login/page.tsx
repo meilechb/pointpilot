@@ -128,95 +128,109 @@ function LoginForm() {
           </>
         )}
 
-        {mode === 'signup' && (
-          <>
-            <label style={fieldLabel}>Full name</label>
-            <input
-              type="text" placeholder="John Doe" value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              style={{ ...fieldInput, marginBottom: 12 }}
-            />
-          </>
-        )}
-
-        <label style={fieldLabel}>Email</label>
-        <input
-          type="email" placeholder="you@email.com" value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter' && mode === 'forgot') handleEmailAuth() }}
-          style={{ ...fieldInput, marginBottom: mode === 'forgot' ? 16 : 12 }}
-        />
-
-        {mode !== 'forgot' && (
-          <>
-            <label style={fieldLabel}>Password</label>
-            <div style={{ position: 'relative', marginBottom: 4 }}>
-              <input
-                type={showPassword ? 'text' : 'password'} placeholder={mode === 'signup' ? 'Min 6 characters' : 'Your password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') handleEmailAuth() }}
-                style={{ ...fieldInput, marginBottom: 0, paddingRight: 48 }}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                title={showPassword ? 'Hide password' : 'Show password'}
-                style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', padding: '4px 2px', lineHeight: 1 }}
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                  <circle cx="12" cy="12" r="3"/>
-                  {!showPassword && <line x1="1" y1="1" x2="23" y2="23"/>}
-                </svg>
-              </button>
-            </div>
-            {mode === 'login' && (
-              <div style={{ textAlign: 'right', marginBottom: 12 }}>
-                <span
-                  onClick={() => { setMode('forgot'); setError(''); setMessage('') }}
-                  style={{ fontSize: 13, color: 'var(--primary)', cursor: 'pointer' }}
-                >
-                  Forgot password?
-                </span>
-              </div>
-            )}
-            {mode === 'signup' && <div style={{ marginBottom: 12 }} />}
-          </>
-        )}
-
-        {error && (
-          <div style={{
-            padding: '8px 12px', backgroundColor: 'var(--danger-bg)', borderRadius: 'var(--radius-sm)',
-            border: '1px solid #FECACA', fontSize: 13, color: 'var(--danger)', marginBottom: 12,
-          }}>
-            {error}
-          </div>
-        )}
-
-        {message && (
-          <div style={{
-            padding: '8px 12px', backgroundColor: 'var(--success-bg)', borderRadius: 'var(--radius-sm)',
-            border: '1px solid #A7F3D0', fontSize: 13, color: 'var(--success)', marginBottom: 12,
-          }}>
-            {message}
-          </div>
-        )}
-
-        <button
-          onClick={handleEmailAuth}
-          disabled={loading || !email || (mode !== 'forgot' && !password)}
-          style={{
-            width: '100%', height: 44, padding: 12,
-            background: !email || (mode !== 'forgot' && !password) ? 'var(--border)' : 'linear-gradient(135deg, var(--primary), var(--primary-hover))',
-            color: !email || (mode !== 'forgot' && !password) ? 'var(--text-muted)' : 'var(--text-inverse)',
-            border: 'none', borderRadius: 'var(--radius-sm)',
-            cursor: !email || (mode !== 'forgot' && !password) ? 'default' : 'pointer',
-            fontSize: 14, fontWeight: 600,
-          }}
+        <form
+          action="#"
+          method="POST"
+          onSubmit={(e) => { e.preventDefault(); handleEmailAuth() }}
+          autoComplete="on"
         >
-          {loading ? '...' : mode === 'forgot' ? 'Send Reset Link' : mode === 'login' ? 'Sign In' : 'Create Account'}
-        </button>
+          {mode === 'signup' && (
+            <>
+              <label style={fieldLabel} htmlFor="fullName">Full name</label>
+              <input
+                id="fullName"
+                name="name"
+                type="text" placeholder="John Doe" value={fullName}
+                autoComplete="name"
+                onChange={(e) => setFullName(e.target.value)}
+                style={{ ...fieldInput, marginBottom: 12 }}
+              />
+            </>
+          )}
+
+          <label style={fieldLabel} htmlFor="email">Email</label>
+          <input
+            id="email"
+            name="email"
+            type="email" placeholder="you@email.com" value={email}
+            autoComplete="email"
+            onChange={(e) => setEmail(e.target.value)}
+            style={{ ...fieldInput, marginBottom: mode === 'forgot' ? 16 : 12 }}
+          />
+
+          {mode !== 'forgot' && (
+            <>
+              <label style={fieldLabel} htmlFor="password">Password</label>
+              <div style={{ position: 'relative', marginBottom: 4 }}>
+                <input
+                  id="password"
+                  name="password"
+                  type={showPassword ? 'text' : 'password'} placeholder={mode === 'signup' ? 'Min 6 characters' : 'Your password'}
+                  value={password}
+                  autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+                  onChange={(e) => setPassword(e.target.value)}
+                  style={{ ...fieldInput, marginBottom: 0, paddingRight: 48 }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  title={showPassword ? 'Hide password' : 'Show password'}
+                  style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', padding: '4px 2px', lineHeight: 1 }}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                    {!showPassword && <line x1="1" y1="1" x2="23" y2="23"/>}
+                  </svg>
+                </button>
+              </div>
+              {mode === 'login' && (
+                <div style={{ textAlign: 'right', marginBottom: 12 }}>
+                  <span
+                    onClick={() => { setMode('forgot'); setError(''); setMessage('') }}
+                    style={{ fontSize: 13, color: 'var(--primary)', cursor: 'pointer' }}
+                  >
+                    Forgot password?
+                  </span>
+                </div>
+              )}
+              {mode === 'signup' && <div style={{ marginBottom: 12 }} />}
+            </>
+          )}
+
+          {error && (
+            <div style={{
+              padding: '8px 12px', backgroundColor: 'var(--danger-bg)', borderRadius: 'var(--radius-sm)',
+              border: '1px solid #FECACA', fontSize: 13, color: 'var(--danger)', marginBottom: 12,
+            }}>
+              {error}
+            </div>
+          )}
+
+          {message && (
+            <div style={{
+              padding: '8px 12px', backgroundColor: 'var(--success-bg)', borderRadius: 'var(--radius-sm)',
+              border: '1px solid #A7F3D0', fontSize: 13, color: 'var(--success)', marginBottom: 12,
+            }}>
+              {message}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading || !email || (mode !== 'forgot' && !password)}
+            style={{
+              width: '100%', height: 44, padding: 12,
+              background: !email || (mode !== 'forgot' && !password) ? 'var(--border)' : 'linear-gradient(135deg, var(--primary), var(--primary-hover))',
+              color: !email || (mode !== 'forgot' && !password) ? 'var(--text-muted)' : 'var(--text-inverse)',
+              border: 'none', borderRadius: 'var(--radius-sm)',
+              cursor: !email || (mode !== 'forgot' && !password) ? 'default' : 'pointer',
+              fontSize: 14, fontWeight: 600,
+            }}
+          >
+            {loading ? '...' : mode === 'forgot' ? 'Send Reset Link' : mode === 'login' ? 'Sign In' : 'Create Account'}
+          </button>
+        </form>
 
         <p style={{ textAlign: 'center', marginTop: 16, fontSize: 14, color: 'var(--text-secondary)' }}>
           {mode === 'forgot' ? 'Remember your password? ' : mode === 'login' ? "Don't have an account? " : "Already have an account? "}

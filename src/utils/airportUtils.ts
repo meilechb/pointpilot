@@ -148,3 +148,23 @@ export function calculateLayovers(segments: any[]): { airport: string; duration:
   }
   return layovers
 }
+
+export function calculateFlyingTime(segments: any[]): string {
+  if (segments.length === 0) return ''
+  const allHaveDuration = segments.every(s => s.duration && s.duration > 0)
+  if (allHaveDuration) {
+    const totalMin = segments.reduce((sum: number, s: any) => sum + s.duration, 0)
+    return formatDuration(Math.round(totalMin))
+  }
+  return ''
+}
+
+export function getStopsCount(segments: any[]): number {
+  return Math.max(0, segments.length - 1)
+}
+
+export function getStopsLabel(segments: any[]): string {
+  const stops = getStopsCount(segments)
+  if (stops === 0) return 'Nonstop'
+  return `${stops} stop${stops > 1 ? 's' : ''}`
+}

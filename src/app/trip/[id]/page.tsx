@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
+import { useAuth } from '@/components/AuthProvider'
 import DatePicker from 'react-datepicker'
 import 'react-datepicker/dist/react-datepicker.css'
 import AddFlight from '@/components/AddFlight'
@@ -9,7 +10,7 @@ import TripPlanner from '@/components/TripPlanner'
 import FlightCard from '@/components/FlightCard'
 import AirportInput from '@/components/AirportInput'
 import CustomSelect from '@/components/CustomSelect'
-import { getCityName } from '@/utils/airportUtils'
+import { getCityName, calculateTotalTime, calculateFlyingTime, getStopsLabel, calculateLayovers, formatTime, formatDate } from '@/utils/airportUtils'
 import { analyzeItinerary } from '@/utils/bookingAnalyzer'
 import { optimizeTrip, getRelevantSweetSpots, type BookingStrategy } from '@/utils/tripOptimizer'
 import SavePrompt from '@/components/SavePrompt'
@@ -34,6 +35,7 @@ const fieldInput: React.CSSProperties = {
 
 export default function TripDetail() {
   const params = useParams()
+  const { user } = useAuth()
   const [trip, setTrip] = useState<any>(null)
   const [tripLoading, setTripLoading] = useState(true)
   const [showAddFlight, setShowAddFlight] = useState(false)
@@ -931,6 +933,8 @@ export default function TripDetail() {
                                 itinerary: emailTarget,
                                 trip: { tripName: trip.tripName, legs: trip.legs, travelers: trip.travelers },
                                 flights: trip.flights,
+                                senderName: user?.user_metadata?.full_name || user?.user_metadata?.name || undefined,
+                                senderEmail: user?.email || undefined,
                               }),
                             })
                             if (res.ok) setEmailSent(true)
@@ -1382,6 +1386,69 @@ function CompareView({ itineraries, trip, wallet, onClose }: {
   const flightMap: Record<string, any> = {}
   trip.flights.forEach((f: any) => { flightMap[f.id] = f })
 
+  // Helper to get all flights for an itinerary
+  const getItinFlights = (it: any) => {
+    const allFlights: any[] = []
+    trip.legs.forEach((_: any, i: number) => {
+      const ids = it.assignments?.[i] || []
+      ids.forEach((id: string) => { if (flightMap[id]) allFlights.push(flightMap[id]) })
+    })
+    return allFlights
+  }
+
+  // Helper to compute total duration/flying time across all legs
+  const getTotalDuration = (it: any) => {
+    const flights = getItinFlights(it)
+    let totalMin = 0
+    flights.forEach((f: any) => {
+      const segs = f.segments || []
+      const timeStr = calculateTotalTime(segs)
+      const match = timeStr.match(/(\d+)h\s*(\d+)?m?/)
+      if (match) totalMin += parseInt(match[1]) * 60 + (parseInt(match[2]) || 0)
+      else {
+        const mMatch = timeStr.match(/(\d+)m/)
+        if (mMatch) totalMin += parseInt(mMatch[1])
+      }
+    })
+    if (totalMin === 0) return '—'
+    const h = Math.floor(totalMin / 60)
+    const m = totalMin % 60
+    return h > 0 ? `${h}h ${m > 0 ? `${m}m` : ''}`.trim() : `${m}m`
+  }
+
+  const getTotalFlyingTime = (it: any) => {
+    const flights = getItinFlights(it)
+    let totalMin = 0
+    flights.forEach((f: any) => {
+      const segs = f.segments || []
+      const timeStr = calculateFlyingTime(segs)
+      const match = timeStr.match(/(\d+)h\s*(\d+)?m?/)
+      if (match) totalMin += parseInt(match[1]) * 60 + (parseInt(match[2]) || 0)
+      else {
+        const mMatch = timeStr.match(/(\d+)m/)
+        if (mMatch) totalMin += parseInt(mMatch[1])
+      }
+    })
+    if (totalMin === 0) return '—'
+    const h = Math.floor(totalMin / 60)
+    const m = totalMin % 60
+    return h > 0 ? `${h}h ${m > 0 ? `${m}m` : ''}`.trim() : `${m}m`
+  }
+
+  const getTotalStops = (it: any) => {
+    const flights = getItinFlights(it)
+    return flights.reduce((sum: number, f: any) => sum + Math.max(0, (f.segments?.length || 1) - 1), 0)
+  }
+
+  const rowLabel: React.CSSProperties = {
+    padding: '10px 12px', fontWeight: 600, fontSize: 13, color: 'var(--text-secondary)',
+    borderBottom: '1px solid var(--border-light)', whiteSpace: 'nowrap',
+  }
+  const rowValue: React.CSSProperties = {
+    padding: '10px 12px', textAlign: 'center', fontSize: 13,
+    borderBottom: '1px solid var(--border-light)',
+  }
+
   return (
     <div style={{
       backgroundColor: 'var(--bg-card)',
@@ -1392,7 +1459,7 @@ function CompareView({ itineraries, trip, wallet, onClose }: {
       overflow: 'auto',
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <div style={{ fontWeight: 700, fontSize: 17 }}>Side-by-Side Comparison</div>
+        <div style={{ fontWeight: 700, fontSize: 17 }}>Compare Itineraries</div>
         <button onClick={onClose} style={{
           padding: '6px 14px', border: '1px solid var(--border)',
           borderRadius: 'var(--radius-sm)', cursor: 'pointer',
@@ -1400,112 +1467,170 @@ function CompareView({ itineraries, trip, wallet, onClose }: {
         }}>Close</button>
       </div>
 
-      {/* Comparison table */}
-      <div style={{ display: 'grid', gridTemplateColumns: `140px repeat(${itineraries.length}, 1fr)`, gap: 0, fontSize: 13 }}>
-        {/* Header row */}
-        <div style={{ padding: '10px 8px', fontWeight: 700, color: 'var(--text-muted)', borderBottom: '2px solid var(--border)' }}>
-        </div>
+      <div style={{ display: 'grid', gridTemplateColumns: `130px repeat(${itineraries.length}, 1fr)`, gap: 0, fontSize: 13 }}>
+        {/* Header */}
+        <div style={{ padding: '12px', borderBottom: '2px solid var(--border)' }} />
         {itineraries.map(it => (
           <div key={it.id} style={{
-            padding: '10px 12px', fontWeight: 700, fontSize: 14,
+            padding: '12px', fontWeight: 700, fontSize: 14,
             borderBottom: '2px solid var(--border)',
             backgroundColor: 'var(--primary-light)',
-            textAlign: 'center',
+            textAlign: 'center', color: 'var(--primary)',
           }}>
             {it.name}
           </div>
         ))}
 
-        {/* Cash row */}
-        <div style={{ padding: '10px 8px', fontWeight: 600, borderBottom: '1px solid var(--border-light)' }}>Cash</div>
+        {/* Cost section */}
+        <div style={{ ...rowLabel, backgroundColor: 'var(--bg)', fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--text-muted)' }}>Cost</div>
+        {itineraries.map(it => (
+          <div key={it.id} style={{ ...rowValue, backgroundColor: 'var(--bg)' }} />
+        ))}
+
+        <div style={rowLabel}>Cash</div>
         {itineraries.map(it => {
           const t = it.totals || { cash: 0, points: 0, fees: 0 }
           const tv = it.travelers || 1
-          return (
-            <div key={it.id} style={{ padding: '10px 12px', textAlign: 'center', borderBottom: '1px solid var(--border-light)', fontWeight: 700 }}>
-              {t.cash > 0 ? `$${(t.cash * tv).toLocaleString()}` : '—'}
-            </div>
-          )
+          return <div key={it.id} style={{ ...rowValue, fontWeight: 700, fontSize: 15 }}>{t.cash > 0 ? `$${(t.cash * tv).toLocaleString()}` : '—'}</div>
         })}
 
-        {/* Points row */}
-        <div style={{ padding: '10px 8px', fontWeight: 600, borderBottom: '1px solid var(--border-light)' }}>Points</div>
+        <div style={rowLabel}>Points</div>
         {itineraries.map(it => {
           const t = it.totals || { cash: 0, points: 0, fees: 0 }
           const tv = it.travelers || 1
-          return (
-            <div key={it.id} style={{ padding: '10px 12px', textAlign: 'center', borderBottom: '1px solid var(--border-light)', fontWeight: 700, color: 'var(--primary)' }}>
-              {t.points > 0 ? `${(t.points * tv).toLocaleString()}` : '—'}
-            </div>
-          )
+          return <div key={it.id} style={{ ...rowValue, fontWeight: 700, fontSize: 15, color: 'var(--primary)' }}>{t.points > 0 ? `${(t.points * tv).toLocaleString()}` : '—'}</div>
         })}
 
-        {/* Fees row */}
-        <div style={{ padding: '10px 8px', fontWeight: 600, borderBottom: '1px solid var(--border-light)' }}>Fees</div>
+        <div style={rowLabel}>Taxes & Fees</div>
         {itineraries.map(it => {
           const t = it.totals || { cash: 0, points: 0, fees: 0 }
           const tv = it.travelers || 1
-          return (
-            <div key={it.id} style={{ padding: '10px 12px', textAlign: 'center', borderBottom: '1px solid var(--border-light)', color: 'var(--text-muted)' }}>
-              {t.fees > 0 ? `$${(t.fees * tv).toLocaleString()}` : '—'}
-            </div>
-          )
+          return <div key={it.id} style={{ ...rowValue, color: 'var(--text-muted)' }}>{t.fees > 0 ? `$${(t.fees * tv).toLocaleString()}` : '—'}</div>
         })}
 
-        {/* Leg rows */}
+        {/* Travel section */}
+        <div style={{ ...rowLabel, backgroundColor: 'var(--bg)', fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--text-muted)' }}>Travel</div>
+        {itineraries.map(it => (
+          <div key={it.id} style={{ ...rowValue, backgroundColor: 'var(--bg)' }} />
+        ))}
+
+        <div style={rowLabel}>Total Duration</div>
+        {itineraries.map(it => (
+          <div key={it.id} style={rowValue}>{getTotalDuration(it)}</div>
+        ))}
+
+        <div style={rowLabel}>Flying Time</div>
+        {itineraries.map(it => (
+          <div key={it.id} style={rowValue}>{getTotalFlyingTime(it)}</div>
+        ))}
+
+        <div style={rowLabel}>Total Stops</div>
+        {itineraries.map(it => {
+          const stops = getTotalStops(it)
+          return <div key={it.id} style={{ ...rowValue, fontWeight: 600, color: stops === 0 ? 'var(--success)' : 'var(--text)' }}>
+            {stops === 0 ? 'Nonstop' : stops}
+          </div>
+        })}
+
+        <div style={rowLabel}>Booking Steps</div>
+        {itineraries.map(it => {
+          const steps = analyzeItinerary(it.assignments, trip.flights, wallet, it.travelers || 1)
+          return <div key={it.id} style={rowValue}>{steps.length}</div>
+        })}
+
+        {/* Legs section */}
         {trip.legs.map((leg: any, i: number) => (
-          <>
-            <div key={`leg-${i}`} style={{
-              padding: '10px 8px', fontWeight: 600,
-              borderBottom: '1px solid var(--border-light)',
-              backgroundColor: 'var(--bg)',
-            }}>
-              Leg {i + 1}
-              <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 400 }}>
-                {getCityName(leg.from)} → {getCityName(leg.to)}
-              </div>
+          <React.Fragment key={`leg-${i}`}>
+            <div style={{ ...rowLabel, backgroundColor: 'var(--bg)', fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--text-muted)' }}>
+              Leg {i + 1}: {leg.from} → {leg.to}
             </div>
-            {itineraries.map(it => {
-              const flightIds = it.assignments?.[i] || []
-              const flights = flightIds.map((id: string) => flightMap[id]).filter(Boolean)
+            {itineraries.map(it => (
+              <div key={`${it.id}-legheader-${i}`} style={{ ...rowValue, backgroundColor: 'var(--bg)' }} />
+            ))}
+
+            {itineraries[0] && (() => {
+              // Render a row per itinerary flight for this leg
               return (
-                <div key={`${it.id}-leg-${i}`} style={{
-                  padding: '10px 12px',
-                  borderBottom: '1px solid var(--border-light)',
-                  backgroundColor: 'var(--bg)',
-                }}>
-                  {flights.length === 0 ? (
-                    <span style={{ color: 'var(--text-muted)' }}>—</span>
-                  ) : flights.map((f: any) => {
-                    const seg = f.segments?.[0] || {}
+                <>
+                  <div style={rowLabel}>Flight</div>
+                  {itineraries.map(it => {
+                    const flightIds = it.assignments?.[i] || []
+                    const flights = flightIds.map((id: string) => flightMap[id]).filter(Boolean)
                     return (
-                      <div key={f.id} style={{ marginBottom: 2 }}>
-                        <div style={{ fontWeight: 600 }}>{seg.airline} {seg.flightNumber}</div>
-                        <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>
-                          {f.paymentType === 'cash'
-                            ? `$${(f.cashAmount || 0).toLocaleString()}`
-                            : `${(f.pointsAmount || 0).toLocaleString()} pts`
-                          }
-                        </div>
+                      <div key={`${it.id}-flight-${i}`} style={rowValue}>
+                        {flights.length === 0 ? <span style={{ color: 'var(--text-muted)' }}>—</span> : flights.map((f: any) => {
+                          const seg = f.segments?.[0] || {}
+                          return <div key={f.id} style={{ fontWeight: 600 }}>{seg.airlineName || seg.airline || ''} {seg.flightNumber || seg.flightCode || ''}</div>
+                        })}
                       </div>
                     )
                   })}
-                </div>
-              )
-            })}
-          </>
-        ))}
 
-        {/* Booking steps count */}
-        <div style={{ padding: '10px 8px', fontWeight: 600 }}>Booking Steps</div>
-        {itineraries.map(it => {
-          const steps = analyzeItinerary(it.assignments, trip.flights, wallet, it.travelers || 1)
-          return (
-            <div key={it.id} style={{ padding: '10px 12px', textAlign: 'center' }}>
-              {steps.length} step{steps.length !== 1 ? 's' : ''}
-            </div>
-          )
-        })}
+                  <div style={rowLabel}>Times</div>
+                  {itineraries.map(it => {
+                    const flightIds = it.assignments?.[i] || []
+                    const flights = flightIds.map((id: string) => flightMap[id]).filter(Boolean)
+                    return (
+                      <div key={`${it.id}-times-${i}`} style={rowValue}>
+                        {flights.length === 0 ? '—' : flights.map((f: any) => {
+                          const segs = f.segments || []
+                          const dep = formatTime(segs[0]?.departureTime)
+                          const arr = formatTime(segs[segs.length - 1]?.arrivalTime)
+                          return <div key={f.id}>{dep && arr ? `${dep} – ${arr}` : '—'}</div>
+                        })}
+                      </div>
+                    )
+                  })}
+
+                  <div style={rowLabel}>Duration</div>
+                  {itineraries.map(it => {
+                    const flightIds = it.assignments?.[i] || []
+                    const flights = flightIds.map((id: string) => flightMap[id]).filter(Boolean)
+                    return (
+                      <div key={`${it.id}-dur-${i}`} style={rowValue}>
+                        {flights.length === 0 ? '—' : flights.map((f: any) => (
+                          <div key={f.id}>{calculateTotalTime(f.segments || []) || '—'}</div>
+                        ))}
+                      </div>
+                    )
+                  })}
+
+                  <div style={rowLabel}>Stops</div>
+                  {itineraries.map(it => {
+                    const flightIds = it.assignments?.[i] || []
+                    const flights = flightIds.map((id: string) => flightMap[id]).filter(Boolean)
+                    return (
+                      <div key={`${it.id}-stops-${i}`} style={rowValue}>
+                        {flights.length === 0 ? '—' : flights.map((f: any) => {
+                          const label = getStopsLabel(f.segments || [])
+                          return <div key={f.id} style={{ color: label === 'Nonstop' ? 'var(--success)' : 'var(--text)', fontWeight: 500 }}>{label}</div>
+                        })}
+                      </div>
+                    )
+                  })}
+
+                  <div style={rowLabel}>Price</div>
+                  {itineraries.map(it => {
+                    const flightIds = it.assignments?.[i] || []
+                    const flights = flightIds.map((id: string) => flightMap[id]).filter(Boolean)
+                    return (
+                      <div key={`${it.id}-price-${i}`} style={rowValue}>
+                        {flights.length === 0 ? '—' : flights.map((f: any) => (
+                          <div key={f.id} style={{ fontWeight: 600, color: f.paymentType === 'points' ? 'var(--primary)' : 'var(--text)' }}>
+                            {f.paymentType === 'cash'
+                              ? `$${(f.cashAmount || 0).toLocaleString()}`
+                              : `${(f.pointsAmount || 0).toLocaleString()} pts`}
+                            {f.paymentType === 'points' && f.feesAmount ? <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 400 }}>+ ${f.feesAmount} fees</div> : null}
+                          </div>
+                        ))}
+                      </div>
+                    )
+                  })}
+                </>
+              )
+            })()}
+          </React.Fragment>
+        ))}
       </div>
     </div>
   )
@@ -1541,97 +1666,245 @@ function ItineraryCard({ itinerary, trip, wallet, onDelete, onRename, onPrint, o
   const hasWallet = wallet.length > 0
   const hasPointsFlights = steps.some(s => s.type !== 'cash')
 
+  // Compute summary stats for the header
+  const allFlights: any[] = []
+  trip.legs.forEach((_: any, i: number) => {
+    const ids = itinerary.assignments?.[i] || []
+    ids.forEach((id: string) => { if (flightMap[id]) allFlights.push(flightMap[id]) })
+  })
+  const totalStops = allFlights.reduce((sum: number, f: any) => sum + Math.max(0, (f.segments?.length || 1) - 1), 0)
+  const legCount = trip.legs?.length || 0
+
+  const actionBtn: React.CSSProperties = {
+    padding: '7px 14px', border: '1px solid var(--border)',
+    borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+    backgroundColor: 'var(--bg-card)', fontSize: 13, color: 'var(--text-secondary)',
+    fontWeight: 500, transition: 'border-color 0.15s, background 0.15s',
+  }
+
   return (
     <div style={{
       backgroundColor: 'var(--bg-card)',
-      borderRadius: 'var(--radius)',
+      borderRadius: 'var(--radius-lg)',
       boxShadow: 'var(--shadow-sm)',
-      border: '1px solid var(--border-light)',
-      marginBottom: 12,
+      border: compareMode && compareSelected ? '2px solid var(--primary)' : '1px solid var(--border-light)',
+      marginBottom: 14,
       overflow: 'hidden',
-      transition: 'box-shadow 0.15s',
+      transition: 'box-shadow 0.15s, border-color 0.15s',
     }}>
       {/* Header */}
       <div
         onClick={() => compareMode ? onCompareToggle?.() : setExpanded(!expanded)}
         style={{
-          padding: '14px 18px', cursor: 'pointer',
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          padding: '16px 20px', cursor: 'pointer',
           ...(compareMode && compareSelected ? { backgroundColor: 'var(--primary-light)' } : {}),
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {compareMode && (
-            <input
-              type="checkbox"
-              checked={compareSelected}
-              onChange={() => onCompareToggle?.()}
-              onClick={(e) => e.stopPropagation()}
-              style={{ width: 18, height: 18, accentColor: 'var(--primary)' }}
-            />
-          )}
-          <div>
-            {editing ? (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            {compareMode && (
               <input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                onBlur={() => { onRename(name); setEditing(false) }}
-                onKeyDown={(e) => { if (e.key === 'Enter') { onRename(name); setEditing(false) } }}
+                type="checkbox"
+                checked={compareSelected}
+                onChange={() => onCompareToggle?.()}
                 onClick={(e) => e.stopPropagation()}
-                autoFocus
-                style={{ fontWeight: 700, fontSize: 16, padding: '2px 8px', width: 200 }}
+                style={{ width: 18, height: 18, accentColor: 'var(--primary)' }}
               />
-            ) : (
-              <div style={{ fontWeight: 700, fontSize: 16 }}>{itinerary.name}</div>
             )}
-            <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>Saved {dateStr}</div>
+            <div>
+              {editing ? (
+                <input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  onBlur={() => { onRename(name); setEditing(false) }}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { onRename(name); setEditing(false) } }}
+                  onClick={(e) => e.stopPropagation()}
+                  autoFocus
+                  style={{ fontWeight: 700, fontSize: 16, padding: '2px 8px', width: 200 }}
+                />
+              ) : (
+                <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 2 }}>{itinerary.name}</div>
+              )}
+              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Saved {dateStr}</div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{ textAlign: 'right' }}>
+              {totals.cash > 0 && <div style={{ fontSize: 16, fontWeight: 700 }}>${(totals.cash * travelers).toLocaleString()}</div>}
+              {totals.points > 0 && <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--primary)' }}>{(totals.points * travelers).toLocaleString()} pts</div>}
+              {totals.fees > 0 && <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>+ ${(totals.fees * travelers).toLocaleString()} fees</div>}
+            </div>
+            <span style={{
+              fontSize: 12, color: 'var(--text-muted)',
+              transition: 'transform 0.2s',
+              display: 'inline-block',
+              transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)',
+            }}>&#9660;</span>
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div style={{ textAlign: 'right' }}>
-            {totals.cash > 0 && <div style={{ fontSize: 14, fontWeight: 700 }}>${(totals.cash * travelers).toLocaleString()}</div>}
-            {totals.points > 0 && <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--primary)' }}>{(totals.points * travelers).toLocaleString()} pts</div>}
-            {totals.fees > 0 && <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>+ ${(totals.fees * travelers).toLocaleString()} fees</div>}
-          </div>
+
+        {/* Summary chips */}
+        <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
           <span style={{
-            fontSize: 13, color: 'var(--text-muted)',
-            transition: 'transform 0.2s',
-            display: 'inline-block',
-            transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)',
-          }}>▼</span>
+            fontSize: 12, padding: '3px 10px', borderRadius: 12,
+            backgroundColor: 'var(--bg)', color: 'var(--text-secondary)', fontWeight: 500,
+          }}>
+            {legCount} leg{legCount !== 1 ? 's' : ''}
+          </span>
+          <span style={{
+            fontSize: 12, padding: '3px 10px', borderRadius: 12,
+            backgroundColor: totalStops === 0 ? 'var(--success-bg)' : 'var(--bg)',
+            color: totalStops === 0 ? 'var(--success)' : 'var(--text-secondary)', fontWeight: 500,
+          }}>
+            {totalStops === 0 ? 'All nonstop' : `${totalStops} stop${totalStops !== 1 ? 's' : ''} total`}
+          </span>
+          {travelers > 1 && (
+            <span style={{
+              fontSize: 12, padding: '3px 10px', borderRadius: 12,
+              backgroundColor: 'var(--bg)', color: 'var(--text-secondary)', fontWeight: 500,
+            }}>
+              {travelers} travelers
+            </span>
+          )}
         </div>
       </div>
 
       {/* Expanded */}
       {expanded && (
-        <div style={{ padding: '0 18px 18px', borderTop: '1px solid var(--border-light)' }}>
+        <div style={{ padding: '0 20px 20px', borderTop: '1px solid var(--border-light)' }}>
           {/* Flights by leg */}
           {trip.legs.map((leg: any, i: number) => {
             const flightIds = itinerary.assignments?.[i] || []
             const flights = flightIds.map((id: string) => flightMap[id]).filter(Boolean)
 
             return (
-              <div key={i} style={{ marginTop: 16 }}>
+              <div key={i} style={{ marginTop: 18 }}>
                 <div style={{
-                  fontSize: 13, fontWeight: 700, color: 'var(--text-muted)',
-                  textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8,
+                  fontSize: 12, fontWeight: 700, color: 'var(--text-muted)',
+                  textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 10,
+                  display: 'flex', alignItems: 'center', gap: 8,
                 }}>
-                  Leg {i + 1}: {getCityName(leg.from)} → {getCityName(leg.to)}
+                  <span style={{
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    width: 22, height: 22, borderRadius: '50%',
+                    backgroundColor: 'var(--primary-light)', color: 'var(--primary)',
+                    fontSize: 11, fontWeight: 700,
+                  }}>{i + 1}</span>
+                  {getCityName(leg.from)} ({leg.from}) → {getCityName(leg.to)} ({leg.to})
                 </div>
                 {flights.length === 0 ? (
                   <div style={{
-                    fontSize: 13, color: 'var(--text-muted)', padding: '10px 12px',
+                    fontSize: 13, color: 'var(--text-muted)', padding: '12px 14px',
                     backgroundColor: 'var(--bg)', borderRadius: 'var(--radius-sm)',
                     border: '1px dashed var(--border)',
                   }}>
                     No flights assigned
                   </div>
                 ) : (
-                  flights.map((f: any) => (
-                    <div key={f.id} style={{ marginBottom: 6 }}>
-                      <FlightCard flight={f} compact />
-                    </div>
-                  ))
+                  flights.map((f: any) => {
+                    const segs = f.segments || []
+                    const firstSeg = segs[0] || {}
+                    const lastSeg = segs[segs.length - 1] || firstSeg
+                    const airline = firstSeg.airlineName || firstSeg.airline || ''
+                    const flightNum = firstSeg.flightNumber || firstSeg.flightCode || ''
+                    const depTime = formatTime(firstSeg.departureTime)
+                    const arrTime = formatTime(lastSeg.arrivalTime)
+                    const depDate = formatDate(firstSeg.date)
+                    const totalTime = calculateTotalTime(segs)
+                    const flyingTime = calculateFlyingTime(segs)
+                    const stopsLabel = getStopsLabel(segs)
+                    const layovers = calculateLayovers(segs)
+                    const cabin = firstSeg.cabinClass || firstSeg.cabin || ''
+
+                    let priceDisplay = ''
+                    let priceColor = 'var(--text)'
+                    if (f.paymentType === 'cash' && f.cashAmount) {
+                      priceDisplay = `$${f.cashAmount.toLocaleString()}`
+                    } else if (f.paymentType === 'points' && f.pointsAmount) {
+                      priceDisplay = `${f.pointsAmount.toLocaleString()} pts`
+                      priceColor = 'var(--primary)'
+                    }
+
+                    return (
+                      <div key={f.id} style={{
+                        backgroundColor: 'var(--bg)', borderRadius: 'var(--radius)',
+                        border: '1px solid var(--border-light)', padding: '14px 16px',
+                        marginBottom: 8,
+                      }}>
+                        {/* Top row: airline + price */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+                          <div>
+                            <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)' }}>
+                              {airline} {flightNum}
+                            </div>
+                            {depDate && <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 1 }}>{depDate}</div>}
+                          </div>
+                          <div style={{ textAlign: 'right' }}>
+                            <div style={{ fontWeight: 700, fontSize: 15, color: priceColor }}>{priceDisplay}</div>
+                            {f.paymentType === 'points' && f.feesAmount ? (
+                              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>+ ${f.feesAmount} fees</div>
+                            ) : null}
+                          </div>
+                        </div>
+
+                        {/* Time row */}
+                        {(depTime || arrTime) && (
+                          <div style={{
+                            display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10,
+                            padding: '8px 12px', backgroundColor: 'var(--bg-card)', borderRadius: 'var(--radius-sm)',
+                          }}>
+                            <div style={{ textAlign: 'center' }}>
+                              <div style={{ fontWeight: 700, fontSize: 16 }}>{depTime || '—'}</div>
+                              <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{firstSeg.departureAirport}</div>
+                            </div>
+                            <div style={{ flex: 1, textAlign: 'center' }}>
+                              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>{totalTime}</div>
+                              <div style={{ height: 1, backgroundColor: 'var(--border)', margin: '0 8px', position: 'relative' }}>
+                                <div style={{
+                                  position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+                                  fontSize: 10, color: 'var(--text-muted)', backgroundColor: 'var(--bg-card)', padding: '0 4px',
+                                }}>
+                                  &#9992;
+                                </div>
+                              </div>
+                              <div style={{
+                                fontSize: 11, marginTop: 2, fontWeight: 500,
+                                color: stopsLabel === 'Nonstop' ? 'var(--success)' : 'var(--text-muted)',
+                              }}>{stopsLabel}</div>
+                            </div>
+                            <div style={{ textAlign: 'center' }}>
+                              <div style={{ fontWeight: 700, fontSize: 16 }}>{arrTime || '—'}</div>
+                              <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{lastSeg.arrivalAirport}</div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Detail chips */}
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', fontSize: 12 }}>
+                          {totalTime && (
+                            <span style={{ padding: '2px 8px', borderRadius: 10, backgroundColor: 'var(--bg-card)', color: 'var(--text-secondary)' }}>
+                              Total: {totalTime}
+                            </span>
+                          )}
+                          {flyingTime && flyingTime !== totalTime && (
+                            <span style={{ padding: '2px 8px', borderRadius: 10, backgroundColor: 'var(--bg-card)', color: 'var(--text-secondary)' }}>
+                              Flying: {flyingTime}
+                            </span>
+                          )}
+                          {cabin && (
+                            <span style={{ padding: '2px 8px', borderRadius: 10, backgroundColor: 'var(--primary-light)', color: 'var(--primary)', fontWeight: 500 }}>
+                              {cabin}
+                            </span>
+                          )}
+                          {layovers.length > 0 && layovers.map((l, li) => (
+                            <span key={li} style={{ padding: '2px 8px', borderRadius: 10, backgroundColor: 'var(--warning-bg)', color: 'var(--warning)' }}>
+                              {l.duration} in {l.airport}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  })
                 )}
               </div>
             )
@@ -1654,7 +1927,7 @@ function ItineraryCard({ itinerary, trip, wallet, onDelete, onRename, onPrint, o
                 borderRadius: 'var(--radius-sm)', border: '1px solid #FDE68A',
                 fontSize: 13, color: 'var(--warning)', marginBottom: 12,
               }}>
-                ⚠ You haven't added any points balances yet. Go to <strong>My Points</strong> to add your balances so we can tell you exactly how to book.
+                You haven&apos;t added any points balances yet. Go to <strong>Wallet</strong> to add your balances so we can tell you exactly how to book.
               </div>
             )}
 
@@ -1664,7 +1937,7 @@ function ItineraryCard({ itinerary, trip, wallet, onDelete, onRename, onPrint, o
                 borderRadius: 'var(--radius-sm)', border: '1px solid #FECACA',
                 fontSize: 13, color: 'var(--danger)', marginBottom: 12,
               }}>
-                ⚠ You don't have enough points to cover all flights in this plan. Consider switching some bookings to cash or adding more points balances.
+                You don&apos;t have enough points to cover all flights. Consider switching some bookings to cash or adding more points balances.
               </div>
             )}
 
@@ -1716,28 +1989,24 @@ function ItineraryCard({ itinerary, trip, wallet, onDelete, onRename, onPrint, o
           {/* Per-person breakdown */}
           {travelers > 1 && (
             <div style={{
-              marginTop: 12, padding: '12px 14px',
+              marginTop: 12, padding: '14px 16px',
               backgroundColor: 'var(--bg)',
               borderRadius: 'var(--radius-sm)',
               fontSize: 13,
+              display: 'flex', gap: 20, flexWrap: 'wrap',
             }}>
-              <div style={{ fontWeight: 600, marginBottom: 4 }}>Total for {travelers} travelers</div>
-              {totals.cash > 0 && <div>💵 ${(totals.cash * travelers).toLocaleString()} (${totals.cash.toLocaleString()} pp)</div>}
-              {totals.points > 0 && <div>⭐ {(totals.points * travelers).toLocaleString()} pts ({totals.points.toLocaleString()} pp)</div>}
+              <div style={{ fontWeight: 600 }}>Total for {travelers} travelers:</div>
+              {totals.cash > 0 && <div>${(totals.cash * travelers).toLocaleString()} <span style={{ color: 'var(--text-muted)' }}>(${totals.cash.toLocaleString()} pp)</span></div>}
+              {totals.points > 0 && <div style={{ color: 'var(--primary)' }}>{(totals.points * travelers).toLocaleString()} pts <span style={{ color: 'var(--text-muted)' }}>({totals.points.toLocaleString()} pp)</span></div>}
               {totals.fees > 0 && <div style={{ color: 'var(--text-muted)' }}>+ ${(totals.fees * travelers).toLocaleString()} fees</div>}
             </div>
           )}
 
           {/* Actions */}
-          <div style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
             <button
               onClick={(e) => { e.stopPropagation(); onPrint() }}
-              style={{
-                padding: '6px 14px', border: '1px solid var(--border)',
-                borderRadius: 'var(--radius-sm)', cursor: 'pointer',
-                backgroundColor: 'var(--bg-card)', fontSize: 13, color: 'var(--text-secondary)',
-                fontWeight: 500, transition: 'border-color 0.15s',
-              }}
+              style={actionBtn}
               onMouseOver={(e) => e.currentTarget.style.borderColor = 'var(--primary)'}
               onMouseOut={(e) => e.currentTarget.style.borderColor = 'var(--border)'}
             >
@@ -1745,12 +2014,7 @@ function ItineraryCard({ itinerary, trip, wallet, onDelete, onRename, onPrint, o
             </button>
             <button
               onClick={(e) => { e.stopPropagation(); onEmail() }}
-              style={{
-                padding: '6px 14px', border: '1px solid var(--border)',
-                borderRadius: 'var(--radius-sm)', cursor: 'pointer',
-                backgroundColor: 'var(--bg-card)', fontSize: 13, color: 'var(--text-secondary)',
-                fontWeight: 500, transition: 'border-color 0.15s',
-              }}
+              style={actionBtn}
               onMouseOver={(e) => e.currentTarget.style.borderColor = 'var(--primary)'}
               onMouseOut={(e) => e.currentTarget.style.borderColor = 'var(--border)'}
             >
@@ -1758,25 +2022,16 @@ function ItineraryCard({ itinerary, trip, wallet, onDelete, onRename, onPrint, o
             </button>
             <button
               onClick={(e) => { e.stopPropagation(); setEditing(true) }}
-              style={{
-                padding: '6px 14px', border: '1px solid var(--border)',
-                borderRadius: 'var(--radius-sm)', cursor: 'pointer',
-                backgroundColor: 'var(--bg-card)', fontSize: 13, color: 'var(--text-secondary)',
-                fontWeight: 500, transition: 'border-color 0.15s',
-              }}
+              style={actionBtn}
               onMouseOver={(e) => e.currentTarget.style.borderColor = 'var(--primary)'}
               onMouseOut={(e) => e.currentTarget.style.borderColor = 'var(--border)'}
             >
               Rename
             </button>
+            <div style={{ flex: 1 }} />
             <button
               onClick={(e) => { e.stopPropagation(); onDelete() }}
-              style={{
-                padding: '6px 14px', border: '1px solid var(--border)',
-                borderRadius: 'var(--radius-sm)', cursor: 'pointer',
-                backgroundColor: 'var(--bg-card)', fontSize: 13, color: 'var(--text-muted)',
-                fontWeight: 500, transition: 'color 0.15s, border-color 0.15s',
-              }}
+              style={{ ...actionBtn, color: 'var(--text-muted)' }}
               onMouseOver={(e) => { e.currentTarget.style.color = 'var(--danger)'; e.currentTarget.style.borderColor = 'var(--danger)' }}
               onMouseOut={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.borderColor = 'var(--border)' }}
             >

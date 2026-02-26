@@ -71,7 +71,7 @@ export default function Nav() {
                 style={{
                   background: 'none', border: 'none', cursor: 'pointer',
                   display: 'flex', alignItems: 'center', gap: 4,
-                  color: 'inherit', fontSize: 'inherit', fontWeight: 'inherit',
+                  color: 'rgba(255,255,255,0.7)', fontSize: 14, fontWeight: 500,
                   padding: 0,
                 }}
               >

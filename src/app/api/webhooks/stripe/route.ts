@@ -63,7 +63,8 @@ export async function POST(request: NextRequest) {
         // Send welcome email
         const customerEmail = session.customer_details?.email || session.customer_email
         if (customerEmail) {
-          await sendSubscriptionEmail(customerEmail, 'welcome')
+          const nextBilling = periodEnd ? new Date(periodEnd * 1000).toISOString() : null
+          await sendSubscriptionEmail(customerEmail, 'welcome', { nextBillingDate: nextBilling })
         }
 
         console.log(`[stripe-webhook] checkout.session.completed for user ${userId}`)
@@ -108,11 +109,12 @@ export async function POST(request: NextRequest) {
       case 'customer.subscription.deleted': {
         const subscription = event.data.object as Stripe.Subscription
         const customerId = subscription.customer as string
+        const cancelPeriodEnd = (subscription as any).current_period_end
 
         // Get user email for cancellation email
         const { data: sub } = await supabase
           .from('subscriptions')
-          .select('user_id')
+          .select('user_id, current_period_end')
           .eq('stripe_customer_id', customerId)
           .single()
 
@@ -129,7 +131,8 @@ export async function POST(request: NextRequest) {
         if (sub?.user_id) {
           const { data: { user } } = await supabase.auth.admin.getUserById(sub.user_id)
           if (user?.email) {
-            await sendSubscriptionEmail(user.email, 'canceled')
+            const endDate = cancelPeriodEnd ? new Date(cancelPeriodEnd * 1000).toISOString() : sub.current_period_end
+            await sendSubscriptionEmail(user.email, 'canceled', { nextBillingDate: endDate })
           }
         }
 

@@ -375,12 +375,12 @@ function renderHeader() {
     <div class="header-logo">
       <img src="icon.png" alt="Point Tripper" />
       <span>Point Tripper</span>
-      ${isPro ? '<span style="background:linear-gradient(135deg,#d4a847,#E8C36A);color:#1a1a2e;font-size:10px;font-weight:800;padding:2px 7px;border-radius:4px;letter-spacing:0.5px;margin-left:4px">PRO</span>' : ''}
+      ${isPro ? '<span style="background:linear-gradient(135deg,#E8C36A,#d4a847);color:#1a1a2e;font-size:9px;font-weight:800;padding:2px 6px;border-radius:3px;letter-spacing:0.5px;margin-left:2px;vertical-align:middle">PRO</span>' : ''}
     </div>
     ${state.userEmail ? `
       <div style="position:relative">
-        <button id="accountMenuBtn" style="background:none;border:1px solid #e5e7eb;border-radius:6px;padding:5px 10px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px;color:#374151">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0112 0v1"/></svg>
+        <button id="accountMenuBtn" style="background:rgba(255,255,255,0.15);border:none;border-radius:6px;padding:5px 10px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px;color:white;font-weight:500">
+          Account
           <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 5L6 8L9 5"/></svg>
         </button>
         <div id="accountMenu" style="display:none;position:absolute;top:100%;right:0;margin-top:4px;background:white;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.15);border:1px solid #e5e7eb;min-width:200px;z-index:100;overflow:hidden">
@@ -405,10 +405,15 @@ function renderHeader() {
   if (menuBtn && menu) {
     menuBtn.addEventListener('click', (e) => {
       e.stopPropagation()
-      menu.style.display = menu.style.display === 'none' ? 'block' : 'none'
+      const isOpen = menu.style.display !== 'none'
+      menu.style.display = isOpen ? 'none' : 'block'
     })
-    // Close on outside click
-    document.addEventListener('click', () => { menu.style.display = 'none' })
+    // Close on outside click — use setTimeout to avoid immediate trigger
+    setTimeout(() => {
+      document.addEventListener('click', (e) => {
+        if (!menuBtn.contains(e.target)) menu.style.display = 'none'
+      })
+    }, 0)
   }
   el.querySelector('#menuLogout')?.addEventListener('click', logout)
   return el
@@ -507,7 +512,10 @@ function renderFlightPicker() {
   el.innerHTML = `${tip}
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
       <div class="section-title" style="margin-bottom:0">${flights.length} flight${flights.length !== 1 ? 's' : ''} detected — pick one</div>
-      <button class="btn btn-sm btn-secondary" id="rescanBtn" style="margin:0;flex-shrink:0">Refresh results</button>
+      <button id="rescanBtn" style="margin:0;flex-shrink:0;background:none;border:none;cursor:pointer;display:flex;align-items:center;gap:4px;font-size:12px;color:#6b7280;padding:4px 8px;border-radius:6px;transition:background 0.15s" onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='none'">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+        Rescan
+      </button>
     </div>`
   const list = document.createElement('div')
   list.className = 'flight-list'
@@ -848,10 +856,11 @@ function renderPaywall() {
   const sub = state.subscription
   const used = sub?.scansUsed || 0
   const limit = sub?.scansLimit || 1
+  const hasFlights = state.flights && state.flights.length > 0
   el.innerHTML = `
     <div style="text-align:center;padding:20px 0">
       <div style="font-size:40px;margin-bottom:12px">🔒</div>
-      <div style="font-size:18px;font-weight:700;color:#1e1b4b;margin-bottom:8px">Free scan limit reached</div>
+      <div style="font-size:18px;font-weight:700;color:#1e1b4b;margin-bottom:8px">Scan limit reached</div>
       <div style="font-size:14px;color:#374151;margin-bottom:20px;line-height:1.5">
         You've used your <strong>${limit} free scan</strong> this month.<br>
         Upgrade to Pro for <strong>unlimited</strong> flight detection.
@@ -868,11 +877,21 @@ function renderPaywall() {
       <a href="https://www.pointtripper.com/pricing?email=${encodeURIComponent(state.userEmail || '')}" target="_blank" class="btn" style="text-decoration:none">
         Upgrade to Pro
       </a>
+      ${hasFlights ? `
+        <button id="backToResultsBtn" class="btn btn-secondary" style="margin-top:8px">
+          ← Back to search results
+        </button>
+      ` : ''}
       <div style="margin-top:12px;font-size:13px;color:#4b5563">
         ${used}/${limit} scans used this month — resets next month
       </div>
     </div>
   `
+  if (hasFlights) {
+    el.querySelector('#backToResultsBtn')?.addEventListener('click', () => {
+      setState({ screen: 'flights' })
+    })
+  }
   return el
 }
 
