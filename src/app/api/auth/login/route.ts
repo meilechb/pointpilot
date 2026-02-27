@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from 'next/server'
 // the "Save password?" prompt.
 export async function POST(req: NextRequest) {
   const formData = await req.formData()
-  const email = formData.get('username') as string
+  const email = formData.get('email') as string
   const password = formData.get('password') as string
   const redirect = formData.get('redirect') as string || '/'
 

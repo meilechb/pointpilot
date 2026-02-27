@@ -166,9 +166,9 @@ function LoginForm() {
           <label style={fieldLabel} htmlFor="email">Email</label>
           <input
             id="email"
-            name="username"
+            name="email"
             type="email" placeholder="you@email.com" value={email}
-            autoComplete="username"
+            autoComplete="email"
             onChange={(e) => setEmail(e.target.value)}
             style={{ ...fieldInput, marginBottom: mode === 'forgot' ? 16 : 12 }}
           />
