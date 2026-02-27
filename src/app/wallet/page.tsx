@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useAuth } from '@/components/AuthProvider'
 import SavePrompt from '@/components/SavePrompt'
 import ProgramSelect from '@/components/ProgramSelect'
 import WalletCard from '@/components/WalletCard'
@@ -42,6 +43,7 @@ const typeIcons: Record<string, string> = {
 
 
 export default function WalletPage() {
+  const { user } = useAuth()
   const [entries, setEntries] = useState<WalletEntry[]>([])
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -202,8 +204,28 @@ export default function WalletPage() {
           border: '1px dashed var(--border)',
           marginBottom: 16,
         }}>
-          <div style={{ fontSize: 32, marginBottom: 8 }}>💳</div>
-          <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>No entries yet — add your first points balance below.</p>
+          {!user ? (
+            <>
+              <div style={{ fontSize: 32, marginBottom: 8 }}>🔒</div>
+              <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 16 }}>Sign in to see your points & miles.</p>
+              <a
+                href="/login?redirect=/wallet"
+                style={{
+                  display: 'inline-block', padding: '10px 24px',
+                  background: 'linear-gradient(135deg, var(--primary), var(--primary-hover))',
+                  color: 'var(--text-inverse)', borderRadius: 'var(--radius-sm)',
+                  textDecoration: 'none', fontWeight: 600, fontSize: 14,
+                }}
+              >
+                Sign In
+              </a>
+            </>
+          ) : (
+            <>
+              <div style={{ fontSize: 32, marginBottom: 8 }}>💳</div>
+              <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>No entries yet — add your first points balance below.</p>
+            </>
+          )}
         </div>
       ) : null}
 

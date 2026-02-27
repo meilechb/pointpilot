@@ -287,8 +287,46 @@ export default function TripDetail() {
   )
 
   if (!trip) return (
-    <div style={{ padding: 60, textAlign: 'center', color: 'var(--text-muted)' }}>
-      Trip not found
+    <div style={{ maxWidth: 420, margin: '0 auto', padding: '80px 20px', textAlign: 'center' }}>
+      {!user ? (
+        <>
+          <div style={{ fontSize: 48, marginBottom: 16 }}>🔒</div>
+          <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>Sign in to view this trip</h2>
+          <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 24 }}>
+            Your session may have expired. Sign in to access your trips.
+          </p>
+          <a
+            href={`/login?redirect=${encodeURIComponent(`/trip/${params.id}`)}`}
+            style={{
+              display: 'inline-block', padding: '12px 28px',
+              background: 'linear-gradient(135deg, var(--primary), var(--primary-hover))',
+              color: 'var(--text-inverse)', borderRadius: 'var(--radius-sm)',
+              textDecoration: 'none', fontWeight: 600, fontSize: 15,
+            }}
+          >
+            Sign In
+          </a>
+        </>
+      ) : (
+        <>
+          <div style={{ fontSize: 48, marginBottom: 16 }}>✈️</div>
+          <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>Trip not found</h2>
+          <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 24 }}>
+            This trip may have been deleted or the link is incorrect.
+          </p>
+          <a
+            href="/trips"
+            style={{
+              display: 'inline-block', padding: '12px 28px',
+              background: 'linear-gradient(135deg, var(--primary), var(--primary-hover))',
+              color: 'var(--text-inverse)', borderRadius: 'var(--radius-sm)',
+              textDecoration: 'none', fontWeight: 600, fontSize: 15,
+            }}
+          >
+            View My Trips
+          </a>
+        </>
+      )}
     </div>
   )
 

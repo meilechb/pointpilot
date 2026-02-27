@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { useAuth } from '@/components/AuthProvider'
 import SavePrompt from '@/components/SavePrompt'
 import { loadTrips, deleteTrip as deleteRemoteTrip } from '@/lib/dataService'
 
@@ -20,6 +21,7 @@ function tripTypeLabel(type: string): string {
 
 export default function TripsPage() {
   const router = useRouter()
+  const { user } = useAuth()
   const [trips, setTrips] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [savePromptTrigger, setSavePromptTrigger] = useState<'flight' | 'plan' | 'trip' | 'wallet' | null>(null)
@@ -94,22 +96,45 @@ export default function TripsPage() {
           borderRadius: 'var(--radius-lg)',
           border: '1px dashed var(--border)',
         }}>
-          <div style={{ fontSize: 40, marginBottom: 12 }}>✈️</div>
-          <p style={{ color: 'var(--text-secondary)', fontSize: 16, fontWeight: 500, marginBottom: 4 }}>No trips yet</p>
-          <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 20 }}>Create your first trip to start comparing flight options.</p>
-          <button
-            onClick={() => router.push('/trip/new')}
-            style={{
-              padding: '12px 28px',
-              background: 'linear-gradient(135deg, var(--primary), var(--primary-hover))',
-              color: 'var(--text-inverse)',
-              border: 'none', borderRadius: 'var(--radius)',
-              cursor: 'pointer', fontSize: 15, fontWeight: 600,
-              boxShadow: '0 2px 8px rgba(67, 56, 202, 0.3)',
-            }}
-          >
-            Start Your First Trip
-          </button>
+          {!user ? (
+            <>
+              <div style={{ fontSize: 40, marginBottom: 12 }}>🔒</div>
+              <p style={{ color: 'var(--text-secondary)', fontSize: 16, fontWeight: 500, marginBottom: 4 }}>Sign in to see your trips</p>
+              <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 20 }}>Your session may have expired. Sign in to access your saved trips.</p>
+              <a
+                href="/login?redirect=/trips"
+                style={{
+                  display: 'inline-block', padding: '12px 28px',
+                  background: 'linear-gradient(135deg, var(--primary), var(--primary-hover))',
+                  color: 'var(--text-inverse)',
+                  borderRadius: 'var(--radius)',
+                  textDecoration: 'none', fontSize: 15, fontWeight: 600,
+                  boxShadow: '0 2px 8px rgba(67, 56, 202, 0.3)',
+                }}
+              >
+                Sign In
+              </a>
+            </>
+          ) : (
+            <>
+              <div style={{ fontSize: 40, marginBottom: 12 }}>✈️</div>
+              <p style={{ color: 'var(--text-secondary)', fontSize: 16, fontWeight: 500, marginBottom: 4 }}>No trips yet</p>
+              <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 20 }}>Create your first trip to start comparing flight options.</p>
+              <button
+                onClick={() => router.push('/trip/new')}
+                style={{
+                  padding: '12px 28px',
+                  background: 'linear-gradient(135deg, var(--primary), var(--primary-hover))',
+                  color: 'var(--text-inverse)',
+                  border: 'none', borderRadius: 'var(--radius)',
+                  cursor: 'pointer', fontSize: 15, fontWeight: 600,
+                  boxShadow: '0 2px 8px rgba(67, 56, 202, 0.3)',
+                }}
+              >
+                Start Your First Trip
+              </button>
+            </>
+          )}
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
