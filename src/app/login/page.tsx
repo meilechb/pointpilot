@@ -38,8 +38,6 @@ function LoginForm() {
 
   const handleEmailAuth = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    // Capture form ref NOW — React nullifies e.currentTarget after the first await
-    const formEl = e.currentTarget
     setError('')
     setMessage('')
     setLoading(true)
@@ -66,24 +64,23 @@ function LoginForm() {
       const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) { setError(error.message); setLoading(false); return }
 
-      // After successful Supabase auth, submit the form to a hidden iframe
-      // so Chrome sees a real form POST (triggering "Save password?") without
-      // navigating the main page away.
-      let iframe = document.getElementById('__pp_cred') as HTMLIFrameElement
-      if (!iframe) {
-        iframe = document.createElement('iframe')
-        iframe.id = '__pp_cred'
-        iframe.name = '__pp_cred'
-        iframe.style.display = 'none'
-        document.body.appendChild(iframe)
-      }
-      formEl.target = '__pp_cred'
-      formEl.submit()
-      // Reset target so future submits don't go to iframe
-      formEl.target = ''
+      // Tell Chrome to save the credential via the Credential Management API.
+      // This is the recommended approach for SPAs that use e.preventDefault().
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const win = window as any
+        if (win.PasswordCredential) {
+          const cred = new win.PasswordCredential({
+            id: email,
+            password: password,
+          })
+          await navigator.credentials.store(cred)
+        }
+      } catch (_) { /* ignore if browser doesn't support it */ }
 
-      // Navigate after a short delay to let Chrome process the form submission
-      setTimeout(() => { window.location.href = redirectTo || '/' }, 200)
+      // Navigate away — this causes pushState + form unmount, which is
+      // Chrome's secondary signal that login succeeded.
+      window.location.href = redirectTo || '/'
       return
     }
   }
@@ -150,17 +147,10 @@ function LoginForm() {
           </>
         )}
 
-        {/* Single form — Chrome needs: action, method, visible input[autocomplete=username],
-            visible input[type=password][autocomplete=current-password], and a real form submission
-            that navigates the page. We do Supabase auth first, then let the form natively submit. */}
         <form
           onSubmit={handleEmailAuth}
-          action="/api/auth/credential-save"
-          method="POST"
           autoComplete="on"
         >
-          {/* Hidden input to carry the redirect destination through the native form submit */}
-          <input type="hidden" name="redirect" value={redirectTo || '/'} />
 
           {mode === 'signup' && (
             <>
