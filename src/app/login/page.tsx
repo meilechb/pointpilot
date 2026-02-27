@@ -26,17 +26,23 @@ function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirectTo = searchParams.get('redirect')
+  const errorFromServer = searchParams.get('error')
   const supabase = createClient()
   const [mode, setMode] = useState<'login' | 'signup' | 'forgot'>('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [fullName, setFullName] = useState('')
-  const [error, setError] = useState('')
+  const [error, setError] = useState(errorFromServer || '')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [showPassword, setShowPassword] = useState(false)
 
-  const handleEmailAuth = async (e: React.FormEvent<HTMLFormElement>) => {
+  // Only signup and forgot-password use JS handling.
+  // Login mode uses native form POST to /api/auth/login for Chrome password save.
+  const handleNonLoginSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    // For login mode, let the form submit natively (no preventDefault)
+    if (mode === 'login') return
+
     e.preventDefault()
     setError('')
     setMessage('')
@@ -60,28 +66,6 @@ function LoginForm() {
       if (error) { setError(error.message); setLoading(false); return }
       setMessage('Check your email for a confirmation link.')
       setLoading(false)
-    } else {
-      const { error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) { setError(error.message); setLoading(false); return }
-
-      // Tell Chrome to save the credential via the Credential Management API.
-      // This is the recommended approach for SPAs that use e.preventDefault().
-      try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const win = window as any
-        if (win.PasswordCredential) {
-          const cred = new win.PasswordCredential({
-            id: email,
-            password: password,
-          })
-          await navigator.credentials.store(cred)
-        }
-      } catch (_) { /* ignore if browser doesn't support it */ }
-
-      // Navigate away — this causes pushState + form unmount, which is
-      // Chrome's secondary signal that login succeeded.
-      window.location.href = redirectTo || '/'
-      return
     }
   }
 
@@ -147,10 +131,23 @@ function LoginForm() {
           </>
         )}
 
+        {/*
+          In login mode: native form POST to /api/auth/login (no JS interception).
+          Chrome sees a real form submission with username + password fields → server
+          responds with redirect → Chrome offers "Save password?"
+
+          In signup/forgot mode: JS handles it via onSubmit with preventDefault.
+        */}
         <form
-          onSubmit={handleEmailAuth}
+          onSubmit={handleNonLoginSubmit}
+          action={mode === 'login' ? '/api/auth/login' : undefined}
+          method={mode === 'login' ? 'POST' : undefined}
           autoComplete="on"
         >
+          {/* Carry redirect destination through the native POST */}
+          {mode === 'login' && (
+            <input type="hidden" name="redirect" value={redirectTo || '/'} />
+          )}
 
           {mode === 'signup' && (
             <>
