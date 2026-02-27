@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { sendAdminGrantEmail } from '@/lib/email'
 
 const ADMIN_EMAIL = 'meilechbiller18@gmail.com'
 
@@ -82,6 +83,16 @@ export async function POST(req: NextRequest) {
       plan,
       status: plan === 'pro' ? 'active' : 'free',
     })
+  }
+
+  // Send email notification to the user
+  const { data: { user: targetUser } } = await sb.auth.admin.getUserById(userId)
+  if (targetUser?.email) {
+    await sendAdminGrantEmail(
+      targetUser.email,
+      plan === 'pro' ? 'granted' : 'revoked',
+      { adminName: 'Meilech' }
+    )
   }
 
   return NextResponse.json({ ok: true })

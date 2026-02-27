@@ -22,7 +22,7 @@ const FOOTER = `
   </table>
 `
 
-function wrapEmail(content: string, preheader?: string) {
+export function wrapEmail(content: string, preheader?: string) {
   return `
 <!DOCTYPE html>
 <html lang="en">
@@ -53,6 +53,118 @@ function wrapEmail(content: string, preheader?: string) {
 
 type SubscriptionEmailOpts = {
   nextBillingDate?: string | null
+}
+
+type AdminGrantOpts = {
+  adminName?: string
+}
+
+export async function sendAdminGrantEmail(to: string, type: 'granted' | 'revoked', opts?: AdminGrantOpts) {
+  if (!resend) {
+    console.warn('[email] RESEND_API_KEY not set, skipping email')
+    return
+  }
+
+  const adminName = opts?.adminName || 'Meilech'
+
+  let subject: string
+  let html: string
+
+  if (type === 'granted') {
+    subject = `${adminName} has granted you Point Tripper Pro access`
+
+    html = wrapEmail(`
+      <div style="text-align:center;margin-bottom:24px">
+        <div style="display:inline-block;background:linear-gradient(135deg,#4338CA,#6366F1);color:white;font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;letter-spacing:0.5px">PRO GRANTED</div>
+      </div>
+
+      <h1 style="font-size:22px;font-weight:700;margin:0 0 16px;text-align:center">You've been upgraded to Pro!</h1>
+
+      <p style="margin:0 0 16px;color:#4B5563;text-align:center;font-size:16px">
+        <strong>${adminName}</strong> has personally granted you access to Point Tripper Pro.
+      </p>
+
+      <table width="100%" cellpadding="0" cellspacing="0" style="background:#F0F0F8;border-radius:8px;margin-bottom:24px">
+        <tr>
+          <td style="padding:16px 20px">
+            <table width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="font-size:13px;color:#6B7280">Plan</td>
+                <td align="right" style="font-size:14px;font-weight:600;color:#1A1A2E">Pro</td>
+              </tr>
+              <tr><td colspan="2" style="padding:4px 0"></td></tr>
+              <tr>
+                <td style="font-size:13px;color:#6B7280">Status</td>
+                <td align="right" style="font-size:14px;font-weight:600;color:#059669">Active</td>
+              </tr>
+              <tr><td colspan="2" style="padding:4px 0"></td></tr>
+              <tr>
+                <td style="font-size:13px;color:#6B7280">Cost</td>
+                <td align="right" style="font-size:14px;font-weight:600;color:#059669">Free — complimentary access</td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+
+      <p style="margin:0 0 12px;color:#4B5563">Your Pro access includes:</p>
+      <table cellpadding="0" cellspacing="0" style="margin-bottom:20px">
+        <tr><td style="padding:4px 0;color:#4B5563;font-size:14px">&#10003;&nbsp;&nbsp;Unlimited flight scans with the Chrome extension</td></tr>
+        <tr><td style="padding:4px 0;color:#4B5563;font-size:14px">&#10003;&nbsp;&nbsp;AI-powered flight detection on any booking site</td></tr>
+        <tr><td style="padding:4px 0;color:#4B5563;font-size:14px">&#10003;&nbsp;&nbsp;Save and compare flights across trips</td></tr>
+        <tr><td style="padding:4px 0;color:#4B5563;font-size:14px">&#10003;&nbsp;&nbsp;Priority support</td></tr>
+      </table>
+
+      <div style="text-align:center;margin-bottom:16px">
+        <a href="https://www.pointtripper.com" style="display:inline-block;padding:12px 28px;background:linear-gradient(135deg,#4338CA,#6366F1);color:white;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px">Start Using Point Tripper</a>
+      </div>
+
+      <p style="margin:0;color:#9CA3AF;font-size:13px;text-align:center">No payment required. Your access has been activated.</p>
+    `, `${adminName} has granted you complimentary Point Tripper Pro access — unlimited flight scans, AI detection, and more.`)
+
+  } else {
+    subject = 'Your Point Tripper Pro access has been revoked'
+
+    html = wrapEmail(`
+      <h1 style="font-size:22px;font-weight:700;margin:0 0 16px">Pro Access Revoked</h1>
+
+      <table width="100%" cellpadding="0" cellspacing="0" style="background:#FEF3C7;border-radius:8px;border:1px solid #F59E0B;margin-bottom:24px">
+        <tr>
+          <td style="padding:14px 20px">
+            <table width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="font-size:13px;color:#92400E">Status</td>
+                <td align="right" style="font-size:14px;font-weight:600;color:#92400E">Free Plan</td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+
+      <p style="margin:0 0 12px;color:#4B5563">
+        Your complimentary Point Tripper Pro access has been revoked. You're now on the free plan with 1 flight scan per month.
+      </p>
+      <p style="margin:0;color:#4B5563">
+        Want to upgrade? You can subscribe to Pro anytime from the <a href="https://www.pointtripper.com/pricing" style="color:#4338CA;text-decoration:none;font-weight:600">pricing page</a>.
+      </p>
+    `, 'Your complimentary Point Tripper Pro access has been revoked.')
+  }
+
+  try {
+    await resend.emails.send({
+      from: 'Point Tripper <noreply@pointtripper.com>',
+      to,
+      subject,
+      html,
+      headers: {
+        'X-Entity-Ref-ID': `admin-${type}-${Date.now()}`,
+        'List-Unsubscribe': '<https://www.pointtripper.com/account>',
+      },
+    })
+    console.log(`[email] Sent admin-${type} email to ${to}`)
+  } catch (err) {
+    console.error(`[email] Failed to send admin-${type} email:`, err)
+  }
 }
 
 export async function sendSubscriptionEmail(to: string, type: 'welcome' | 'canceled', opts?: SubscriptionEmailOpts) {
