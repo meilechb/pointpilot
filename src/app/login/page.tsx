@@ -64,16 +64,25 @@ function LoginForm() {
       const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) { setError(error.message); setLoading(false); return }
 
-      // After successful Supabase auth, do a native form submission so Chrome
-      // detects a successful login and offers to save the password.
-      // We set the form action to our credential-save endpoint which returns 200,
-      // then redirects to the destination page.
+      // After successful Supabase auth, submit the form to a hidden iframe
+      // so Chrome sees a real form POST (triggering "Save password?") without
+      // navigating the main page away.
       const form = e.currentTarget
-      form.action = '/api/auth/credential-save'
-      form.method = 'POST'
-      // Remove the onSubmit handler for the native submit by using requestSubmit
-      // which bypasses React's synthetic event system
+      let iframe = document.getElementById('__pp_cred') as HTMLIFrameElement
+      if (!iframe) {
+        iframe = document.createElement('iframe')
+        iframe.id = '__pp_cred'
+        iframe.name = '__pp_cred'
+        iframe.style.display = 'none'
+        document.body.appendChild(iframe)
+      }
+      form.target = '__pp_cred'
       form.submit()
+      // Reset target so future submits don't go to iframe
+      form.target = ''
+
+      // Navigate after a short delay to let Chrome process the form submission
+      setTimeout(() => { window.location.href = redirectTo || '/' }, 200)
       return
     }
   }

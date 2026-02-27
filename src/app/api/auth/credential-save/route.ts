@@ -1,10 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 
-// POST endpoint that Chrome sees as a successful form submission.
-// After Supabase auth succeeds client-side, the form natively submits here,
-// which triggers Chrome's "Save password?" prompt. Then we redirect to the app.
-export async function POST(req: NextRequest) {
-  const formData = await req.formData()
-  const redirect = formData.get('redirect') as string || '/'
-  return NextResponse.redirect(new URL(redirect, req.url), 303)
+// POST endpoint that returns 200 OK.
+// The login form submits here (into a hidden iframe) after successful Supabase auth,
+// so Chrome detects a real form submission and offers to save the password.
+export async function POST() {
+  return new NextResponse('ok', { status: 200 })
 }
