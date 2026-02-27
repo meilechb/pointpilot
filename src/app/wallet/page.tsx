@@ -53,9 +53,10 @@ export default function WalletPage() {
   const [notes, setNotes] = useState('')
   const [savePromptTrigger, setSavePromptTrigger] = useState<'flight' | 'plan' | 'trip' | 'wallet' | null>(null)
   const [bonuses, setBonuses] = useState<Bonus[]>([])
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    loadWallet().then(saved => setEntries(saved))
+    loadWallet().then(saved => { setEntries(saved); setLoading(false) })
 
     // Fetch active transfer bonuses from Supabase
     const fetchBonuses = async () => {
@@ -171,7 +172,29 @@ export default function WalletPage() {
       )}
 
       {/* Entries */}
-      {entries.length === 0 && !showForm && (
+      {loading ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 16 }}>
+          {[1, 2].map(i => (
+            <div key={i} style={{
+              padding: '18px 20px',
+              backgroundColor: 'var(--bg-card)',
+              borderRadius: 'var(--radius)',
+              border: '1px solid var(--border-light)',
+              animation: 'pulse 1.5s ease-in-out infinite',
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ height: 32, width: 32, backgroundColor: 'var(--border-light)', borderRadius: 8 }} />
+                  <div style={{ height: 16, width: 140, backgroundColor: 'var(--border)', borderRadius: 6 }} />
+                </div>
+                <div style={{ height: 22, width: 80, backgroundColor: 'var(--border-light)', borderRadius: 6 }} />
+              </div>
+              <div style={{ height: 14, width: '50%', backgroundColor: 'var(--border-light)', borderRadius: 6 }} />
+            </div>
+          ))}
+          <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }`}</style>
+        </div>
+      ) : entries.length === 0 && !showForm ? (
         <div style={{
           textAlign: 'center', padding: 40,
           backgroundColor: 'var(--bg-card)',
@@ -182,7 +205,7 @@ export default function WalletPage() {
           <div style={{ fontSize: 32, marginBottom: 8 }}>💳</div>
           <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>No entries yet — add your first points balance below.</p>
         </div>
-      )}
+      ) : null}
 
       {entries.map(entry => {
         if (editingId === entry.id && showForm) return null

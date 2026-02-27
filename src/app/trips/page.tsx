@@ -21,6 +21,7 @@ function tripTypeLabel(type: string): string {
 export default function TripsPage() {
   const router = useRouter()
   const [trips, setTrips] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
   const [savePromptTrigger, setSavePromptTrigger] = useState<'flight' | 'plan' | 'trip' | 'wallet' | null>(null)
 
   useEffect(() => {
@@ -29,6 +30,7 @@ export default function TripsPage() {
       if (saved.length === 1) {
         setSavePromptTrigger('trip')
       }
+      setLoading(false)
     })
   }, [])
 
@@ -65,7 +67,27 @@ export default function TripsPage() {
         </button>
       </div>
 
-      {trips.length === 0 ? (
+      {loading ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {[1, 2, 3].map(i => (
+            <div key={i} style={{
+              padding: '20px 22px',
+              backgroundColor: 'var(--bg-card)',
+              borderRadius: 'var(--radius-lg)',
+              border: '1px solid var(--border-light)',
+              animation: 'pulse 1.5s ease-in-out infinite',
+            }}>
+              <div style={{ height: 20, width: '45%', backgroundColor: 'var(--border)', borderRadius: 6, marginBottom: 12 }} />
+              <div style={{ height: 16, width: '65%', backgroundColor: 'var(--border-light)', borderRadius: 6, marginBottom: 10 }} />
+              <div style={{ display: 'flex', gap: 8 }}>
+                <div style={{ height: 22, width: 80, backgroundColor: 'var(--border-light)', borderRadius: 10 }} />
+                <div style={{ height: 22, width: 70, backgroundColor: 'var(--border-light)', borderRadius: 10 }} />
+              </div>
+            </div>
+          ))}
+          <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }`}</style>
+        </div>
+      ) : trips.length === 0 ? (
         <div style={{
           textAlign: 'center', padding: 60,
           backgroundColor: 'var(--bg-card)',
