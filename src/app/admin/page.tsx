@@ -26,6 +26,15 @@ type Bonus = {
   created_at: string
 }
 
+type AppUser = {
+  id: string
+  email: string
+  name: string
+  created_at: string
+  plan: string
+  status: string
+}
+
 function slugify(text: string) {
   return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
 }
@@ -49,7 +58,7 @@ export default function AdminPage() {
   const supabase = createClient()
 
   // Tab state
-  const [tab, setTab] = useState<'articles' | 'bonuses'>('articles')
+  const [tab, setTab] = useState<'articles' | 'bonuses' | 'users'>('articles')
 
   // Articles state
   const [articles, setArticles] = useState<Article[]>([])
@@ -76,6 +85,11 @@ export default function AdminPage() {
   const [bonusNotes, setBonusNotes] = useState('')
   const [savingBonus, setSavingBonus] = useState(false)
 
+  // Users state
+  const [users, setUsers] = useState<AppUser[]>([])
+  const [usersLoading, setUsersLoading] = useState(true)
+  const [togglingUserId, setTogglingUserId] = useState<string | null>(null)
+
   const fetchArticles = async () => {
     const { data } = await supabase.from('articles').select('*').order('created_at', { ascending: false })
     setArticles(data || [])
@@ -88,10 +102,41 @@ export default function AdminPage() {
     setBonusesLoading(false)
   }
 
+  const fetchUsers = async () => {
+    setUsersLoading(true)
+    const session = await supabase.auth.getSession()
+    const token = session.data.session?.access_token
+    if (!token) { setUsersLoading(false); return }
+    const res = await fetch('/api/admin/users', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (res.ok) {
+      const data = await res.json()
+      setUsers(data)
+    }
+    setUsersLoading(false)
+  }
+
+  const toggleUserPlan = async (userId: string, currentPlan: string) => {
+    setTogglingUserId(userId)
+    const newPlan = currentPlan === 'pro' ? 'free' : 'pro'
+    const session = await supabase.auth.getSession()
+    const token = session.data.session?.access_token
+    if (!token) { setTogglingUserId(null); return }
+    await fetch('/api/admin/users', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, plan: newPlan }),
+    })
+    setUsers(users.map(u => u.id === userId ? { ...u, plan: newPlan, status: newPlan === 'pro' ? 'active' : 'free' } : u))
+    setTogglingUserId(null)
+  }
+
   useEffect(() => {
     if (user && user.email === ADMIN_EMAIL) {
       fetchArticles()
       fetchBonuses()
+      fetchUsers()
     }
   }, [user])
 
@@ -325,7 +370,7 @@ export default function AdminPage() {
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 0, marginBottom: 24, borderBottom: '2px solid var(--border-light)' }}>
-        {([['articles', 'Articles'], ['bonuses', 'Transfer Bonuses']] as const).map(([key, label]) => (
+        {([['articles', 'Articles'], ['bonuses', 'Transfer Bonuses'], ['users', 'Users']] as const).map(([key, label]) => (
           <button
             key={key}
             onClick={() => setTab(key)}
@@ -432,6 +477,65 @@ export default function AdminPage() {
               </div>
             )
           })}
+        </>
+      )}
+
+      {/* Users tab */}
+      {tab === 'users' && (
+        <>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>{users.length} registered user{users.length !== 1 ? 's' : ''}</p>
+            <button onClick={fetchUsers} style={smallBtn}>Refresh</button>
+          </div>
+
+          {usersLoading && <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>Loading users...</div>}
+
+          {!usersLoading && users.length === 0 && (
+            <div style={{ textAlign: 'center', padding: 40, backgroundColor: 'var(--bg-card)', borderRadius: 'var(--radius)', border: '1px dashed var(--border)' }}>
+              <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>No registered users found.</p>
+            </div>
+          )}
+
+          {!usersLoading && users.map(u => (
+            <div key={u.id} style={{
+              padding: '16px 18px', backgroundColor: 'var(--bg-card)',
+              borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-sm)',
+              border: '1px solid var(--border-light)', marginBottom: 8,
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            }}>
+              <div>
+                <div style={{ fontWeight: 600, fontSize: 15 }}>{u.email}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                  {u.name && <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{u.name}</span>}
+                  <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                    Joined {new Date(u.created_at).toLocaleDateString()}
+                  </span>
+                  <span style={{
+                    padding: '2px 8px', borderRadius: 10, fontSize: 12, fontWeight: 600,
+                    backgroundColor: u.plan === 'pro' ? 'var(--success-bg)' : 'var(--bg-accent)',
+                    color: u.plan === 'pro' ? 'var(--success)' : 'var(--text-muted)',
+                  }}>
+                    {u.plan === 'pro' ? 'Pro' : 'Free'}
+                  </span>
+                </div>
+              </div>
+              <button
+                onClick={() => toggleUserPlan(u.id, u.plan)}
+                disabled={togglingUserId === u.id}
+                style={{
+                  padding: '8px 16px', borderRadius: 'var(--radius-sm)',
+                  border: 'none', cursor: togglingUserId === u.id ? 'default' : 'pointer',
+                  fontWeight: 600, fontSize: 13, flexShrink: 0,
+                  background: u.plan === 'pro'
+                    ? 'var(--bg-accent)'
+                    : 'linear-gradient(135deg, var(--primary), var(--primary-hover))',
+                  color: u.plan === 'pro' ? 'var(--text-secondary)' : 'var(--text-inverse)',
+                }}
+              >
+                {togglingUserId === u.id ? '...' : u.plan === 'pro' ? 'Revoke Pro' : 'Grant Pro'}
+              </button>
+            </div>
+          ))}
         </>
       )}
 
