@@ -72,7 +72,7 @@ export default function Home() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
 
       {/* ===== HERO ===== */}
-      <div style={{
+      <div className="hero-section" style={{
         background: 'linear-gradient(135deg, var(--bg-nav) 0%, #2D2B55 100%)',
         padding: '100px 20px 80px', textAlign: 'center',
       }}>
@@ -84,20 +84,20 @@ export default function Home() {
           }}>
             Ditch the spreadsheets
           </div>
-          <h1 style={{
+          <h1 className="hero-title" style={{
             fontSize: 44, fontWeight: 800, color: 'var(--text-inverse)',
             lineHeight: 1.15, marginBottom: 16, letterSpacing: -0.5,
           }}>
             Flight planning, visualized.
           </h1>
-          <p style={{
+          <p className="hero-subtitle" style={{
             fontSize: 18, color: 'rgba(255,255,255,0.6)', lineHeight: 1.6,
             maxWidth: 480, margin: '0 auto 36px',
           }}>
             Stop juggling spreadsheets and browser tabs! Organize all of your booking options, compare cash vs. points, and see exactly which combo saves you the most.
           </p>
 
-          <div style={{ maxWidth: 380, margin: '0 auto', display: 'flex', gap: 0 }}>
+          <div className="hero-cta-row" style={{ maxWidth: 380, margin: '0 auto', display: 'flex', gap: 0 }}>
             <input
               type="text" placeholder="Name your trip" value={tripName}
               onChange={(e) => setTripName(e.target.value)}
@@ -116,7 +116,7 @@ export default function Home() {
               onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(212, 168, 71, 0.4)' }}
               onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 12px rgba(212, 168, 71, 0.3)' }}
             >
-              Start Free
+              Create Trip
             </button>
           </div>
           <div style={{ textAlign: 'center', marginTop: 10 }}>
@@ -200,7 +200,7 @@ export default function Home() {
             <p style={{ fontSize: 16, color: 'var(--text-secondary)' }}>Four steps from search to booking.</p>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 0 }} className="how-it-works-steps">
+          <div className="how-it-works-steps" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 0 }}>
             {[
               { num: '1', title: 'Add points', desc: 'Enter your balances' },
               { num: '2', title: 'Add flights', desc: 'Log every option you find' },
@@ -261,7 +261,7 @@ export default function Home() {
 
       {/* ===== CHROME EXTENSION BANNER ===== */}
       <div style={{ backgroundColor: 'var(--bg)', borderTop: '1px solid var(--border-light)', borderBottom: '1px solid var(--border-light)' }}>
-        <div style={{ maxWidth: 1000, margin: '0 auto', padding: '64px 20px', display: 'flex', gap: 48, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' }}>
+        <div className="extension-banner" style={{ maxWidth: 1000, margin: '0 auto', padding: '64px 20px', display: 'flex', gap: 48, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' }}>
           {/* Mockup */}
           <div style={{
             width: 260, flexShrink: 0,
@@ -453,7 +453,7 @@ export default function Home() {
           <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.55)', marginBottom: 32 }}>
             Free. No account required.
           </p>
-          <div style={{ maxWidth: 380, margin: '0 auto', display: 'flex', gap: 0 }}>
+          <div className="hero-cta-row" style={{ maxWidth: 380, margin: '0 auto', display: 'flex', gap: 0 }}>
             <input
               type="text" placeholder="Name your trip" value={tripName}
               onChange={(e) => setTripName(e.target.value)}
@@ -469,7 +469,7 @@ export default function Home() {
                 boxShadow: '0 2px 12px rgba(212, 168, 71, 0.3)', whiteSpace: 'nowrap',
               }}
             >
-              Start Free
+              Create Trip
             </button>
           </div>
           <div style={{ display: 'flex', gap: 20, justifyContent: 'center', marginTop: 20 }}>

@@ -380,117 +380,111 @@ html, body {
   margin-bottom: 10px;
 }
 
-/* Date picker responsive */
+/* ── Mobile responsive ── */
 @media (max-width: 640px) {
+  /* News */
   .news-grid {
     grid-template-columns: 1fr !important;
   }
   .news-carousel {
     grid-template-columns: 1fr !important;
   }
+
+  /* Date picker */
   .react-datepicker {
     font-size: 12px !important;
   }
-
   .react-datepicker__month-container {
     width: 100% !important;
     float: none !important;
   }
-
-  /* Force single month on mobile even if monthsShown={2} */
   .react-datepicker__month-container ~ .react-datepicker__month-container {
     display: none !important;
   }
 
+  /* Nav */
   .hamburger {
     display: block;
   }
-
   .nav-links {
     display: none;
   }
 
+  /* Hero */
+  .hero-section {
+    padding: 60px 16px 48px !important;
+  }
   .hero-title {
     font-size: 28px !important;
     letter-spacing: -0.5px;
   }
-
   .hero-subtitle {
-    font-size: 15px;
-    margin-bottom: 24px;
+    font-size: 15px !important;
+    margin-bottom: 24px !important;
   }
-
+  .hero-cta-row {
+    max-width: 100% !important;
+  }
   .hero-buttons {
     flex-direction: column;
     gap: 10px;
     align-items: stretch;
   }
 
+  /* 3 Pillars + Feature highlights */
   .features-grid {
-    grid-template-columns: 1fr;
-    gap: 12px;
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
   }
 
+  /* How it works (4-col grid → 2x2) */
   .how-it-works-steps {
-    flex-direction: column;
-    gap: 16px;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 24px 12px !important;
   }
-
-  .how-it-works-step {
-    display: flex;
-    align-items: flex-start;
-    text-align: left;
-    gap: 12px;
-    padding: 0;
-  }
-
-  .how-it-works-step > div:first-child {
-    margin: 0 !important;
-    flex-shrink: 0;
-  }
-
   .how-it-works-connector {
-    display: none;
+    display: none !important;
   }
 
+  /* Chrome extension banner */
+  .extension-banner {
+    flex-direction: column !important;
+    gap: 32px !important;
+    text-align: center;
+  }
+
+  /* Trip creation */
   .trip-date-row {
     flex-direction: column;
     gap: 12px;
   }
-
   .trip-date-row > .travelers-col {
     min-width: unset;
   }
-
   .trip-date-row > .flex-col {
     min-width: unset;
   }
-
   .planner-legs {
     flex-direction: column;
   }
 
+  /* AddFlight grids */
   .segment-grid-3 {
     grid-template-columns: 1fr 1fr;
   }
-
   .segment-grid-3 > :nth-child(2) {
     grid-column: 1 / -1;
     order: -1;
   }
-
   .segment-grid-4 {
     grid-template-columns: 1fr 1fr;
   }
-
   .lookup-grid {
     grid-template-columns: 1fr 1fr;
   }
-
   .lookup-grid > :last-child {
     grid-column: 1 / -1;
   }
-
   .manual-grid-2 {
     grid-template-columns: 1fr;
   }
@@ -499,7 +493,6 @@ html, body {
   .wallet-types {
     flex-wrap: wrap;
   }
-
   .wallet-types > button {
     flex: 1 1 calc(50% - 3px) !important;
   }
