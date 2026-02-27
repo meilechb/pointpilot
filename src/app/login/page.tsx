@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useState } from 'react'
+import React, { Suspense, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 
@@ -35,6 +35,27 @@ function LoginForm() {
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const formRef = React.useRef<HTMLFormElement>(null)
+
+  // Trigger Chrome password save by letting the form submit natively into a hidden iframe
+  const triggerCredentialSave = () => {
+    const form = formRef.current
+    if (!form) return
+    // Create hidden iframe target
+    let iframe = document.getElementById('__pp_cred_frame') as HTMLIFrameElement
+    if (!iframe) {
+      iframe = document.createElement('iframe')
+      iframe.id = '__pp_cred_frame'
+      iframe.name = '__pp_cred_frame'
+      iframe.style.display = 'none'
+      document.body.appendChild(iframe)
+    }
+    // Point form at the iframe and submit natively
+    form.target = '__pp_cred_frame'
+    form.submit()
+    // Reset target so future JS submits still work
+    form.target = ''
+  }
 
   const handleEmailAuth = async () => {
     setError('')
@@ -62,14 +83,11 @@ function LoginForm() {
     } else {
       const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) { setError(error.message); setLoading(false); return }
-      // Signal Chrome to save credentials
-      if ((window as any).PasswordCredential) {
-        try {
-          const cred = new (window as any).PasswordCredential({ id: email, password })
-          await navigator.credentials.store(cred)
-        } catch (_) {}
-      }
-      window.location.href = redirectTo || '/'
+      // Let Chrome detect the form submission so it offers to save the password
+      triggerCredentialSave()
+      // Navigate after a brief delay to let Chrome process the form submission
+      setTimeout(() => { window.location.href = redirectTo || '/' }, 100)
+      return
     }
   }
 
@@ -136,7 +154,8 @@ function LoginForm() {
         )}
 
         <form
-          action="/login"
+          ref={formRef}
+          action="/api/auth/credential-save"
           method="POST"
           onSubmit={(e) => { e.preventDefault(); handleEmailAuth() }}
           autoComplete="on"
