@@ -38,6 +38,8 @@ function LoginForm() {
 
   const handleEmailAuth = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
+    // Capture form ref NOW — React nullifies e.currentTarget after the first await
+    const formEl = e.currentTarget
     setError('')
     setMessage('')
     setLoading(true)
@@ -67,7 +69,6 @@ function LoginForm() {
       // After successful Supabase auth, submit the form to a hidden iframe
       // so Chrome sees a real form POST (triggering "Save password?") without
       // navigating the main page away.
-      const form = e.currentTarget
       let iframe = document.getElementById('__pp_cred') as HTMLIFrameElement
       if (!iframe) {
         iframe = document.createElement('iframe')
@@ -76,10 +77,10 @@ function LoginForm() {
         iframe.style.display = 'none'
         document.body.appendChild(iframe)
       }
-      form.target = '__pp_cred'
-      form.submit()
+      formEl.target = '__pp_cred'
+      formEl.submit()
       // Reset target so future submits don't go to iframe
-      form.target = ''
+      formEl.target = ''
 
       // Navigate after a short delay to let Chrome process the form submission
       setTimeout(() => { window.location.href = redirectTo || '/' }, 200)
