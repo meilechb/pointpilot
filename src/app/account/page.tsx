@@ -185,7 +185,10 @@ export default function AccountPage() {
     setDeleting(true)
     setDeleteError('')
     try {
-      const res = await fetch('/api/account/delete', { method: 'POST' })
+      const res = await fetch('/api/account/delete', {
+        method: 'POST',
+        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
+      })
       const data = await res.json()
       if (!res.ok) {
         setDeleteError(data.error || 'Failed to delete account.')

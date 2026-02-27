@@ -10,7 +10,9 @@ export async function POST(req: NextRequest) {
   const formData = await req.formData()
   const email = formData.get('email') as string
   const password = formData.get('password') as string
-  const redirect = formData.get('redirect') as string || '/'
+  // Sanitize redirect to prevent open redirect attacks
+  let redirect = (formData.get('redirect') as string) || '/'
+  if (!redirect.startsWith('/') || redirect.startsWith('//')) redirect = '/'
 
   if (!email || !password) {
     return NextResponse.redirect(

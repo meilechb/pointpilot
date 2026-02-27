@@ -118,12 +118,14 @@ export async function POST(request: NextRequest) {
           .eq('stripe_customer_id', customerId)
           .single()
 
+        // Keep plan as 'pro' so the grace period logic works:
+        // subscription/route.ts checks status=canceled + plan=pro + period not expired
         await supabase
           .from('subscriptions')
           .update({
             status: 'canceled',
-            plan: 'free',
             cancel_at_period_end: false,
+            current_period_end: cancelPeriodEnd ? new Date(cancelPeriodEnd * 1000).toISOString() : sub?.current_period_end,
           })
           .eq('stripe_customer_id', customerId)
 

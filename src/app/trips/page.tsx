@@ -33,7 +33,7 @@ export default function TripsPage() {
         setSavePromptTrigger('trip')
       }
       setLoading(false)
-    })
+    }).catch(() => { setLoading(false) })
   }, [])
 
   const handleDelete = async (e: React.MouseEvent, tripId: string) => {

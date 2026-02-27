@@ -35,7 +35,7 @@ const fieldInput: React.CSSProperties = {
 
 export default function TripDetail() {
   const params = useParams()
-  const { user } = useAuth()
+  const { user, session } = useAuth()
   const [trip, setTrip] = useState<any>(null)
   const [tripLoading, setTripLoading] = useState(true)
   const [showAddFlight, setShowAddFlight] = useState(false)
@@ -965,7 +965,10 @@ export default function TripDetail() {
                           try {
                             const res = await fetch('/api/email-itinerary', {
                               method: 'POST',
-                              headers: { 'Content-Type': 'application/json' },
+                              headers: {
+                                'Content-Type': 'application/json',
+                                ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+                              },
                               body: JSON.stringify({
                                 to: emailAddress,
                                 itinerary: emailTarget,

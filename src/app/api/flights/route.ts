@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
 
 const AIRLINE_NAMES: Record<string, string> = {
   'UA': 'United Airlines', 'AA': 'American Airlines', 'DL': 'Delta Air Lines',
@@ -47,6 +48,17 @@ function parseDateTime(dt: string): { date: string; time: string } {
 }
 
 export async function GET(request: NextRequest) {
+  // Auth check — prevent unauthenticated API quota abuse
+  const token = request.headers.get('Authorization')?.replace('Bearer ', '')
+  if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { global: { headers: { Authorization: `Bearer ${token}` } } }
+  )
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const flightCode = request.nextUrl.searchParams.get('flight')
   const date = request.nextUrl.searchParams.get('date')
 

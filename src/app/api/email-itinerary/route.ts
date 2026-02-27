@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
 
 function getResend() {
@@ -25,12 +26,25 @@ const FOOTER = `
 `
 
 export async function POST(request: NextRequest) {
+  // Auth check — prevent unauthenticated email abuse
+  const token = request.headers.get('Authorization')?.replace('Bearer ', '')
+  if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { global: { headers: { Authorization: `Bearer ${token}` } } }
+  )
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const resend = getResend()
   if (!resend) {
     return NextResponse.json({ error: 'Email not configured' }, { status: 503 })
   }
 
-  const { to, itinerary, trip, flights, senderName, senderEmail } = await request.json()
+  let body
+  try { body = await request.json() } catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }) }
+  const { to, itinerary, trip, flights, senderName, senderEmail } = body
 
   if (!to || !itinerary) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })

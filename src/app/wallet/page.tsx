@@ -58,7 +58,7 @@ export default function WalletPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    loadWallet().then(saved => { setEntries(saved); setLoading(false) })
+    loadWallet().then(saved => { setEntries(saved); setLoading(false) }).catch(() => { setLoading(false) })
 
     // Fetch active transfer bonuses from Supabase
     const fetchBonuses = async () => {

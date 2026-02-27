@@ -123,15 +123,16 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const body = await request.json()
+  let body
+  try { body = await request.json() } catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }) }
   const { payloads, url } = body as { payloads: string[], url: string }
-
-  // Record the scan
-  await supabase.from('scan_usage').insert({ user_id: user.id, page_url: url || '' })
 
   if (!payloads || !Array.isArray(payloads) || payloads.length === 0) {
     return NextResponse.json({ flights: [] })
   }
+
+  // Record the scan AFTER validating we have actual payloads to process
+  await supabase.from('scan_usage').insert({ user_id: user.id, page_url: url || '' })
 
   // Filter to payloads that look like flight data, truncate each, keep best 3
   // Keep payloads small (15K each) for faster AI response

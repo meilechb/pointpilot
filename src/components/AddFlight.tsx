@@ -7,6 +7,7 @@ import AirportInput from '@/components/AirportInput'
 import CustomSelect from '@/components/CustomSelect'
 import ProgramSelect from '@/components/ProgramSelect'
 import { airlines, bookingSites } from '@/data/programOptions'
+import { useAuth } from '@/components/AuthProvider'
 
 type Segment = {
   flightCode: string
@@ -87,6 +88,7 @@ const fieldInput: React.CSSProperties = {
 }
 
 export default function AddFlight({ legs, onSave, onCancel, editingFlight }: Props) {
+  const { session } = useAuth()
   const [mode, setMode] = useState<'lookup' | 'manual'>('lookup')
   const [step, setStep] = useState<'flight' | 'booking'>('flight')
   const [segments, setSegments] = useState<Segment[]>(editingFlight?.segments || [])
@@ -130,7 +132,9 @@ export default function AddFlight({ legs, onSave, onCancel, editingFlight }: Pro
     setLookupError('')
     try {
       const dateStr = toDateStr(lookupDate)
-      const res = await fetch(`/api/flights?flight=${lookupCode}&date=${dateStr}`)
+      const res = await fetch(`/api/flights?flight=${lookupCode}&date=${dateStr}`, {
+        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
+      })
       const data = await res.json()
       if (data.error) {
         setLookupError(data.error)
