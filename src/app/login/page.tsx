@@ -140,14 +140,12 @@ function LoginForm() {
         */}
         <form
           onSubmit={handleNonLoginSubmit}
-          action={mode === 'login' ? '/api/auth/login' : undefined}
-          method={mode === 'login' ? 'POST' : undefined}
+          action="/api/auth/login"
+          method="POST"
           autoComplete="on"
         >
           {/* Carry redirect destination through the native POST */}
-          {mode === 'login' && (
-            <input type="hidden" name="redirect" value={redirectTo || '/'} />
-          )}
+          <input type="hidden" name="redirect" value={redirectTo || '/'} />
 
           {mode === 'signup' && (
             <>
