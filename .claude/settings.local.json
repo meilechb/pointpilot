@@ -5,7 +5,10 @@
       "WebFetch(domain:www.thankyou.com)",
       "WebFetch(domain:wtop.com)",
       "WebFetch(domain:thepointsparty.com)",
-      "WebFetch(domain:frequentmiler.com)"
+      "WebFetch(domain:frequentmiler.com)",
+      "Bash(xargs grep -l \"Trip\\\\|trip\")",
+      "Bash(grep -n \"interface\\\\|type \" /c/Users/meile/pointpilot/src/app/trip/[id]/page.tsx)",
+      "mcp__claude_ai_Vercel__deploy_to_vercel"
     ]
   }
 }

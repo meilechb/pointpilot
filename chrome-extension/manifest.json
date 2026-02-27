@@ -4,7 +4,6 @@
   "version": "1.1",
   "description": "Add flights from any booking site directly to your Point Tripper trips.",
   "permissions": ["activeTab", "storage", "scripting", "sidePanel"],
-  "host_permissions": ["<all_urls>"],
   "action": {
     "default_icon": {
       "48": "icon.png",
