@@ -1,6 +1,6 @@
 'use client'
 
-import React, { Suspense, useState, useRef, useEffect } from 'react'
+import React, { Suspense, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 
@@ -36,20 +36,8 @@ function LoginForm() {
   const [message, setMessage] = useState('')
   const [showPassword, setShowPassword] = useState(false)
 
-  // Hidden native form refs for Chrome credential detection
-  const hiddenFormRef = useRef<HTMLFormElement>(null)
-  const hiddenEmailRef = useRef<HTMLInputElement>(null)
-  const hiddenPasswordRef = useRef<HTMLInputElement>(null)
-
-  // Sync hidden form values whenever email/password change
-  useEffect(() => {
-    if (hiddenEmailRef.current) hiddenEmailRef.current.value = email
-  }, [email])
-  useEffect(() => {
-    if (hiddenPasswordRef.current) hiddenPasswordRef.current.value = password
-  }, [password])
-
-  const handleEmailAuth = async () => {
+  const handleEmailAuth = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
     setError('')
     setMessage('')
     setLoading(true)
@@ -76,22 +64,16 @@ function LoginForm() {
       const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) { setError(error.message); setLoading(false); return }
 
-      // Submit the hidden native form so Chrome sees a real form submission
-      // and offers to save the password. The form targets a hidden iframe.
-      if (hiddenFormRef.current) {
-        let iframe = document.getElementById('__pp_cred') as HTMLIFrameElement
-        if (!iframe) {
-          iframe = document.createElement('iframe')
-          iframe.id = '__pp_cred'
-          iframe.name = '__pp_cred'
-          iframe.style.display = 'none'
-          document.body.appendChild(iframe)
-        }
-        hiddenFormRef.current.target = '__pp_cred'
-        hiddenFormRef.current.submit()
-      }
-
-      setTimeout(() => { window.location.href = redirectTo || '/' }, 150)
+      // After successful Supabase auth, do a native form submission so Chrome
+      // detects a successful login and offers to save the password.
+      // We set the form action to our credential-save endpoint which returns 200,
+      // then redirects to the destination page.
+      const form = e.currentTarget
+      form.action = '/api/auth/credential-save'
+      form.method = 'POST'
+      // Remove the onSubmit handler for the native submit by using requestSubmit
+      // which bypasses React's synthetic event system
+      form.submit()
       return
     }
   }
@@ -109,37 +91,6 @@ function LoginForm() {
 
   return (
     <div style={{ maxWidth: 400, margin: '0 auto', padding: '60px 20px' }}>
-      {/*
-        Hidden native form for Chrome password manager detection.
-        Chrome needs: a <form> with action + method, an input[type=email][autocomplete=username],
-        and an input[type=password][autocomplete=current-password], that actually submits.
-        This form is invisible but fully functional for Chrome's heuristics.
-      */}
-      <form
-        ref={hiddenFormRef}
-        action="/api/auth/credential-save"
-        method="POST"
-        style={{ position: 'absolute', left: -9999, top: -9999, opacity: 0 }}
-        tabIndex={-1}
-        aria-hidden="true"
-      >
-        <input
-          ref={hiddenEmailRef}
-          type="email"
-          name="username"
-          autoComplete="username"
-          tabIndex={-1}
-        />
-        <input
-          ref={hiddenPasswordRef}
-          type="password"
-          name="password"
-          autoComplete="current-password"
-          tabIndex={-1}
-        />
-        <button type="submit" tabIndex={-1}>Sign In</button>
-      </form>
-
       <div style={{
         backgroundColor: 'var(--bg-card)', borderRadius: 'var(--radius-lg)',
         boxShadow: 'var(--shadow)', border: '1px solid var(--border-light)', padding: 28,
@@ -189,10 +140,18 @@ function LoginForm() {
           </>
         )}
 
+        {/* Single form — Chrome needs: action, method, visible input[autocomplete=username],
+            visible input[type=password][autocomplete=current-password], and a real form submission
+            that navigates the page. We do Supabase auth first, then let the form natively submit. */}
         <form
-          onSubmit={(e) => { e.preventDefault(); handleEmailAuth() }}
+          onSubmit={handleEmailAuth}
+          action="/api/auth/credential-save"
+          method="POST"
           autoComplete="on"
         >
+          {/* Hidden input to carry the redirect destination through the native form submit */}
+          <input type="hidden" name="redirect" value={redirectTo || '/'} />
+
           {mode === 'signup' && (
             <>
               <label style={fieldLabel} htmlFor="fullName">Full name</label>
