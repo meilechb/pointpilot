@@ -40,7 +40,7 @@ export default function TripDetail() {
   const [tripLoading, setTripLoading] = useState(true)
   const [showAddFlight, setShowAddFlight] = useState(false)
   const [editingFlightId, setEditingFlightId] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<'flights' | 'plan' | 'optimize' | 'itineraries'>('flights')
+  const [activeTab, setActiveTab] = useState<'flights' | 'builder' | 'itineraries'>('flights')
   const [savePromptTrigger, setSavePromptTrigger] = useState<'flight' | 'plan' | 'trip' | 'wallet' | null>(null)
 
   // Edit mode state
@@ -332,8 +332,7 @@ export default function TripDetail() {
 
   const tabs = [
     { key: 'flights', label: 'Flights', count: trip.flights.length || null },
-    { key: 'plan', label: 'Plan', count: null },
-    { key: 'optimize', label: 'Optimize', count: null },
+    { key: 'builder', label: 'Builder', count: null },
     { key: 'itineraries', label: 'Itineraries', count: trip.itineraries?.length || null },
   ]
 
@@ -750,7 +749,7 @@ export default function TripDetail() {
       )}
 
       {/* Plan Tab */}
-      {activeTab === 'plan' && (
+      {activeTab === 'builder' && (
         <>
           {trip.flights.length === 0 ? (
             <div style={{
@@ -774,42 +773,46 @@ export default function TripDetail() {
               </button>
             </div>
           ) : (
-            <TripPlanner
-              legs={trip.legs}
-              flights={trip.flights}
-              travelers={trip.travelers || 1}
-              onSave={handleSavePlan}
-              onChangeTier={handleChangeTier}
-            />
+            <>
+              <TripPlanner
+                legs={trip.legs}
+                flights={trip.flights}
+                travelers={trip.travelers || 1}
+                onSave={handleSavePlan}
+                onChangeTier={handleChangeTier}
+              />
+
+              <div style={{
+                marginTop: 24, paddingTop: 24,
+                borderTop: '1px solid var(--border)',
+              }}>
+                <OptimizerPanel trip={trip} wallet={wallet} onSaveStrategy={(strategy: BookingStrategy) => {
+                  const assignments: Record<string, string[]> = {}
+                  strategy.bookings.forEach(b => {
+                    const key = String(b.legIndex)
+                    if (!assignments[key]) assignments[key] = []
+                    if (b.flightId && !assignments[key].includes(b.flightId)) {
+                      assignments[key].push(b.flightId)
+                    }
+                  })
+                  const itinerary = {
+                    id: crypto.randomUUID(),
+                    name: strategy.name,
+                    createdAt: new Date().toISOString(),
+                    assignments,
+                    totals: { cash: strategy.totalCash / (trip.travelers || 1), points: strategy.totalPoints / (trip.travelers || 1), fees: 0 },
+                    travelers: trip.travelers || 1,
+                  }
+                  const updatedTrip = { ...trip }
+                  if (!updatedTrip.itineraries) updatedTrip.itineraries = []
+                  updatedTrip.itineraries.push(itinerary)
+                  saveTrip(updatedTrip)
+                  setActiveTab('itineraries')
+                }} />
+              </div>
+            </>
           )}
         </>
-      )}
-
-      {/* Optimize Tab */}
-      {activeTab === 'optimize' && (
-        <OptimizerPanel trip={trip} wallet={wallet} onSaveStrategy={(strategy: BookingStrategy) => {
-          const assignments: Record<string, string[]> = {}
-          strategy.bookings.forEach(b => {
-            const key = String(b.legIndex)
-            if (!assignments[key]) assignments[key] = []
-            if (b.flightId && !assignments[key].includes(b.flightId)) {
-              assignments[key].push(b.flightId)
-            }
-          })
-          const itinerary = {
-            id: crypto.randomUUID(),
-            name: strategy.name,
-            createdAt: new Date().toISOString(),
-            assignments,
-            totals: { cash: strategy.totalCash, points: strategy.totalPoints, fees: 0 },
-            travelers: trip.travelers || 1,
-          }
-          const updatedTrip = { ...trip }
-          if (!updatedTrip.itineraries) updatedTrip.itineraries = []
-          updatedTrip.itineraries.push(itinerary)
-          saveTrip(updatedTrip)
-          setActiveTab('itineraries')
-        }} />
       )}
 
       {/* Itineraries Tab */}
@@ -824,9 +827,9 @@ export default function TripDetail() {
             }}>
               <div style={{ fontSize: 32, marginBottom: 8 }}>📑</div>
               <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 4 }}>No saved itineraries yet</p>
-              <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 16 }}>Go to Plan, assign flights to legs, and save.</p>
+              <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 16 }}>Go to Builder, assign flights to legs, and save.</p>
               <button
-                onClick={() => setActiveTab('plan')}
+                onClick={() => setActiveTab('builder')}
                 style={{
                   padding: '10px 24px', border: '1px solid var(--border)',
                   borderRadius: 'var(--radius-sm)', cursor: 'pointer',
@@ -834,7 +837,7 @@ export default function TripDetail() {
                   color: 'var(--text-secondary)',
                 }}
               >
-                Go to Plan →
+                Go to Builder →
               </button>
             </div>
           ) : (
@@ -1056,7 +1059,7 @@ function OptimizerPanel({ trip, wallet: walletProp, onSaveStrategy }: { trip: an
       }}>
         <div style={{ fontSize: 32, marginBottom: 8 }}>🤖</div>
         <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 4 }}>Assign flights to legs first</p>
-        <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>Go to the Plan tab, drag flights into legs, then come back to optimize.</p>
+        <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>Drag flights into legs above, then the optimizer will be ready to run.</p>
       </div>
     )
   }

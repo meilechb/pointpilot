@@ -611,7 +611,7 @@ function buildStrategy(
   }, 0)
 
   if (uncoveredLegs.length > 0) {
-    warnings.push(`${uncoveredLegs.length} leg(s) have no flights assigned yet — assign flights in the Plan tab first`)
+    warnings.push(`${uncoveredLegs.length} leg(s) have no flights assigned yet — assign flights to legs above first`)
   }
 
   return {
