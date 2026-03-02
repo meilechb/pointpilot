@@ -1,10 +1,13 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { usePathname } from 'next/navigation'
 import { useAuth } from '@/components/AuthProvider'
 
 export default function Nav() {
   const { user, loading, signOut } = useAuth()
+  const pathname = usePathname()
+  const loginHref = pathname && pathname !== '/' ? `/login?redirect=${encodeURIComponent(pathname)}` : '/login'
   const [menuOpen, setMenuOpen] = useState(false)
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -120,7 +123,7 @@ export default function Nav() {
               )}
             </div>
           ) : (
-            <a href="/login" style={{
+            <a href={loginHref} style={{
               color: 'var(--text-inverse)', fontSize: 14, fontWeight: 600,
               textDecoration: 'none', padding: '6px 16px', borderRadius: 6, marginLeft: 8,
               background: 'linear-gradient(135deg, var(--accent), #E8C36A)',
@@ -173,7 +176,7 @@ export default function Nav() {
             </button>
           </>
         ) : (
-          <a href="/login" style={{
+          <a href={loginHref} style={{
             ...mobileLinkStyle,
             color: 'var(--text-inverse)', fontWeight: 600,
             background: 'linear-gradient(135deg, var(--accent), #E8C36A)',

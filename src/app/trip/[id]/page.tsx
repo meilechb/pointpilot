@@ -251,7 +251,7 @@ export default function TripDetail() {
   }
 
   if (tripLoading) return (
-    <div style={{ maxWidth: 720, margin: '0 auto', padding: '24px 16px' }}>
+    <div style={{ maxWidth: 1100, margin: '0 auto', padding: '24px 16px' }}>
       {/* Skeleton header */}
       <div style={{
         backgroundColor: 'var(--bg-card)',
@@ -337,7 +337,7 @@ export default function TripDetail() {
   ]
 
   return (
-    <div style={{ maxWidth: 720, margin: '0 auto', padding: '24px 16px' }}>
+    <div style={{ maxWidth: 1100, margin: '0 auto', padding: '24px 16px' }}>
       {/* Header */}
       {!isEditing ? (
         <div style={{
@@ -773,19 +773,18 @@ export default function TripDetail() {
               </button>
             </div>
           ) : (
-            <>
-              <TripPlanner
-                legs={trip.legs}
-                flights={trip.flights}
-                travelers={trip.travelers || 1}
-                onSave={handleSavePlan}
-                onChangeTier={handleChangeTier}
-              />
+            <div className="builder-layout">
+              <div style={{ flex: '1 1 55%', minWidth: 0 }}>
+                <TripPlanner
+                  legs={trip.legs}
+                  flights={trip.flights}
+                  travelers={trip.travelers || 1}
+                  onSave={handleSavePlan}
+                  onChangeTier={handleChangeTier}
+                />
+              </div>
 
-              <div style={{
-                marginTop: 24, paddingTop: 24,
-                borderTop: '1px solid var(--border)',
-              }}>
+              <div style={{ flex: '1 1 45%', minWidth: 0 }}>
                 <OptimizerPanel trip={trip} wallet={wallet} onSaveStrategy={(strategy: BookingStrategy) => {
                   const assignments: Record<string, string[]> = {}
                   strategy.bookings.forEach(b => {
@@ -810,7 +809,7 @@ export default function TripDetail() {
                   setActiveTab('itineraries')
                 }} />
               </div>
-            </>
+            </div>
           )}
         </>
       )}

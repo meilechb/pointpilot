@@ -380,6 +380,18 @@ html, body {
   margin-bottom: 10px;
 }
 
+/* ── Builder tab side-by-side ── */
+.builder-layout {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+}
+@media (max-width: 900px) {
+  .builder-layout {
+    flex-direction: column;
+  }
+}
+
 /* ── Mobile responsive ── */
 @media (max-width: 640px) {
   /* News */

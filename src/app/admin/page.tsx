@@ -249,12 +249,12 @@ export default function AdminPage() {
   }, [users, userSearch, userFilter, userSort])
 
   if (authLoading) {
-    return <div style={{ maxWidth: 800, margin: '0 auto', padding: '40px 20px', color: 'var(--text-muted)' }}>Loading...</div>
+    return <div style={{ maxWidth: 1000, margin: '0 auto', padding: '40px 20px', color: 'var(--text-muted)' }}>Loading...</div>
   }
 
   if (!user || user.email !== ADMIN_EMAIL) {
     return (
-      <div style={{ maxWidth: 800, margin: '0 auto', padding: '40px 20px', textAlign: 'center' }}>
+      <div style={{ maxWidth: 1000, margin: '0 auto', padding: '40px 20px', textAlign: 'center' }}>
         <p style={{ color: 'var(--text-muted)', marginBottom: 16 }}>
           {!user ? 'You need to sign in to access the admin panel.' : 'You do not have admin access.'}
         </p>
@@ -352,7 +352,7 @@ export default function AdminPage() {
   // ── Article editor view ──
   if (tab === 'articles' && articleView === 'editor') {
     return (
-      <div style={{ maxWidth: 800, margin: '0 auto', padding: '40px 20px' }}>
+      <div style={{ maxWidth: 1000, margin: '0 auto', padding: '40px 20px' }}>
         <button
           onClick={() => { resetArticleForm(); setArticleView('list') }}
           style={{ color: 'var(--text-muted)', fontSize: 13, fontWeight: 500, background: 'none', border: 'none', cursor: 'pointer', marginBottom: 20, padding: 0 }}
@@ -405,7 +405,7 @@ export default function AdminPage() {
   // ── Bonus editor view ──
   if (tab === 'bonuses' && bonusView === 'editor') {
     return (
-      <div style={{ maxWidth: 800, margin: '0 auto', padding: '40px 20px' }}>
+      <div style={{ maxWidth: 1000, margin: '0 auto', padding: '40px 20px' }}>
         <button
           onClick={() => { resetBonusForm(); setBonusView('list') }}
           style={{ color: 'var(--text-muted)', fontSize: 13, fontWeight: 500, background: 'none', border: 'none', cursor: 'pointer', marginBottom: 20, padding: 0 }}
@@ -481,7 +481,7 @@ export default function AdminPage() {
   ] as const
 
   return (
-    <div style={{ maxWidth: 800, margin: '0 auto', padding: '40px 20px' }}>
+    <div style={{ maxWidth: 1000, margin: '0 auto', padding: '40px 20px' }}>
       <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 20 }}>Admin Panel</h1>
 
       {/* Tabs */}
