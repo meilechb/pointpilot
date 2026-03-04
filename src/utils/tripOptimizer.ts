@@ -5,6 +5,34 @@
 import { transferPartners } from '@/data/transferPartners'
 import { bookingPortals, pointValuations, sweetSpots, findProgramByIata, findBookablePrograms } from '@/data/pointsKnowledge'
 
+// City-airport groups for matching flights to legs
+const CITY_AIRPORTS: Record<string, string[]> = {
+  NYC: ['JFK', 'EWR', 'LGA', 'SWF', 'ISP', 'HPN'],
+  LON: ['LHR', 'LGW', 'STN', 'LTN', 'LCY'],
+  PAR: ['CDG', 'ORY'], TYO: ['NRT', 'HND'], CHI: ['ORD', 'MDW'],
+  LAX: ['LAX', 'BUR', 'SNA', 'LGB', 'ONT'], SFO: ['SFO', 'OAK', 'SJC'],
+  WAS: ['DCA', 'IAD', 'BWI'], MIA: ['MIA', 'FLL', 'PBI'],
+  DFW: ['DFW', 'DAL'], HOU: ['IAH', 'HOU'], ROM: ['FCO', 'CIA'],
+  MIL: ['MXP', 'LIN'], BER: ['BER', 'TXL', 'SXF'], BJS: ['PEK', 'PKX'],
+  SHA: ['PVG', 'SHA'], SEL: ['ICN', 'GMP'], RIO: ['GIG', 'SDU'],
+  SAO: ['GRU', 'CGH', 'VCP'], MOW: ['SVO', 'DME', 'VKO'],
+  BKK: ['BKK', 'DMK'], IST: ['IST', 'SAW'], OSA: ['KIX', 'ITM'],
+  YTO: ['YYZ', 'YTZ'], YMQ: ['YUL', 'YMX'], MEL: ['MEL', 'AVV'],
+}
+const AIRPORT_TO_CITY: Record<string, string> = {}
+Object.entries(CITY_AIRPORTS).forEach(([city, airports]) => {
+  airports.forEach(a => { AIRPORT_TO_CITY[a] = city })
+})
+function airportsMatch(code1: string, code2: string): boolean {
+  if (code1 === code2) return true
+  const city1 = AIRPORT_TO_CITY[code1] || code1
+  const city2 = AIRPORT_TO_CITY[code2] || code2
+  if (city1 === city2) return true
+  if (CITY_AIRPORTS[code1]?.includes(code2)) return true
+  if (CITY_AIRPORTS[code2]?.includes(code1)) return true
+  return false
+}
+
 type WalletEntry = {
   id: string
   currency_type: 'bank_points' | 'airline_miles' | 'cashback' | 'cash'
@@ -384,9 +412,28 @@ export function optimizeTrip(
   wallet: WalletEntry[],
   travelers: number
 ): BookingStrategy[] {
+  // Auto-assign unassigned flights to matching legs by route
+  const assignedFlights = flights.map(f => {
+    if (f.legIndex !== null && f.legIndex !== undefined && f.legIndex >= 0) return f
+    const from = f.segments[0]?.departureAirport || ''
+    const to = f.segments[f.segments.length - 1]?.arrivalAirport || ''
+    for (let i = 0; i < legs.length; i++) {
+      if (airportsMatch(from, legs[i].from) && airportsMatch(to, legs[i].to)) {
+        return { ...f, legIndex: i }
+      }
+    }
+    // Partial match: origin or destination matches
+    for (let i = 0; i < legs.length; i++) {
+      if (airportsMatch(from, legs[i].from) || airportsMatch(to, legs[i].to)) {
+        return { ...f, legIndex: i }
+      }
+    }
+    return f
+  })
+
   // Group flights by leg
   const flightsByLeg: Record<number, Flight[]> = {}
-  for (const f of flights) {
+  for (const f of assignedFlights) {
     const idx = f.legIndex ?? -1
     if (!flightsByLeg[idx]) flightsByLeg[idx] = []
     flightsByLeg[idx].push(f)

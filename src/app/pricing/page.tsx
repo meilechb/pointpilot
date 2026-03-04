@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useState } from 'react'
+import { Suspense, useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useAuth } from '@/components/AuthProvider'
 
@@ -17,9 +17,23 @@ function PricingContent() {
   const searchParams = useSearchParams()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [isPro, setIsPro] = useState(false)
 
   const expectedEmail = searchParams.get('email')
   const wrongAccount = expectedEmail && user && user.email !== expectedEmail
+
+  // Check if user already has Pro subscription
+  useEffect(() => {
+    if (!session) return
+    fetch('/api/subscription', {
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (data.plan === 'pro') setIsPro(true)
+      })
+      .catch(() => {})
+  }, [session])
 
   const handleUpgrade = async () => {
     if (!user || !session) {
@@ -244,22 +258,44 @@ function PricingContent() {
             </div>
           )}
 
-          <button
-            onClick={handleUpgrade}
-            disabled={loading}
-            style={{
-              width: '100%', padding: '13px 20px',
-              background: 'linear-gradient(135deg, var(--primary), var(--primary-hover))',
-              color: 'white', border: 'none', borderRadius: 'var(--radius-sm)',
-              fontWeight: 600, fontSize: 15, cursor: loading ? 'default' : 'pointer',
-              opacity: loading ? 0.6 : 1,
-            }}
-          >
-            {loading ? 'Redirecting...' : user ? 'Get Pro Access' : 'Sign in to upgrade'}
-          </button>
-          <div style={{ textAlign: 'center', fontSize: 12, color: 'var(--text-muted)', marginTop: 8 }}>
-            Cancel anytime from your account
-          </div>
+          {isPro ? (
+            <>
+              <div
+                style={{
+                  width: '100%', padding: '13px 20px', textAlign: 'center',
+                  background: 'var(--success-bg, #ECFDF5)', color: 'var(--success, #059669)',
+                  border: '1.5px solid var(--success, #059669)', borderRadius: 'var(--radius-sm)',
+                  fontWeight: 600, fontSize: 15,
+                }}
+              >
+                You have Pro
+              </div>
+              <div style={{ textAlign: 'center', fontSize: 12, color: 'var(--text-muted)', marginTop: 8 }}>
+                <a href="/account" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>
+                  Manage your subscription
+                </a>
+              </div>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={handleUpgrade}
+                disabled={loading}
+                style={{
+                  width: '100%', padding: '13px 20px',
+                  background: 'linear-gradient(135deg, var(--primary), var(--primary-hover))',
+                  color: 'white', border: 'none', borderRadius: 'var(--radius-sm)',
+                  fontWeight: 600, fontSize: 15, cursor: loading ? 'default' : 'pointer',
+                  opacity: loading ? 0.6 : 1,
+                }}
+              >
+                {loading ? 'Redirecting...' : user ? 'Get Pro Access' : 'Sign in to upgrade'}
+              </button>
+              <div style={{ textAlign: 'center', fontSize: 12, color: 'var(--text-muted)', marginTop: 8 }}>
+                Cancel anytime from your account
+              </div>
+            </>
+          )}
         </div>
       </div>
 

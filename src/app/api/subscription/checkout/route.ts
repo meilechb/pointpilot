@@ -31,9 +31,17 @@ export async function POST(request: NextRequest) {
 
   const { data: sub } = await serviceSupabase
     .from('subscriptions')
-    .select('stripe_customer_id')
+    .select('stripe_customer_id, status, plan, current_period_end')
     .eq('user_id', user.id)
     .single()
+
+  // Block checkout if user already has an active Pro subscription
+  const isPro = sub && (sub.status === 'active' || sub.status === 'past_due') && sub.plan === 'pro'
+  const isCanceledButActive = sub?.status === 'canceled' && sub?.plan === 'pro' &&
+    sub?.current_period_end && new Date(sub.current_period_end) > new Date()
+  if (isPro || isCanceledButActive) {
+    return NextResponse.json({ error: 'You already have an active Pro subscription' }, { status: 400 })
+  }
 
   let customerId = sub?.stripe_customer_id
 
