@@ -86,7 +86,7 @@ function PricingContent() {
           from any search results page and lets you save them to your trips instantly.
         </p>
         <a
-          href="https://chromewebstore.google.com"
+          href="https://chromewebstore.google.com/detail/point-tripper-%E2%80%93-add-fligh/ddiknjcbiedmmcbhgamdbeljcafljapi"
           target="_blank"
           rel="noopener noreferrer"
           style={{
@@ -181,7 +181,7 @@ function PricingContent() {
           </div>
 
           <a
-            href="https://chromewebstore.google.com"
+            href="https://chromewebstore.google.com/detail/point-tripper-%E2%80%93-add-fligh/ddiknjcbiedmmcbhgamdbeljcafljapi"
             target="_blank"
             rel="noopener noreferrer"
             style={{
@@ -277,7 +277,7 @@ function PricingContent() {
           Download the Chrome extension and sign in to start scanning flights.
         </div>
         <a
-          href="https://chromewebstore.google.com"
+          href="https://chromewebstore.google.com/detail/point-tripper-%E2%80%93-add-fligh/ddiknjcbiedmmcbhgamdbeljcafljapi"
           target="_blank"
           rel="noopener noreferrer"
           style={{
