@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { transferPartners, findProgramsForPartner } from '@/data/transferPartners'
 import { airlineMilesPrograms } from '@/data/programOptions'
+import { partnerBookingRules, airlinePrograms, pointValuations } from '@/data/pointsKnowledge'
 import type { TransferPartner } from '@/data/transferPartners'
 
 type WalletEntry = {
@@ -75,7 +76,7 @@ function getAlliance(programName: string): string | null {
 export default function WalletCard({ entry, bonuses, onEdit, onDelete }: Props) {
   const [showPopup, setShowPopup] = useState(false)
   const colors = typeColors[entry.currency_type]
-  const hasTransferInfo = entry.currency_type === 'bank_points' || entry.currency_type === 'airline_miles'
+  const hasTransferInfo = entry.currency_type === 'bank_points'
 
   const relevantBonuses = bonuses.filter(b => {
     if (entry.currency_type === 'bank_points') return b.bank_program === entry.program
@@ -160,7 +161,7 @@ export default function WalletCard({ entry, bonuses, onEdit, onDelete }: Props) 
                 padding: '4px 14px', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer',
                 background: 'linear-gradient(135deg, var(--primary), var(--primary-hover))',
                 fontSize: 13, fontWeight: 600, color: 'var(--text-inverse)', marginLeft: 'auto',
-              }}>Transfer Partners</button>
+              }}>{entry.currency_type === 'airline_miles' ? 'How to Use' : 'Transfer Partners'}</button>
             )}
           </div>
         </div>
@@ -218,7 +219,7 @@ function TransferPopup({ entry, bonuses, onClose }: {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
               <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: 'var(--primary)', marginBottom: 4 }}>
-                Transfer Partners
+                {entry.currency_type === 'airline_miles' ? 'How to Use' : 'Transfer Partners'}
               </div>
               <div style={{ fontSize: 20, fontWeight: 700 }}>{entry.program}</div>
               <div style={{ fontSize: 14, color: 'var(--text-secondary)', marginTop: 2 }}>
@@ -334,23 +335,100 @@ function AirlineMilesPopup({ sources, airlineName, bonuses, alliance, balance }:
   sources: { program: { id: string; name: string }; partner: TransferPartner }[]
   airlineName: string; bonuses: Bonus[]; alliance: string | null; balance: number
 }) {
+  // Find booking rules for this airline program
+  const bookingRule = partnerBookingRules.find(r =>
+    r.programName.toLowerCase() === airlineName.toLowerCase()
+  )
+
+  // Find valuation info
+  const valuation = pointValuations.find(v =>
+    v.program.toLowerCase() === airlineName.toLowerCase() ||
+    airlineName.toLowerCase().includes(v.program.toLowerCase().split(' ')[0])
+  )
+
+  // Map IATA codes to airline names for the bookable airlines list
+  const bookableAirlines = bookingRule?.canBookOn.map(iata => {
+    const prog = airlinePrograms.find(p => p.iataCode === iata)
+    return prog ? { iata, name: prog.airline, alliance: prog.alliance } : { iata, name: iata, alliance: 'none' as const }
+  }) || []
+
   return (
     <>
-      {alliance && alliance !== 'Non-alliance' && (
+      {/* Valuation + tips */}
+      {valuation && (
         <div style={{
           padding: '12px 14px', marginBottom: 16, backgroundColor: 'var(--primary-light)',
           borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)',
         }}>
-          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--primary)', marginBottom: 2 }}>{alliance} Member</div>
-          <div style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--primary)' }}>Point Value</div>
+            <span style={{
+              fontSize: 13, fontWeight: 700, color: 'var(--primary)',
+              backgroundColor: 'var(--bg-card)', padding: '2px 10px', borderRadius: 10,
+            }}>~{valuation.centsPerPoint} cpp</span>
+          </div>
+          <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+            {valuation.notes}
+          </div>
+          <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>
+            Sweet spot range: {valuation.sweetSpotRange[0]}-{valuation.sweetSpotRange[1]} cpp
+          </div>
+        </div>
+      )}
+
+      {/* Alliance info */}
+      {alliance && alliance !== 'Non-alliance' && (
+        <div style={{
+          padding: '12px 14px', marginBottom: 16, backgroundColor: '#F0F9FF',
+          borderRadius: 'var(--radius-sm)', border: '1px solid #BAE6FD',
+        }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: '#0369A1', marginBottom: 2 }}>{alliance} Member</div>
+          <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
             Book flights on any {alliance} partner airline with your {airlineName.split(' ')[0]} miles.
           </div>
         </div>
       )}
 
+      {/* Bookable airlines */}
+      {bookableAirlines.length > 0 && (
+        <>
+          <SectionHeader>Book Flights On ({bookableAirlines.length} airlines)</SectionHeader>
+          {bookingRule?.notes && (
+            <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 10, lineHeight: 1.5 }}>
+              {bookingRule.notes}
+            </div>
+          )}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 16 }}>
+            {bookableAirlines.map(a => (
+              <span key={a.iata} style={{
+                padding: '5px 10px', fontSize: 13,
+                backgroundColor: 'var(--bg)', border: '1px solid var(--border-light)',
+                borderRadius: 'var(--radius-sm)', whiteSpace: 'nowrap',
+              }}>
+                <span style={{ fontWeight: 600 }}>{a.iata}</span>
+                <span style={{ color: 'var(--text-muted)', marginLeft: 4 }}>{a.name}</span>
+              </span>
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* Need more miles? Show bank transfer sources */}
+      {sources.length > 0 && (
+        <>
+          <SectionHeader>Need More Miles? Transfer From</SectionHeader>
+          {sources.map(({ program, partner }) => {
+            const bonus = bonuses.find(b => b.bank_program === program.name)
+            return <PartnerRow key={program.id} name={program.name} ratio={partner.ratio}
+              bonus={bonus} partnerPoints={0} icon="💳" />
+          })}
+        </>
+      )}
+
+      {/* Active bonuses */}
       {bonuses.length > 0 && (
-        <div style={{ marginBottom: 16 }}>
-          <SectionHeader>Active Bonuses</SectionHeader>
+        <div style={{ marginTop: 12 }}>
+          <SectionHeader>Active Transfer Bonuses</SectionHeader>
           {bonuses.map(bonus => {
             const source = sources.find(s => s.program.name === bonus.bank_program)
             if (!source) return null
@@ -359,22 +437,9 @@ function AirlineMilesPopup({ sources, airlineName, bonuses, alliance, balance }:
         </div>
       )}
 
-      {sources.length > 0 ? (
-        <>
-          <SectionHeader>Transfer from Bank Points ({sources.length})</SectionHeader>
-          {sources.map(({ program, partner }) => {
-            const bonus = bonuses.find(b => b.bank_program === program.name)
-            const partnerPoints = Math.floor((balance * partner.ratio[1]) / partner.ratio[0])
-            return <PartnerRow key={program.id} name={program.name} ratio={partner.ratio}
-              bonus={bonus} partnerPoints={partnerPoints} icon="💳" />
-          })}
-        </>
-      ) : (
+      {sources.length === 0 && bookableAirlines.length === 0 && (
         <div style={{ padding: 16, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
-          No bank programs transfer directly to {airlineName}.
-          {alliance && alliance !== 'Non-alliance' && (
-            <div style={{ marginTop: 6 }}>Tip: Look for other {alliance} airlines that are bank transfer partners.</div>
-          )}
+          No detailed info available for {airlineName}. Use these miles to book directly on their website.
         </div>
       )}
     </>
