@@ -509,3 +509,63 @@ html, body {
     flex: 1 1 calc(50% - 3px) !important;
   }
 }
+
+/* Article HTML body styles */
+.article-html {
+  font-size: 17px;
+  line-height: 1.8;
+  color: var(--text);
+}
+.article-html h2 {
+  font-size: 24px;
+  font-weight: 700;
+  margin: 32px 0 12px;
+  color: var(--text);
+}
+.article-html h3 {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 24px 0 10px;
+  color: var(--text);
+}
+.article-html p {
+  margin-bottom: 20px;
+}
+.article-html ul, .article-html ol {
+  margin-bottom: 20px;
+  padding-left: 24px;
+}
+.article-html li {
+  margin-bottom: 8px;
+}
+.article-html a {
+  color: var(--primary);
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.article-html a:hover {
+  color: var(--primary-hover);
+}
+.article-html strong {
+  font-weight: 700;
+}
+.article-html blockquote {
+  border-left: 3px solid var(--primary);
+  padding: 12px 20px;
+  margin: 20px 0;
+  background: var(--bg-accent);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  font-style: italic;
+  color: var(--text-secondary);
+}
+.article-html img {
+  max-width: 100%;
+  border-radius: var(--radius);
+  margin: 20px 0;
+}
+.article-html hr {
+  border: none;
+  border-top: 1px solid var(--border-light);
+  margin: 28px 0;
+}
