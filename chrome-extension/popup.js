@@ -16,8 +16,6 @@ let state = {
   trips: [],
   selectedTripId: null,
   error: null,
-  debugInfo: null,
-  lastDebug: null,
   saving: false,
   analyzeProgress: 0, // 0-100 for progress bar
   hasMorePayloads: false, // true if network payloads available for deeper scan
@@ -61,12 +59,79 @@ async function login(email, password) {
   return data
 }
 
+async function loginWithGoogle() {
+  const redirectUrl = chrome.identity.getRedirectURL()
+  const authUrl = `${SUPABASE_URL}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(redirectUrl)}`
+
+  try {
+    const responseUrl = await new Promise((resolve, reject) => {
+      chrome.identity.launchWebAuthFlow(
+        { url: authUrl, interactive: true },
+        (callbackUrl) => {
+          if (chrome.runtime.lastError) {
+            reject(new Error(chrome.runtime.lastError.message))
+          } else {
+            resolve(callbackUrl)
+          }
+        }
+      )
+    })
+
+    // Supabase returns tokens in the URL fragment: #access_token=...&refresh_token=...
+    const hashParams = new URLSearchParams(responseUrl.split('#')[1] || '')
+    const access_token = hashParams.get('access_token')
+    const refresh_token = hashParams.get('refresh_token')
+
+    if (!access_token) throw new Error('No access token received from Google sign-in')
+
+    // Get user email from token
+    const userRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+      headers: { Authorization: `Bearer ${access_token}`, apikey: SUPABASE_ANON_KEY },
+    })
+    const userData = await userRes.json()
+    const userEmail = userData.email || ''
+
+    await saveAuth(access_token, refresh_token, userEmail)
+    state.token = access_token
+    state.userEmail = userEmail
+    await goToFlights()
+  } catch (err) {
+    if (err.message?.includes('canceled') || err.message?.includes('user closed')) {
+      // User closed the popup, don't show error
+      return
+    }
+    setState({ error: err.message })
+  }
+}
+
 function logout() {
   chrome.storage.local.remove(['access_token', 'refresh_token', 'user_email'])
   setState({ token: null, userEmail: null, screen: 'login', error: null })
 }
 
-function handleAuthError() {
+async function refreshSession() {
+  const auth = await loadAuth()
+  if (!auth.refresh_token) return false
+  try {
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: SUPABASE_ANON_KEY },
+      body: JSON.stringify({ refresh_token: auth.refresh_token }),
+    })
+    if (!res.ok) return false
+    const data = await res.json()
+    await saveAuth(data.access_token, data.refresh_token, auth.user_email)
+    state.token = data.access_token
+    return true
+  } catch {
+    return false
+  }
+}
+
+async function handleAuthError() {
+  // Try refreshing before forcing logout
+  const refreshed = await refreshSession()
+  if (refreshed) return
   chrome.storage.local.remove(['access_token', 'refresh_token', 'user_email'])
   setState({ token: null, userEmail: null, screen: 'login', error: 'Session expired. Please sign in again.' })
 }
@@ -201,9 +266,6 @@ async function parseFlightsWithAI(payloads, pageUrl) {
     throw new Error(`API error ${res.status}: ${body.substring(0, 200)}`)
   }
   const data = await res.json()
-  if (data.debug) {
-    setState({ lastDebug: data.debug })
-  }
   if (data.error && (!data.flights || data.flights.length === 0)) {
     throw new Error(data.error)
   }
@@ -439,6 +501,18 @@ function renderLogin() {
       </button>
     </div>
     <button class="btn" id="loginBtn">Sign In</button>
+    <div style="text-align:right;margin-top:-4px;margin-bottom:4px">
+      <a href="https://www.pointtripper.com/login" target="_blank" style="font-size:12px;color:#6b7280;text-decoration:none">Forgot password?</a>
+    </div>
+    <div class="divider-text"><span>or</span></div>
+    <button class="btn btn-google" id="googleBtn">
+      <svg width="18" height="18" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+      Continue with Google
+    </button>
+    <div style="text-align:center;margin-top:12px">
+      <span style="font-size:13px;color:#6b7280">Don't have an account? </span>
+      <a href="https://www.pointtripper.com/login" target="_blank" style="font-size:13px;color:#4338ca;font-weight:600;text-decoration:none">Sign up</a>
+    </div>
   `
 
   const emailInput = el.querySelector('#email')
@@ -479,6 +553,18 @@ function renderLogin() {
 
   loginBtn.addEventListener('click', doLogin)
   passwordInput.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin() })
+
+  el.querySelector('#googleBtn').addEventListener('click', async () => {
+    const btn = el.querySelector('#googleBtn')
+    btn.disabled = true
+    btn.innerHTML = '<span class="spinner"></span>Signing in...'
+    await loginWithGoogle()
+    if (state.screen === 'login') {
+      btn.disabled = false
+      btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg> Continue with Google`
+    }
+  })
+
   return el
 }
 
@@ -487,18 +573,17 @@ function renderFlightPicker() {
   const flights = state.flights
 
   if (flights.length === 0) {
-    const debug = state.lastDebug
     el.innerHTML = `
       <div class="empty-state">
         <div class="empty-icon">✈️</div>
         <div class="empty-title">No flights detected</div>
-        ${state.error ? `<div style="font-size:13px;color:#dc2626;margin-top:8px;word-break:break-all;text-align:left">${state.error}</div>` : ''}
-        ${debug ? `<div style="font-size:11px;color:#4b5563;margin-top:6px;text-align:left;word-break:break-all;white-space:pre-wrap"><b>AI sent ${debug.payloadCount || '?'} payloads (${(debug.sizes||[]).join(',')} chars)</b>&#10;<b>Said:</b> ${esc(debug.aiSaid || debug.geminiSaid || '(empty)')}&#10;<b>Sample:</b> ${esc(debug.payloadSample || '(none)')}</div>` : ''}
+        <div class="empty-sub">Make sure you're on a flight search results page, then try again.</div>
+        ${state.error ? `<div style="font-size:13px;color:#dc2626;margin-top:8px">${esc(state.error)}</div>` : ''}
         <button class="btn btn-secondary" id="retryBtn" style="margin-top:12px">Retry</button>
       </div>
     `
     el.querySelector('#retryBtn')?.addEventListener('click', () => {
-      setState({ error: null, lastDebug: null })
+      setState({ error: null })
       goToFlights()
     })
     return el
@@ -530,6 +615,7 @@ function renderFlightPicker() {
     const depTime = formatTime(f.departureTime)
     const arrTime = formatTime(f.arrivalTime)
 
+    const price = formatPrice(f)
     card.innerHTML = `
       <div class="flight-times">
         ${depTime ? `<span class="time-big">${depTime}</span>` : ''}
@@ -542,6 +628,7 @@ function renderFlightPicker() {
         <span class="flight-route-inline">${formatRoute(f)}</span>
         ${f.flightCode ? `<span>${f.flightCode}</span>` : ''}
         ${f.airlineName ? `<span>${f.airlineName}</span>` : ''}
+        ${price ? `<span class="badge">${price}</span>` : ''}
         ${isAdded ? `<span class="badge added-badge">Added</span>` : ''}
       </div>
     `
@@ -554,7 +641,7 @@ function renderFlightPicker() {
   // Rescan button — clears cache and re-analyzes the current tab
   el.querySelector('#rescanBtn')?.addEventListener('click', () => {
     chrome.runtime.sendMessage({ type: 'CLEAR_FLIGHTS' })
-    setState({ flights: [], error: null, lastDebug: null, hasMorePayloads: false, subscription: null })
+    setState({ flights: [], error: null, hasMorePayloads: false, subscription: null })
     goToFlights()
   })
 
@@ -742,8 +829,11 @@ function renderTripPicker() {
         <div class="empty-icon">🗺️</div>
         <div class="empty-title">No trips yet</div>
         <div class="empty-sub">Create a trip on Point Tripper first, then come back to add flights.</div>
+        <a href="https://www.pointtripper.com/trips" target="_blank" class="btn" style="margin-top:12px;text-decoration:none">Create a Trip</a>
+        <button class="btn btn-secondary" id="backFromTrips" style="margin-top:8px">← Back</button>
       </div>
     `
+    el.querySelector('#backFromTrips')?.addEventListener('click', () => setState({ screen: 'details', error: null }))
     return el
   }
 
@@ -925,7 +1015,7 @@ async function goToFlights(deepScan = false) {
     return
   }
 
-  setState({ screen: 'analyzing', analyzeProgress: 2, debugInfo: 'Reading page...' })
+  setState({ screen: 'analyzing', analyzeProgress: 2 })
 
   // Smooth progress animation: creeps slowly toward target, never quite reaching it
   let progressTarget = 8
@@ -946,25 +1036,25 @@ async function goToFlights(deepScan = false) {
   try {
     if (!tabId) {
       clearInterval(progressInterval)
-      setState({ flights: [], screen: 'flights', error: 'Debug: no active tab' })
+      setState({ flights: [], screen: 'flights', error: 'Could not access the current tab. Please try again.' })
       return
     }
 
     // Step 1: Read page text (fast — this is what the user sees)
     progressTarget = 12
-    setState({ screen: 'analyzing', debugInfo: 'Reading page text...' })
+    setState({ screen: 'analyzing' })
     let pageText = await readPageText(tabId)
 
     // Step 2: Check for network payloads
     progressTarget = 20
-    setState({ screen: 'analyzing', debugInfo: 'Checking intercepted data...' })
+    setState({ screen: 'analyzing' })
     const cachedPayloads = await loadRawPayloads()
     const pagePayloads = cachedPayloads.length > 0 ? cachedPayloads : await readPagePayloads(tabId)
 
     // If page text is too short and no network data, wait for SPA
     if (pageText.length < 3000 && pagePayloads.length === 0) {
       progressTarget = 30
-      setState({ screen: 'analyzing', debugInfo: 'Waiting for page to load...' })
+      setState({ screen: 'analyzing' })
       await sleep(2000)
       pageText = await readPageText(tabId)
     }
@@ -972,43 +1062,35 @@ async function goToFlights(deepScan = false) {
     // Strategy: send page text only for fast initial scan
     // If deepScan requested, also include network payloads
     let payloads = []
-    let debugSource = ''
     let hasMore = false
 
     if (deepScan && pagePayloads.length > 0) {
-      // Deep scan: send network payloads + page text
       payloads = pagePayloads
-      debugSource = `network(${pagePayloads.length})`
       if (pageText.length > 500) {
         payloads = [...payloads, { payload: pageText }]
-        debugSource += `+page`
       }
     } else {
-      // Fast scan: page text only (much smaller, faster AI response)
       if (pageText.length > 500) {
         payloads = [{ payload: pageText }]
-        debugSource = `pagetext(${pageText.length}ch)`
         hasMore = pagePayloads.length > 0
       } else if (pagePayloads.length > 0) {
-        // No page text, use network payloads
         payloads = pagePayloads
-        debugSource = `network(${pagePayloads.length})`
       }
     }
 
     if (payloads.length === 0) {
       clearInterval(progressInterval)
-      setState({ flights: [], screen: 'flights', error: `Debug: no data (tabId=${tabId})` })
+      setState({ flights: [], screen: 'flights', error: 'No flight data found on this page. Try searching for flights first.' })
       return
     }
 
     progressTarget = 70
-    setState({ screen: 'analyzing', debugInfo: `Analyzing flight data...` })
+    setState({ screen: 'analyzing' })
 
     const aiFlights = await parseFlightsWithAI(payloads, pageUrl)
 
     clearInterval(progressInterval)
-    setState({ screen: 'analyzing', analyzeProgress: 100, debugInfo: 'Done!' })
+    setState({ screen: 'analyzing', analyzeProgress: 100 })
 
     if (aiFlights.length > 0) {
       storeFlights(aiFlights)
@@ -1018,7 +1100,7 @@ async function goToFlights(deepScan = false) {
       flights: aiFlights,
       screen: 'flights',
       hasMorePayloads: hasMore && aiFlights.length > 0,
-      error: aiFlights.length === 0 ? `Debug: AI returned 0 flights (source: ${debugSource})` : null,
+      error: aiFlights.length === 0 ? 'No flights found. Try filtering or scrolling through results on the booking site.' : null,
     })
   } catch (err) {
     clearInterval(progressInterval)
