@@ -227,6 +227,44 @@ select:focus { border-color: #4338ca; }
 
 .divider { height: 1px; background: #e0e0f0; margin: 12px 0; }
 
+/* Divider with text */
+.divider-text {
+  display: flex;
+  align-items: center;
+  margin: 16px 0;
+}
+.divider-text::before, .divider-text::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #e0e0f0;
+}
+.divider-text span {
+  padding: 0 12px;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+/* Google button */
+.btn-google {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 11px;
+  background: white;
+  color: #374151;
+  border: 1.5px solid #e0e0f0;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.btn-google:hover { border-color: #4338ca; box-shadow: 0 0 0 2px rgba(67,56,202,0.08); }
+.btn-google:disabled { opacity: 0.5; cursor: default; }
+
 .segment-summary {
   background: #f5f3ff;
   border-radius: 8px;
