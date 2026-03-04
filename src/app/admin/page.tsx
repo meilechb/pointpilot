@@ -12,6 +12,7 @@ type Article = {
   title: string
   summary: string
   body: string
+  body_format: 'text' | 'html'
   published: boolean
   created_at: string
 }
@@ -114,6 +115,7 @@ export default function AdminPage() {
   const [slugManual, setSlugManual] = useState(false)
   const [summary, setSummary] = useState('')
   const [body, setBody] = useState('')
+  const [bodyFormat, setBodyFormat] = useState<'text' | 'html'>('text')
   const [published, setPublished] = useState(false)
   const [savingArticle, setSavingArticle] = useState(false)
 
@@ -272,7 +274,7 @@ export default function AdminPage() {
   // ── Article helpers ──
   const resetArticleForm = () => {
     setTitle(''); setSlug(''); setSlugManual(false)
-    setSummary(''); setBody(''); setPublished(false)
+    setSummary(''); setBody(''); setBodyFormat('text'); setPublished(false)
     setEditingArticleId(null)
   }
 
@@ -280,15 +282,15 @@ export default function AdminPage() {
 
   const startEditArticle = (a: Article) => {
     setTitle(a.title); setSlug(a.slug); setSlugManual(true)
-    setSummary(a.summary); setBody(a.body); setPublished(a.published)
-    setEditingArticleId(a.id); setArticleView('editor')
+    setSummary(a.summary); setBody(a.body); setBodyFormat(a.body_format || 'text')
+    setPublished(a.published); setEditingArticleId(a.id); setArticleView('editor')
   }
 
   const handleSaveArticle = async () => {
     if (!title || !slug || !summary || !body) return
     setSavingArticle(true)
     const data = {
-      title, slug, summary, body, published,
+      title, slug, summary, body, body_format: bodyFormat, published,
       category: 'news', tags: [],
       updated_at: new Date().toISOString(),
     }
@@ -375,8 +377,45 @@ export default function AdminPage() {
           <label style={fieldLabel}>Summary (1-2 sentences for preview)</label>
           <textarea value={summary} onChange={(e) => setSummary(e.target.value)} placeholder="Brief description shown on the news listing" rows={2} style={{ marginBottom: 14, resize: 'vertical' }} />
 
-          <label style={fieldLabel}>Body (separate paragraphs with blank lines)</label>
-          <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder={"Write your article here...\n\nSeparate paragraphs with blank lines."} rows={14} style={{ marginBottom: 14, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.6 }} />
+          <label style={fieldLabel}>Body Format</label>
+          <div style={{ display: 'flex', gap: 0, marginBottom: 14, border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', overflow: 'hidden', width: 'fit-content' }}>
+            {(['text', 'html'] as const).map(fmt => (
+              <button key={fmt} onClick={() => setBodyFormat(fmt)} style={{
+                padding: '7px 18px', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600,
+                backgroundColor: bodyFormat === fmt ? 'var(--primary)' : 'var(--bg-card)',
+                color: bodyFormat === fmt ? 'var(--text-inverse)' : 'var(--text-secondary)',
+                transition: 'all 0.15s',
+              }}>
+                {fmt === 'text' ? 'Plain Text' : 'HTML'}
+              </button>
+            ))}
+          </div>
+
+          <label style={fieldLabel}>
+            {bodyFormat === 'html' ? 'Body (HTML — use tags like <h2>, <p>, <ul>, <strong>, <a>, etc.)' : 'Body (separate paragraphs with blank lines)'}
+          </label>
+          <textarea
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            placeholder={bodyFormat === 'html'
+              ? '<h2>Section Title</h2>\n<p>Your paragraph here with <strong>bold</strong> and <a href="...">links</a>.</p>\n<ul>\n  <li>List item</li>\n</ul>'
+              : 'Write your article here...\n\nSeparate paragraphs with blank lines.'}
+            rows={14}
+            style={{ marginBottom: 14, resize: 'vertical', fontFamily: bodyFormat === 'html' ? 'monospace' : 'inherit', lineHeight: 1.6, fontSize: bodyFormat === 'html' ? 13 : 14 }}
+          />
+
+          {bodyFormat === 'html' && body && (
+            <div style={{ marginBottom: 14 }}>
+              <label style={fieldLabel}>Preview</label>
+              <div style={{
+                padding: '20px 24px', backgroundColor: 'var(--bg-accent)', borderRadius: 'var(--radius-sm)',
+                border: '1px solid var(--border-light)', fontSize: 16, lineHeight: 1.7, color: 'var(--text)',
+                maxHeight: 300, overflowY: 'auto',
+              }}>
+                <div dangerouslySetInnerHTML={{ __html: body }} />
+              </div>
+            </div>
+          )}
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20, padding: '12px 14px', backgroundColor: 'var(--bg-accent)', borderRadius: 'var(--radius-sm)' }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14, fontWeight: 500 }}>

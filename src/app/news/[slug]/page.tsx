@@ -9,6 +9,7 @@ type Article = {
   title: string
   summary: string
   body: string
+  body_format?: 'text' | 'html'
   created_at: string
 }
 
@@ -54,7 +55,8 @@ export default function ArticlePage() {
     )
   }
 
-  const paragraphs = article.body.split('\n\n').filter(p => p.trim())
+  const isHtml = article.body_format === 'html'
+  const paragraphs = isHtml ? [] : article.body.split('\n\n').filter(p => p.trim())
 
   return (
     <div>
@@ -102,14 +104,21 @@ export default function ArticlePage() {
           position: 'relative',
           zIndex: 1,
         }}>
-          {paragraphs.map((paragraph, i) => (
-            <p key={i} style={{
-              fontSize: 17, lineHeight: 1.8, color: 'var(--text)',
-              marginBottom: 22,
-            }}>
-              {paragraph}
-            </p>
-          ))}
+          {isHtml ? (
+            <div
+              className="article-html"
+              dangerouslySetInnerHTML={{ __html: article.body }}
+            />
+          ) : (
+            paragraphs.map((paragraph, i) => (
+              <p key={i} style={{
+                fontSize: 17, lineHeight: 1.8, color: 'var(--text)',
+                marginBottom: 22,
+              }}>
+                {paragraph}
+              </p>
+            ))
+          )}
         </div>
 
         {/* Bottom nav */}
