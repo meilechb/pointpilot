@@ -6,6 +6,7 @@ import SavePrompt from '@/components/SavePrompt'
 import ProgramSelect from '@/components/ProgramSelect'
 import WalletCard from '@/components/WalletCard'
 import { bankPointPrograms, airlineMilesPrograms, cashbackPrograms } from '@/data/programOptions'
+import { pointValuations } from '@/data/pointsKnowledge'
 import { createClient } from '@/lib/supabase'
 import { loadWallet, saveWalletEntry, deleteWalletEntry, saveAllWalletEntries } from '@/lib/dataService'
 
@@ -41,6 +42,13 @@ const typeIcons: Record<string, string> = {
   cash: '💵',
 }
 
+const typeOrder: Record<string, number> = {
+  bank_points: 0,
+  airline_miles: 1,
+  cashback: 2,
+  cash: 3,
+}
+
 
 export default function WalletPage() {
   const { user } = useAuth()
@@ -56,6 +64,13 @@ export default function WalletPage() {
   const [savePromptTrigger, setSavePromptTrigger] = useState<'flight' | 'plan' | 'trip' | 'wallet' | null>(null)
   const [bonuses, setBonuses] = useState<Bonus[]>([])
   const [loading, setLoading] = useState(true)
+
+  // Filter, sort, search, view state
+  const [filterType, setFilterType] = useState<'all' | WalletEntry['currency_type']>('all')
+  const [sortBy, setSortBy] = useState<'default' | 'balance' | 'type' | 'program'>('default')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [viewMode, setViewMode] = useState<'list' | 'grouped'>('list')
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     loadWallet().then(saved => { setEntries(saved); setLoading(false) }).catch(() => { setLoading(false) })
@@ -89,6 +104,18 @@ export default function WalletPage() {
   }
 
   const handleSave = () => {
+    // Duplicate detection
+    const duplicate = entries.find(e =>
+      e.program.toLowerCase() === program.toLowerCase() &&
+      e.currency_type === currencyType &&
+      e.id !== editingId
+    )
+    if (duplicate) {
+      if (!confirm(`You already have "${duplicate.program}" with ${duplicate.balance.toLocaleString()} points. Add another entry anyway?`)) {
+        return
+      }
+    }
+
     const entry: WalletEntry = {
       id: editingId || crypto.randomUUID(),
       currency_type: currencyType,
@@ -133,8 +160,57 @@ export default function WalletPage() {
     cash: 'e.g. Travel budget',
   }
 
+  // Derived data
   const totalPoints = entries.filter(e => e.currency_type !== 'cash').reduce((s, e) => s + e.balance, 0)
   const totalCash = entries.filter(e => e.currency_type === 'cash').reduce((s, e) => s + e.balance, 0)
+
+  // Portfolio value estimate
+  const estimatedValue = entries.reduce((total, entry) => {
+    if (entry.currency_type === 'cash') return total + entry.balance
+    if (entry.currency_type === 'cashback' && entry.redemption_value) {
+      return total + (entry.balance * entry.redemption_value / 100)
+    }
+    const valuation = pointValuations.find(v =>
+      v.program.toLowerCase() === entry.program.toLowerCase() ||
+      entry.program.toLowerCase().includes(v.program.toLowerCase().split(' ')[0])
+    )
+    if (valuation) return total + (entry.balance * valuation.centsPerPoint / 100)
+    return total
+  }, 0)
+
+  // Filter + search
+  const filteredEntries = entries.filter(e => {
+    if (filterType !== 'all' && e.currency_type !== filterType) return false
+    if (searchQuery && !e.program.toLowerCase().includes(searchQuery.toLowerCase())) return false
+    return true
+  })
+
+  // Sort
+  const displayEntries = [...filteredEntries].sort((a, b) => {
+    if (sortBy === 'balance') return b.balance - a.balance
+    if (sortBy === 'type') return (typeOrder[a.currency_type] ?? 9) - (typeOrder[b.currency_type] ?? 9)
+    if (sortBy === 'program') return a.program.localeCompare(b.program)
+    return 0
+  })
+
+  const toggleGroup = (type: string) => {
+    const next = new Set(collapsedGroups)
+    next.has(type) ? next.delete(type) : next.add(type)
+    setCollapsedGroups(next)
+  }
+
+  const renderEntry = (entry: WalletEntry) => {
+    if (editingId === entry.id && showForm) return null
+    return (
+      <WalletCard
+        key={entry.id}
+        entry={entry}
+        bonuses={bonuses}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+      />
+    )
+  }
 
   return (
     <div style={{ maxWidth: 600, margin: '0 auto', padding: '40px 20px' }}>
@@ -147,9 +223,9 @@ export default function WalletPage() {
 
       {/* Summary cards */}
       {entries.length > 0 && (
-        <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
+        <div style={{ display: 'flex', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>
           <div style={{
-            flex: 1, padding: '16px 18px',
+            flex: 1, minWidth: 140, padding: '16px 18px',
             backgroundColor: 'var(--bg-card)',
             borderRadius: 'var(--radius)',
             boxShadow: 'var(--shadow-sm)',
@@ -160,7 +236,7 @@ export default function WalletPage() {
           </div>
           {totalCash > 0 && (
             <div style={{
-              flex: 1, padding: '16px 18px',
+              flex: 1, minWidth: 140, padding: '16px 18px',
               backgroundColor: 'var(--bg-card)',
               borderRadius: 'var(--radius)',
               boxShadow: 'var(--shadow-sm)',
@@ -170,6 +246,100 @@ export default function WalletPage() {
               <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--success)' }}>${totalCash.toLocaleString()}</div>
             </div>
           )}
+          {estimatedValue > 0 && (
+            <div style={{
+              flex: 1, minWidth: 140, padding: '16px 18px',
+              backgroundColor: 'var(--bg-card)',
+              borderRadius: 'var(--radius)',
+              boxShadow: 'var(--shadow-sm)',
+              border: '1px solid var(--border-light)',
+            }}>
+              <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-muted)', marginBottom: 4 }}>Est. Portfolio Value</div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: '#B8860B' }}>~${Math.round(estimatedValue).toLocaleString()}</div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Based on avg cpp valuations</div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Filter chips + toolbar */}
+      {entries.length > 1 && (
+        <div style={{ marginBottom: 16 }}>
+          {/* Type filter chips */}
+          <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
+            {(['all', 'bank_points', 'airline_miles', 'cashback', 'cash'] as const).map(type => {
+              const count = type === 'all' ? entries.length : entries.filter(e => e.currency_type === type).length
+              if (type !== 'all' && count === 0) return null
+              const icon = type === 'all' ? '' : typeIcons[type]
+              const label = type === 'all' ? 'All' : typeLabels[type]
+              const isActive = filterType === type
+              return (
+                <button
+                  key={type}
+                  onClick={() => setFilterType(type)}
+                  style={{
+                    padding: '5px 12px',
+                    border: isActive ? '1.5px solid var(--primary)' : '1px solid var(--border)',
+                    borderRadius: 20,
+                    backgroundColor: isActive ? 'var(--primary-light)' : 'var(--bg-card)',
+                    cursor: 'pointer',
+                    fontWeight: isActive ? 600 : 400,
+                    fontSize: 13,
+                    color: isActive ? 'var(--primary)' : 'var(--text-secondary)',
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  {icon}{icon ? ' ' : ''}{label} ({count})
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Search + sort + view toggle */}
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <input
+              type="text"
+              placeholder="Search programs..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{
+                flex: 1, minWidth: 140, padding: '7px 12px', fontSize: 13,
+                border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)',
+                backgroundColor: 'var(--bg-card)', color: 'var(--text)',
+                outline: 'none',
+              }}
+            />
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+              style={{
+                padding: '7px 10px', fontSize: 13, border: '1px solid var(--border)',
+                borderRadius: 'var(--radius-sm)', backgroundColor: 'var(--bg-card)',
+                color: 'var(--text-secondary)', cursor: 'pointer',
+              }}
+            >
+              <option value="default">Sort: Default</option>
+              <option value="balance">Balance (High→Low)</option>
+              <option value="type">Type</option>
+              <option value="program">Program (A-Z)</option>
+            </select>
+            <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', overflow: 'hidden' }}>
+              {(['list', 'grouped'] as const).map(mode => (
+                <button
+                  key={mode}
+                  onClick={() => setViewMode(mode)}
+                  style={{
+                    padding: '6px 12px', border: 'none', cursor: 'pointer',
+                    fontSize: 13, fontWeight: viewMode === mode ? 600 : 400,
+                    backgroundColor: viewMode === mode ? 'var(--primary-light)' : 'var(--bg-card)',
+                    color: viewMode === mode ? 'var(--primary)' : 'var(--text-muted)',
+                  }}
+                >
+                  {mode === 'list' ? 'List' : 'Grouped'}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 
@@ -229,18 +399,46 @@ export default function WalletPage() {
         </div>
       ) : null}
 
-      {entries.map(entry => {
-        if (editingId === entry.id && showForm) return null
-        return (
-          <WalletCard
-            key={entry.id}
-            entry={entry}
-            bonuses={bonuses}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-          />
+      {/* Entry list / grouped view */}
+      {!loading && entries.length > 0 && (
+        viewMode === 'grouped' ? (
+          (['bank_points', 'airline_miles', 'cashback', 'cash'] as const)
+            .filter(type => displayEntries.some(e => e.currency_type === type))
+            .map(type => {
+              const groupEntries = displayEntries.filter(e => e.currency_type === type)
+              const isCollapsed = collapsedGroups.has(type)
+              const groupBalance = groupEntries.reduce((s, e) => s + e.balance, 0)
+              return (
+                <div key={type} style={{ marginBottom: 12 }}>
+                  <button
+                    onClick={() => toggleGroup(type)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+                      padding: '8px 12px', border: 'none', background: 'none', cursor: 'pointer',
+                      fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)',
+                    }}
+                  >
+                    <span style={{ fontSize: 12 }}>{isCollapsed ? '▸' : '▾'}</span>
+                    <span>{typeIcons[type]} {typeLabels[type]}</span>
+                    <span style={{ fontSize: 13, fontWeight: 400, color: 'var(--text-muted)' }}>
+                      ({groupEntries.length}) — {type === 'cash' ? `$${groupBalance.toLocaleString()}` : `${groupBalance.toLocaleString()} pts`}
+                    </span>
+                  </button>
+                  {!isCollapsed && groupEntries.map(renderEntry)}
+                </div>
+              )
+            })
+        ) : (
+          displayEntries.map(renderEntry)
         )
-      })}
+      )}
+
+      {/* No results message */}
+      {!loading && entries.length > 0 && displayEntries.length === 0 && (
+        <div style={{ textAlign: 'center', padding: 24, color: 'var(--text-muted)', fontSize: 14 }}>
+          No entries match your filter.
+        </div>
+      )}
 
       {/* Form */}
       {showForm ? (
