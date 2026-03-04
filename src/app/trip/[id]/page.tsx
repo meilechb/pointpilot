@@ -1017,7 +1017,6 @@ function OptimizerPanel({ trip, wallet: walletProp, onSaveStrategy }: { trip: an
   const wallet = walletProp
   const hasWallet = wallet.length > 0
   const hasFlights = trip.flights.length > 0
-  const hasAssignedFlights = trip.flights.some((f: any) => f.legIndex !== null && f.legIndex !== undefined)
 
   const runOptimizer = () => {
     setLoading(true)
@@ -1044,21 +1043,6 @@ function OptimizerPanel({ trip, wallet: walletProp, onSaveStrategy }: { trip: an
         <div style={{ fontSize: 32, marginBottom: 8 }}>🤖</div>
         <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 4 }}>Add flights first to optimize your booking</p>
         <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>The optimizer analyzes your flights and wallet to find the best way to book.</p>
-      </div>
-    )
-  }
-
-  if (!hasAssignedFlights) {
-    return (
-      <div style={{
-        textAlign: 'center', padding: 48,
-        backgroundColor: 'var(--bg-card)',
-        borderRadius: 'var(--radius)',
-        border: '1px dashed var(--border)',
-      }}>
-        <div style={{ fontSize: 32, marginBottom: 8 }}>🤖</div>
-        <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 4 }}>Assign flights to legs first</p>
-        <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>Drag flights into legs above, then the optimizer will be ready to run.</p>
       </div>
     )
   }
