@@ -15,6 +15,12 @@ type Article = {
   body_format: 'text' | 'html'
   published: boolean
   created_at: string
+  meta_title: string | null
+  meta_description: string | null
+  og_image: string | null
+  canonical_url: string | null
+  keywords: string | null
+  noindex: boolean
 }
 
 type Bonus = {
@@ -118,6 +124,12 @@ export default function AdminPage() {
   const [bodyFormat, setBodyFormat] = useState<'text' | 'html'>('text')
   const [published, setPublished] = useState(false)
   const [savingArticle, setSavingArticle] = useState(false)
+  const [metaTitle, setMetaTitle] = useState('')
+  const [metaDescription, setMetaDescription] = useState('')
+  const [ogImage, setOgImage] = useState('')
+  const [canonicalUrl, setCanonicalUrl] = useState('')
+  const [keywords, setKeywords] = useState('')
+  const [noindex, setNoindex] = useState(false)
 
   // Bonuses state
   const [bonuses, setBonuses] = useState<Bonus[]>([])
@@ -275,6 +287,8 @@ export default function AdminPage() {
   const resetArticleForm = () => {
     setTitle(''); setSlug(''); setSlugManual(false)
     setSummary(''); setBody(''); setBodyFormat('text'); setPublished(false)
+    setMetaTitle(''); setMetaDescription(''); setOgImage('')
+    setCanonicalUrl(''); setKeywords(''); setNoindex(false)
     setEditingArticleId(null)
   }
 
@@ -283,7 +297,11 @@ export default function AdminPage() {
   const startEditArticle = (a: Article) => {
     setTitle(a.title); setSlug(a.slug); setSlugManual(true)
     setSummary(a.summary); setBody(a.body); setBodyFormat(a.body_format || 'text')
-    setPublished(a.published); setEditingArticleId(a.id); setArticleView('editor')
+    setPublished(a.published); setEditingArticleId(a.id)
+    setMetaTitle(a.meta_title || ''); setMetaDescription(a.meta_description || '')
+    setOgImage(a.og_image || ''); setCanonicalUrl(a.canonical_url || '')
+    setKeywords(a.keywords || ''); setNoindex(a.noindex || false)
+    setArticleView('editor')
   }
 
   const handleSaveArticle = async () => {
@@ -292,6 +310,12 @@ export default function AdminPage() {
     const data = {
       title, slug, summary, body, body_format: bodyFormat, published,
       category: 'news', tags: [],
+      meta_title: metaTitle || null,
+      meta_description: metaDescription || null,
+      og_image: ogImage || null,
+      canonical_url: canonicalUrl || null,
+      keywords: keywords || null,
+      noindex,
       updated_at: new Date().toISOString(),
     }
     if (editingArticleId) {
@@ -416,6 +440,33 @@ export default function AdminPage() {
               </div>
             </div>
           )}
+
+          {/* SEO Fields */}
+          <div style={{ marginBottom: 20, padding: '18px 18px 14px', backgroundColor: 'var(--bg-accent)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)' }}>
+            <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 14 }}>SEO Settings</p>
+
+            <label style={fieldLabel}>Meta Title <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(defaults to article title if empty)</span></label>
+            <input type="text" value={metaTitle} onChange={(e) => setMetaTitle(e.target.value)} placeholder={title || 'Custom page title for search engines'} style={{ marginBottom: 4 }} />
+            <div style={{ fontSize: 11, color: metaTitle.length > 60 ? 'var(--danger)' : 'var(--text-muted)', marginBottom: 14, textAlign: 'right' }}>{metaTitle.length}/60 characters</div>
+
+            <label style={fieldLabel}>Meta Description <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(defaults to summary if empty)</span></label>
+            <textarea value={metaDescription} onChange={(e) => setMetaDescription(e.target.value)} placeholder={summary || 'Description shown in search results'} rows={2} style={{ marginBottom: 4, resize: 'vertical' }} />
+            <div style={{ fontSize: 11, color: metaDescription.length > 160 ? 'var(--danger)' : 'var(--text-muted)', marginBottom: 14, textAlign: 'right' }}>{metaDescription.length}/160 characters</div>
+
+            <label style={fieldLabel}>Keywords <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(comma-separated)</span></label>
+            <input type="text" value={keywords} onChange={(e) => setKeywords(e.target.value)} placeholder="e.g. transfer bonus, chase points, airline miles" style={{ marginBottom: 14 }} />
+
+            <label style={fieldLabel}>OG Image URL <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(social sharing preview image)</span></label>
+            <input type="text" value={ogImage} onChange={(e) => setOgImage(e.target.value)} placeholder="https://example.com/image.jpg" style={{ marginBottom: 14 }} />
+
+            <label style={fieldLabel}>Canonical URL <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(only if content exists elsewhere)</span></label>
+            <input type="text" value={canonicalUrl} onChange={(e) => setCanonicalUrl(e.target.value)} placeholder="https://..." style={{ marginBottom: 14 }} />
+
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>
+              <input type="checkbox" checked={noindex} onChange={(e) => setNoindex(e.target.checked)} style={{ width: 16, height: 16, cursor: 'pointer' }} />
+              noindex — hide from search engines
+            </label>
+          </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20, padding: '12px 14px', backgroundColor: 'var(--bg-accent)', borderRadius: 'var(--radius-sm)' }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14, fontWeight: 500 }}>
