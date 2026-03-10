@@ -320,7 +320,7 @@ export default function Home() {
                 Get the extension
               </a>
               <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-                $4.99/mo &middot; Try free
+                Free
               </span>
             </div>
           </div>
@@ -424,11 +424,10 @@ export default function Home() {
           boxShadow: '0 1px 3px rgba(0,0,0,0.04)', border: '1px solid var(--border-light)', overflow: 'hidden',
         }}>
           {[
-            { q: 'Is it free?', a: 'The website is completely free. The Chrome extension is $4.99/mo with 1 free scan to try.' },
+            { q: 'Is it free?', a: 'Yes! Everything is free — the website, the Chrome extension, unlimited flight scans. No credit card required.' },
             { q: 'Do I need an account?', a: 'Not to start. Data saves locally. Create a free account to sync across devices.' },
             { q: 'Which programs are supported?', a: 'Chase, Amex, Citi, Capital One, Bilt, plus 90+ airline loyalty programs.' },
             { q: 'Do you book flights?', a: 'No. We tell you exactly how to book — you do it directly and keep full control.' },
-            { q: 'Can I cancel the extension?', a: 'Yes, anytime from your account page.' },
           ].map((item, i) => (
             <div key={i} style={{
               padding: '14px 20px',

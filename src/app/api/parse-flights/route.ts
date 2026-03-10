@@ -91,38 +91,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  // --- Scan limit check ---
-  const FREE_SCANS_PER_MONTH = 1
-
-  const { data: sub } = await supabase
-    .from('subscriptions')
-    .select('plan, status, current_period_end')
-    .eq('user_id', user.id)
-    .single()
-
-  const isPro = sub && (sub.status === 'active' || sub.status === 'past_due') && sub.plan === 'pro'
-  const isCanceledButActive = sub?.status === 'canceled' && sub?.plan === 'pro' && sub?.current_period_end && new Date(sub.current_period_end) > new Date()
-
-  if (!isPro && !isCanceledButActive) {
-    // Free user — check scan count this month
-    const now = new Date()
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
-
-    const { count } = await supabase
-      .from('scan_usage')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', user.id)
-      .gte('scanned_at', monthStart)
-
-    if ((count || 0) >= FREE_SCANS_PER_MONTH) {
-      return NextResponse.json({
-        flights: [],
-        error: 'scan_limit',
-        message: 'Free plan limit reached (1 scan/month). Upgrade to Pro for unlimited scans.',
-      })
-    }
-  }
-
   let body
   try { body = await request.json() } catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }) }
   const { payloads, url } = body as { payloads: string[], url: string }
