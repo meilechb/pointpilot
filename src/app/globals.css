@@ -392,6 +392,62 @@ html, body {
   }
 }
 
+/* ── Trip detail page layout ── */
+.trip-page-layout {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 24px 16px;
+  align-items: start;
+}
+.trip-page-editing {
+  grid-template-columns: 1fr;
+  max-width: 700px;
+}
+.trip-sidebar {
+  position: sticky;
+  top: 80px;
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-light);
+  overflow: hidden;
+}
+.trip-main {
+  min-width: 0;
+}
+.flights-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+.itineraries-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+}
+@media (max-width: 1100px) {
+  .trip-page-layout {
+    grid-template-columns: 260px 1fr;
+  }
+}
+@media (max-width: 900px) {
+  .trip-page-layout {
+    grid-template-columns: 1fr;
+  }
+  .trip-sidebar {
+    position: static;
+  }
+  .flights-grid {
+    grid-template-columns: 1fr;
+  }
+  .itineraries-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ── Mobile responsive ── */
 @media (max-width: 640px) {
   /* News */

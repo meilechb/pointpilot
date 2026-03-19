@@ -252,36 +252,27 @@ export default function TripDetail() {
   }
 
   if (tripLoading) return (
-    <div style={{ maxWidth: 1100, margin: '0 auto', padding: '24px 16px' }}>
-      {/* Skeleton header */}
-      <div style={{
-        backgroundColor: 'var(--bg-card)',
-        borderRadius: 'var(--radius-lg)',
-        border: '1px solid var(--border-light)',
-        padding: 28,
-        marginBottom: 20,
-        animation: 'pulse 1.5s ease-in-out infinite',
-      }}>
-        <div style={{ height: 24, width: '40%', backgroundColor: 'var(--border)', borderRadius: 6, marginBottom: 12 }} />
-        <div style={{ height: 16, width: '60%', backgroundColor: 'var(--border-light)', borderRadius: 6, marginBottom: 8 }} />
-        <div style={{ height: 16, width: '30%', backgroundColor: 'var(--border-light)', borderRadius: 6 }} />
+    <div className="trip-page-layout">
+      <div className="trip-sidebar" style={{ padding: 20, animation: 'pulse 1.5s ease-in-out infinite' }}>
+        <div style={{ height: 20, width: '80%', backgroundColor: 'var(--border)', borderRadius: 6, marginBottom: 16 }} />
+        <div style={{ height: 14, width: '60%', backgroundColor: 'var(--border-light)', borderRadius: 6, marginBottom: 8 }} />
+        <div style={{ height: 14, width: '50%', backgroundColor: 'var(--border-light)', borderRadius: 6, marginBottom: 8 }} />
+        <div style={{ height: 14, width: '70%', backgroundColor: 'var(--border-light)', borderRadius: 6 }} />
       </div>
-      {/* Skeleton tabs */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-        {[80, 60, 80, 100].map((w, i) => (
-          <div key={i} style={{ height: 36, width: w, backgroundColor: 'var(--border-light)', borderRadius: 'var(--radius-sm)' }} />
-        ))}
-      </div>
-      {/* Skeleton card */}
-      <div style={{
-        backgroundColor: 'var(--bg-card)',
-        borderRadius: 'var(--radius-lg)',
-        border: '1px solid var(--border-light)',
-        padding: 24,
-      }}>
-        <div style={{ height: 16, width: '50%', backgroundColor: 'var(--border)', borderRadius: 6, marginBottom: 12 }} />
-        <div style={{ height: 16, width: '70%', backgroundColor: 'var(--border-light)', borderRadius: 6, marginBottom: 8 }} />
-        <div style={{ height: 16, width: '40%', backgroundColor: 'var(--border-light)', borderRadius: 6 }} />
+      <div className="trip-main">
+        <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+          {[80, 60, 80].map((w, i) => (
+            <div key={i} style={{ height: 36, width: w, backgroundColor: 'var(--border-light)', borderRadius: 'var(--radius-sm)' }} />
+          ))}
+        </div>
+        <div style={{
+          backgroundColor: 'var(--bg-card)', borderRadius: 'var(--radius-lg)',
+          border: '1px solid var(--border-light)', padding: 24,
+        }}>
+          <div style={{ height: 16, width: '50%', backgroundColor: 'var(--border)', borderRadius: 6, marginBottom: 12 }} />
+          <div style={{ height: 16, width: '70%', backgroundColor: 'var(--border-light)', borderRadius: 6, marginBottom: 8 }} />
+          <div style={{ height: 16, width: '40%', backgroundColor: 'var(--border-light)', borderRadius: 6 }} />
+        </div>
       </div>
       <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }`}</style>
     </div>
@@ -338,105 +329,128 @@ export default function TripDetail() {
   ]
 
   return (
-    <div style={{ maxWidth: 1100, margin: '0 auto', padding: '24px 16px' }}>
-      {/* Header */}
+    <div className={`trip-page-layout${isEditing ? ' trip-page-editing' : ''}`}>
+      {/* Sidebar */}
       {!isEditing ? (
-        <div style={{
-          backgroundColor: 'var(--bg-card)',
-          borderRadius: 'var(--radius-lg)',
-          boxShadow: 'var(--shadow-md)',
-          border: '1px solid var(--border-light)',
-          padding: 0,
-          marginBottom: 20,
-          overflow: 'hidden',
-        }}>
-          {/* Top banner with route visualization */}
+        <aside className="trip-sidebar">
+          {/* Gradient header */}
           <div style={{
             background: 'linear-gradient(135deg, var(--primary), var(--primary-hover))',
-            padding: '18px 24px',
+            padding: '18px 20px 14px',
             color: 'var(--text-inverse)',
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div>
-                <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 6, color: 'var(--text-inverse)' }}>
-                  {trip.tripName || 'Untitled Trip'}
-                </h1>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                  {trip.legs.map((leg: any, i: number) => (
-                    <span key={i} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span style={{ fontWeight: 600, fontSize: 15 }}>{getCityName(leg.from) || leg.from}</span>
-                      <span style={{ fontSize: 12, opacity: 0.7 }}>→</span>
-                      {i === trip.legs.length - 1 && (
-                        <span style={{ fontWeight: 600, fontSize: 15 }}>{getCityName(leg.to) || leg.to}</span>
-                      )}
-                    </span>
-                  ))}
-                </div>
-              </div>
-              <button
-                onClick={startEditing}
-                style={{
-                  padding: '5px 14px', border: '1px solid rgba(255,255,255,0.3)',
-                  borderRadius: 'var(--radius-sm)', cursor: 'pointer',
-                  backgroundColor: 'rgba(255,255,255,0.15)', fontSize: 12, fontWeight: 600,
-                  color: 'var(--text-inverse)', transition: 'background-color 0.15s',
-                  flexShrink: 0,
-                }}
-                onMouseOver={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.25)' }}
-                onMouseOut={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.15)' }}
-              >
-                Edit
-              </button>
-            </div>
-          </div>
-
-          {/* Details row */}
-          <div style={{
-            padding: '14px 24px',
-            display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center',
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ fontSize: 14 }}>📅</span>
-              <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>
-                {formatShortDate(trip.departureDate)}
-                {trip.returnDate ? ` – ${formatShortDate(trip.returnDate)}` : ''}
-              </span>
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ fontSize: 14 }}>👤</span>
-              <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>
-                {trip.travelers} traveler{trip.travelers > 1 ? 's' : ''}
-              </span>
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-              {trip.legs.map((leg: any, i: number) => (
-                <span key={i} style={{
-                  padding: '2px 8px',
-                  backgroundColor: 'var(--primary-light)',
-                  borderRadius: 12,
-                  fontSize: 12,
-                  fontWeight: 600,
-                  color: 'var(--primary)',
-                }}>
-                  {leg.from} → {leg.to}
-                </span>
-              ))}
-            </div>
-
+            <h1 style={{ fontSize: 17, fontWeight: 700, marginBottom: 6, color: 'var(--text-inverse)', lineHeight: 1.3 }}>
+              {trip.tripName || 'Untitled Trip'}
+            </h1>
             {trip.tripType && (
               <span style={{
-                fontSize: 12, fontWeight: 500,
+                display: 'inline-block', fontSize: 11, fontWeight: 600,
                 padding: '2px 8px', borderRadius: 12,
-                backgroundColor: 'var(--bg)', color: 'var(--text-muted)',
-                border: '1px solid var(--border-light)',
+                backgroundColor: 'rgba(255,255,255,0.2)', color: 'var(--text-inverse)',
               }}>
                 {trip.tripType === 'oneway' ? 'One Way' : trip.tripType === 'multicity' ? 'Multi-City' : 'Round Trip'}
               </span>
             )}
           </div>
-        </div>
+
+          {/* Sidebar body */}
+          <div style={{ padding: '16px 20px' }}>
+            {/* Route timeline */}
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>
+                Route
+              </div>
+              {trip.legs.map((leg: any, i: number) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'stretch', gap: 10 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: 16, flexShrink: 0 }}>
+                    <div style={{
+                      width: 10, height: 10, borderRadius: '50%', flexShrink: 0,
+                      backgroundColor: 'var(--primary)', border: '2px solid var(--primary)',
+                    }} />
+                    <div style={{ width: 2, flex: 1, backgroundColor: 'var(--border)', margin: '2px 0' }} />
+                  </div>
+                  <div style={{ paddingBottom: 14 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
+                      {getCityName(leg.from) || leg.from}
+                    </div>
+                    <span style={{
+                      display: 'inline-block', marginTop: 2, padding: '1px 6px',
+                      backgroundColor: 'var(--primary-light)', borderRadius: 8,
+                      fontSize: 11, fontWeight: 600, color: 'var(--primary)',
+                    }}>
+                      {leg.from} &rarr; {leg.to}
+                    </span>
+                  </div>
+                </div>
+              ))}
+              {/* Final destination */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'center', width: 16, flexShrink: 0 }}>
+                  <div style={{
+                    width: 10, height: 10, borderRadius: '50%',
+                    backgroundColor: 'var(--primary)', border: '2px solid var(--primary)',
+                  }} />
+                </div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
+                  {getCityName(trip.legs[trip.legs.length - 1]?.to) || trip.legs[trip.legs.length - 1]?.to}
+                </div>
+              </div>
+            </div>
+
+            {/* Info rows */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 16, width: 20, textAlign: 'center' }}>&#128197;</span>
+                <div>
+                  <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Dates</div>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>
+                    {formatShortDate(trip.departureDate)}
+                    {trip.returnDate ? ` \u2013 ${formatShortDate(trip.returnDate)}` : ''}
+                    {!trip.departureDate && <span style={{ color: 'var(--text-muted)' }}>Not set</span>}
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 16, width: 20, textAlign: 'center' }}>&#128100;</span>
+                <div>
+                  <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Travelers</div>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>
+                    {trip.travelers} traveler{trip.travelers > 1 ? 's' : ''}
+                  </div>
+                </div>
+              </div>
+
+              {trip.flights.length > 0 && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: 16, width: 20, textAlign: 'center' }}>&#9992;&#65039;</span>
+                  <div>
+                    <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Flights</div>
+                    <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>
+                      {trip.flights.length} saved
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Edit button */}
+            <button
+              onClick={startEditing}
+              style={{
+                width: '100%', padding: '9px 0',
+                border: '1.5px solid var(--border)', borderRadius: 'var(--radius-sm)',
+                cursor: 'pointer', backgroundColor: 'var(--bg-card)',
+                fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)',
+                transition: 'all 0.15s',
+              }}
+              onMouseOver={(e) => { e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.color = 'var(--primary)' }}
+              onMouseOut={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-secondary)' }}
+            >
+              Edit Trip
+            </button>
+          </div>
+        </aside>
       ) : (
         <div style={{
           backgroundColor: 'var(--bg-card)',
@@ -623,6 +637,8 @@ export default function TripDetail() {
         </div>
       )}
 
+      {/* Main content */}
+      <main className="trip-main">
       {/* Tabs */}
       <div style={{
         display: 'flex', gap: 0,
@@ -699,11 +715,43 @@ export default function TripDetail() {
             </div>
           ) : (
             <>
+              {/* Summary bar */}
+              {trip.flights.length > 0 && !editingFlightId && (
+                <div style={{
+                  display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap',
+                  padding: '10px 16px', marginBottom: 14,
+                  backgroundColor: 'var(--bg-card)', borderRadius: 'var(--radius)',
+                  border: '1px solid var(--border-light)',
+                }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
+                    {trip.flights.length} flight{trip.flights.length !== 1 ? 's' : ''}
+                  </span>
+                  {(() => {
+                    const cashFlights = trip.flights.filter((f: any) => f.paymentType === 'cash' && f.cashAmount)
+                    const lowest = cashFlights.length > 0 ? Math.min(...cashFlights.map((f: any) => f.cashAmount)) : null
+                    return lowest !== null ? (
+                      <span style={{ fontSize: 13, color: 'var(--success)', fontWeight: 600 }}>
+                        From ${lowest.toLocaleString()}
+                      </span>
+                    ) : null
+                  })()}
+                  {(() => {
+                    const pointsFlights = trip.flights.filter((f: any) => f.paymentType === 'points' && f.pointsAmount)
+                    const lowest = pointsFlights.length > 0 ? Math.min(...pointsFlights.map((f: any) => f.pointsAmount)) : null
+                    return lowest !== null ? (
+                      <span style={{ fontSize: 13, color: 'var(--primary)', fontWeight: 600 }}>
+                        From {lowest.toLocaleString()} pts
+                      </span>
+                    ) : null
+                  })()}
+                </div>
+              )}
+
               {!editingFlightId && (
                 <button
                   onClick={() => setShowAddFlight(true)}
                   style={{
-                    width: '100%', padding: 14, marginBottom: 12,
+                    width: '100%', padding: 14, marginBottom: 14,
                     background: 'linear-gradient(135deg, var(--primary), var(--primary-hover))',
                     color: 'var(--text-inverse)',
                     border: 'none', borderRadius: 'var(--radius)',
@@ -718,24 +766,27 @@ export default function TripDetail() {
                 </button>
               )}
 
-              {trip.flights.map((flight: any) => (
-                <div key={flight.id} style={{ marginBottom: 10 }}>
-                  {editingFlightId === flight.id ? (
-                    <AddFlight
-                      legs={trip.legs}
-                      onSave={handleSaveFlight}
-                      onCancel={() => setEditingFlightId(null)}
-                      editingFlight={flight}
-                    />
-                  ) : (
-                    <FlightCard
-                      flight={flight}
-                      onEdit={() => { setEditingFlightId(flight.id); setShowAddFlight(false) }}
-                      onDelete={() => handleDeleteFlight(flight.id)}
-                    />
-                  )}
-                </div>
-              ))}
+              {/* Flight cards grid */}
+              <div className={trip.flights.length >= 4 && !editingFlightId ? 'flights-grid' : ''}>
+                {trip.flights.map((flight: any) => (
+                  <div key={flight.id} style={editingFlightId === flight.id ? { gridColumn: '1 / -1' } : {}}>
+                    {editingFlightId === flight.id ? (
+                      <AddFlight
+                        legs={trip.legs}
+                        onSave={handleSaveFlight}
+                        onCancel={() => setEditingFlightId(null)}
+                        editingFlight={flight}
+                      />
+                    ) : (
+                      <FlightCard
+                        flight={flight}
+                        onEdit={() => { setEditingFlightId(flight.id); setShowAddFlight(false) }}
+                        onDelete={() => handleDeleteFlight(flight.id)}
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
 
               {showAddFlight && (
                 <AddFlight
@@ -877,28 +928,42 @@ export default function TripDetail() {
                 />
               )}
 
+              {/* Summary */}
+              <div style={{
+                display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap',
+                padding: '10px 16px', marginBottom: 14,
+                backgroundColor: 'var(--bg-card)', borderRadius: 'var(--radius)',
+                border: '1px solid var(--border-light)',
+              }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
+                  {trip.itineraries.length} itinerar{trip.itineraries.length === 1 ? 'y' : 'ies'} saved
+                </span>
+              </div>
+
               {/* Itinerary cards */}
-              {trip.itineraries.map((itinerary: any) => (
-                <ItineraryCard
-                  key={itinerary.id}
-                  itinerary={itinerary}
-                  trip={trip}
-                  wallet={wallet}
-                  onDelete={() => handleDeleteItinerary(itinerary.id)}
-                  onRename={(name: string) => handleRenameItinerary(itinerary.id, name)}
-                  onPrint={() => printItinerary(itinerary, trip, wallet)}
-                  onEmail={() => { setEmailTarget(itinerary); setEmailAddress(''); setEmailSent(false) }}
-                  compareMode={showCompare}
-                  compareSelected={compareIds.includes(itinerary.id)}
-                  onCompareToggle={() => {
-                    setCompareIds(prev =>
-                      prev.includes(itinerary.id)
-                        ? prev.filter(id => id !== itinerary.id)
-                        : prev.length < 3 ? [...prev, itinerary.id] : prev
-                    )
-                  }}
-                />
-              ))}
+              <div className={trip.itineraries.length >= 2 && !showCompare ? 'itineraries-grid' : ''}>
+                {trip.itineraries.map((itinerary: any) => (
+                  <ItineraryCard
+                    key={itinerary.id}
+                    itinerary={itinerary}
+                    trip={trip}
+                    wallet={wallet}
+                    onDelete={() => handleDeleteItinerary(itinerary.id)}
+                    onRename={(name: string) => handleRenameItinerary(itinerary.id, name)}
+                    onPrint={() => printItinerary(itinerary, trip, wallet)}
+                    onEmail={() => { setEmailTarget(itinerary); setEmailAddress(''); setEmailSent(false) }}
+                    compareMode={showCompare}
+                    compareSelected={compareIds.includes(itinerary.id)}
+                    onCompareToggle={() => {
+                      setCompareIds(prev =>
+                        prev.includes(itinerary.id)
+                          ? prev.filter(id => id !== itinerary.id)
+                          : prev.length < 3 ? [...prev, itinerary.id] : prev
+                      )
+                    }}
+                  />
+                ))}
+              </div>
             </>
           )}
 
@@ -993,6 +1058,7 @@ export default function TripDetail() {
       )}
 
       <SavePrompt trigger={savePromptTrigger} />
+      </main>
     </div>
   )
 }
