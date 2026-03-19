@@ -62,6 +62,7 @@ export default function TripDetail() {
   const [emailAddress, setEmailAddress] = useState('')
   const [emailSending, setEmailSending] = useState(false)
   const [emailSent, setEmailSent] = useState(false)
+  const [manualPlannerOpen, setManualPlannerOpen] = useState(false)
 
   useEffect(() => {
     setTripLoading(true)
@@ -800,7 +801,7 @@ export default function TripDetail() {
         </>
       )}
 
-      {/* Plan Tab */}
+      {/* Builder Tab */}
       {activeTab === 'builder' && (
         <>
           {trip.flights.length === 0 ? (
@@ -810,7 +811,7 @@ export default function TripDetail() {
               borderRadius: 'var(--radius)',
               border: '1px dashed var(--border)',
             }}>
-              <div style={{ fontSize: 32, marginBottom: 8 }}>📋</div>
+              <div style={{ fontSize: 32, marginBottom: 8 }}>&#9992;&#65039;</div>
               <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 16 }}>Add some flights first</p>
               <button
                 onClick={() => setActiveTab('flights')}
@@ -821,33 +822,54 @@ export default function TripDetail() {
                   color: 'var(--text-secondary)',
                 }}
               >
-                Go to Flights →
+                Go to Flights &rarr;
               </button>
             </div>
           ) : (
-            <div className="builder-layout">
-              <div style={{ flex: '1 1 55%', minWidth: 0 }}>
-                <TripPlanner
-                  legs={trip.legs}
-                  flights={trip.flights}
-                  travelers={trip.travelers || 1}
-                  onSave={handleSavePlan}
-                  onChangeTier={handleChangeTier}
-                />
-              </div>
+            <div>
+              {/* AI Builder — full width hero */}
+              <ItineraryBuilder
+                trip={trip}
+                session={session}
+                onSaveItinerary={({ itinerary, updatedFlights }: { itinerary: any; updatedFlights: any[] }) => {
+                  const updatedTrip = { ...trip, flights: updatedFlights }
+                  if (!updatedTrip.itineraries) updatedTrip.itineraries = []
+                  updatedTrip.itineraries.push(itinerary)
+                  saveTrip(updatedTrip)
+                  setActiveTab('itineraries')
+                }}
+              />
 
-              <div style={{ flex: '1 1 45%', minWidth: 0 }}>
-                <ItineraryBuilder
-                  trip={trip}
-                  session={session}
-                  onSaveItinerary={({ itinerary, updatedFlights }: { itinerary: any; updatedFlights: any[] }) => {
-                    const updatedTrip = { ...trip, flights: updatedFlights }
-                    if (!updatedTrip.itineraries) updatedTrip.itineraries = []
-                    updatedTrip.itineraries.push(itinerary)
-                    saveTrip(updatedTrip)
-                    setActiveTab('itineraries')
-                  }}
-                />
+              {/* Manual Planner — collapsible section */}
+              <div>
+                <div
+                  className="builder-manual-header"
+                  onClick={() => setManualPlannerOpen(!manualPlannerOpen)}
+                >
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: 14 }}>Build Manually</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+                      Drag and drop flights into legs for full control
+                    </div>
+                  </div>
+                  <span style={{
+                    fontSize: 14, color: 'var(--text-muted)',
+                    transition: 'transform 0.2s',
+                    transform: manualPlannerOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                    display: 'inline-block',
+                  }}>&#9660;</span>
+                </div>
+                {manualPlannerOpen && (
+                  <div style={{ marginTop: 16 }}>
+                    <TripPlanner
+                      legs={trip.legs}
+                      flights={trip.flights}
+                      travelers={trip.travelers || 1}
+                      onSave={handleSavePlan}
+                      onChangeTier={handleChangeTier}
+                    />
+                  </div>
+                )}
               </div>
             </div>
           )}
