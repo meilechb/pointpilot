@@ -63,6 +63,7 @@ export default function TripDetail() {
   const [emailSending, setEmailSending] = useState(false)
   const [emailSent, setEmailSent] = useState(false)
   const [manualPlannerOpen, setManualPlannerOpen] = useState(false)
+  const [selectedItineraryId, setSelectedItineraryId] = useState<string | null>(null)
 
   useEffect(() => {
     setTripLoading(true)
@@ -877,7 +878,12 @@ export default function TripDetail() {
       )}
 
       {/* Itineraries Tab */}
-      {activeTab === 'itineraries' && (
+      {activeTab === 'itineraries' && (() => {
+        const selectedItinerary = trip.itineraries?.find((it: any) => it.id === selectedItineraryId) || null
+        const flightMap: Record<string, any> = {}
+        trip.flights?.forEach((f: any) => { flightMap[f.id] = f })
+
+        return (
         <>
           {(!trip.itineraries || trip.itineraries.length === 0) ? (
             <div style={{
@@ -886,7 +892,7 @@ export default function TripDetail() {
               borderRadius: 'var(--radius)',
               border: '1px dashed var(--border)',
             }}>
-              <div style={{ fontSize: 32, marginBottom: 8 }}>📑</div>
+              <div style={{ fontSize: 32, marginBottom: 8 }}>&#128209;</div>
               <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 4 }}>No saved itineraries yet</p>
               <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 16 }}>Go to Builder, assign flights to legs, and save.</p>
               <button
@@ -898,47 +904,45 @@ export default function TripDetail() {
                   color: 'var(--text-secondary)',
                 }}
               >
-                Go to Builder →
+                Go to Builder &rarr;
               </button>
             </div>
           ) : (
             <>
-              {/* Toolbar: Compare + bulk actions */}
-              {trip.itineraries.length >= 2 && (
-                <div style={{
-                  display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center',
-                }}>
-                  {!showCompare ? (
-                    <button
-                      onClick={() => { setShowCompare(true); setCompareIds([]) }}
-                      style={{
-                        padding: '8px 16px', border: '1px solid var(--primary)',
-                        borderRadius: 'var(--radius-sm)', cursor: 'pointer',
-                        backgroundColor: 'var(--primary-light)', fontSize: 13, fontWeight: 600,
-                        color: 'var(--primary)', transition: 'all 0.15s',
-                      }}
-                    >
-                      Compare Itineraries
-                    </button>
-                  ) : (
-                    <>
-                      <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-                        Select 2–3 itineraries to compare:
-                      </span>
-                      <button
-                        onClick={() => setShowCompare(false)}
-                        style={{
-                          padding: '6px 14px', border: '1px solid var(--border)',
-                          borderRadius: 'var(--radius-sm)', cursor: 'pointer',
-                          backgroundColor: 'var(--bg-card)', fontSize: 13, color: 'var(--text-muted)',
-                        }}
-                      >
-                        Cancel
-                      </button>
-                    </>
-                  )}
-                </div>
-              )}
+              {/* Toolbar */}
+              <div style={{
+                display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center',
+              }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
+                  {trip.itineraries.length} itinerar{trip.itineraries.length === 1 ? 'y' : 'ies'} saved
+                </span>
+                <div style={{ flex: 1 }} />
+                {trip.itineraries.length >= 2 && !showCompare && (
+                  <button
+                    onClick={() => { setShowCompare(true); setCompareIds([]); setSelectedItineraryId(null) }}
+                    style={{
+                      padding: '8px 16px', border: '1px solid var(--primary)',
+                      borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+                      backgroundColor: 'var(--primary-light)', fontSize: 13, fontWeight: 600,
+                      color: 'var(--primary)', transition: 'all 0.15s',
+                    }}
+                  >
+                    Compare
+                  </button>
+                )}
+                {showCompare && (
+                  <button
+                    onClick={() => setShowCompare(false)}
+                    style={{
+                      padding: '6px 14px', border: '1px solid var(--border)',
+                      borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+                      backgroundColor: 'var(--bg-card)', fontSize: 13, color: 'var(--text-muted)',
+                    }}
+                  >
+                    Cancel Compare
+                  </button>
+                )}
+              </div>
 
               {/* Compare view */}
               {showCompare && compareIds.length >= 2 && (
@@ -950,42 +954,122 @@ export default function TripDetail() {
                 />
               )}
 
-              {/* Summary */}
-              <div style={{
-                display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap',
-                padding: '10px 16px', marginBottom: 14,
-                backgroundColor: 'var(--bg-card)', borderRadius: 'var(--radius)',
-                border: '1px solid var(--border-light)',
-              }}>
-                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
-                  {trip.itineraries.length} itinerar{trip.itineraries.length === 1 ? 'y' : 'ies'} saved
-                </span>
-              </div>
+              {showCompare ? (
+                /* Compare mode: simple list with checkboxes */
+                <div style={{ marginTop: showCompare && compareIds.length >= 2 ? 14 : 0 }}>
+                  <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 10 }}>
+                    Select 2-3 itineraries to compare:
+                  </div>
+                  {trip.itineraries.map((itinerary: any) => (
+                    <ItineraryCard
+                      key={itinerary.id}
+                      itinerary={itinerary}
+                      trip={trip}
+                      wallet={wallet}
+                      onDelete={() => handleDeleteItinerary(itinerary.id)}
+                      onRename={(name: string) => handleRenameItinerary(itinerary.id, name)}
+                      onPrint={() => printItinerary(itinerary, trip, wallet)}
+                      onEmail={() => { setEmailTarget(itinerary); setEmailAddress(''); setEmailSent(false) }}
+                      compareMode={true}
+                      compareSelected={compareIds.includes(itinerary.id)}
+                      onCompareToggle={() => {
+                        setCompareIds(prev =>
+                          prev.includes(itinerary.id)
+                            ? prev.filter(id => id !== itinerary.id)
+                            : prev.length < 3 ? [...prev, itinerary.id] : prev
+                        )
+                      }}
+                    />
+                  ))}
+                </div>
+              ) : (
+                /* Normal mode: list + detail panel */
+                <div className="detail-split">
+                  {/* Left: compact itinerary list */}
+                  <div className="detail-split-list">
+                    {trip.itineraries.map((itinerary: any) => {
+                      const isSelected = selectedItineraryId === itinerary.id
+                      const totals = itinerary.totals || { cash: 0, points: 0, fees: 0 }
+                      const travelers = itinerary.travelers || 1
+                      const legCount = trip.legs?.length || 0
 
-              {/* Itinerary cards */}
-              <div className={trip.itineraries.length >= 2 && !showCompare ? 'itineraries-grid' : ''}>
-                {trip.itineraries.map((itinerary: any) => (
-                  <ItineraryCard
-                    key={itinerary.id}
-                    itinerary={itinerary}
-                    trip={trip}
-                    wallet={wallet}
-                    onDelete={() => handleDeleteItinerary(itinerary.id)}
-                    onRename={(name: string) => handleRenameItinerary(itinerary.id, name)}
-                    onPrint={() => printItinerary(itinerary, trip, wallet)}
-                    onEmail={() => { setEmailTarget(itinerary); setEmailAddress(''); setEmailSent(false) }}
-                    compareMode={showCompare}
-                    compareSelected={compareIds.includes(itinerary.id)}
-                    onCompareToggle={() => {
-                      setCompareIds(prev =>
-                        prev.includes(itinerary.id)
-                          ? prev.filter(id => id !== itinerary.id)
-                          : prev.length < 3 ? [...prev, itinerary.id] : prev
+                      return (
+                        <div
+                          key={itinerary.id}
+                          onClick={() => setSelectedItineraryId(isSelected ? null : itinerary.id)}
+                          style={{
+                            padding: '14px 16px',
+                            backgroundColor: isSelected ? 'var(--primary-light)' : 'var(--bg-card)',
+                            borderRadius: 'var(--radius)',
+                            border: isSelected ? '2px solid var(--primary)' : '1px solid var(--border-light)',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s',
+                          }}
+                        >
+                          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>{itinerary.name}</div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                              {legCount} leg{legCount !== 1 ? 's' : ''}
+                            </div>
+                            <div style={{ textAlign: 'right' }}>
+                              {totals.cash > 0 && (
+                                <div style={{ fontSize: 14, fontWeight: 700 }}>
+                                  ${(totals.cash * travelers).toLocaleString()}
+                                </div>
+                              )}
+                              {totals.points > 0 && (
+                                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--primary)' }}>
+                                  {(totals.points * travelers).toLocaleString()} pts
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          {/* Leg route chips */}
+                          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 6 }}>
+                            {trip.legs.map((leg: any, i: number) => (
+                              <span key={i} style={{
+                                fontSize: 11, padding: '2px 6px', borderRadius: 4,
+                                backgroundColor: isSelected ? 'white' : 'var(--bg)',
+                                color: 'var(--text-secondary)',
+                              }}>
+                                {leg.from}&rarr;{leg.to}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
                       )
-                    }}
-                  />
-                ))}
-              </div>
+                    })}
+                  </div>
+
+                  {/* Right: detail panel */}
+                  {selectedItinerary ? (
+                    <div className="detail-split-panel">
+                      <ItineraryDetailPanel
+                        itinerary={selectedItinerary}
+                        trip={trip}
+                        wallet={wallet}
+                        flightMap={flightMap}
+                        onDelete={() => { handleDeleteItinerary(selectedItinerary.id); setSelectedItineraryId(null) }}
+                        onRename={(name: string) => handleRenameItinerary(selectedItinerary.id, name)}
+                        onPrint={() => printItinerary(selectedItinerary, trip, wallet)}
+                        onEmail={() => { setEmailTarget(selectedItinerary); setEmailAddress(''); setEmailSent(false) }}
+                      />
+                    </div>
+                  ) : (
+                    <div style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      padding: 48,
+                      backgroundColor: 'var(--bg-card)',
+                      borderRadius: 'var(--radius-lg)',
+                      border: '1px dashed var(--border)',
+                      color: 'var(--text-muted)', fontSize: 14,
+                      minHeight: 200,
+                    }}>
+                      Select an itinerary to view details
+                    </div>
+                  )}
+                </div>
+              )}
             </>
           )}
 
@@ -1005,7 +1089,7 @@ export default function TripDetail() {
                 </div>
                 {emailSent ? (
                   <div style={{ textAlign: 'center', padding: 20 }}>
-                    <div style={{ fontSize: 28, marginBottom: 8 }}>✓</div>
+                    <div style={{ fontSize: 28, marginBottom: 8 }}>&#10003;</div>
                     <div style={{ fontWeight: 600, marginBottom: 4 }}>Email Sent!</div>
                     <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
                       The itinerary has been sent to {emailAddress}
@@ -1077,7 +1161,8 @@ export default function TripDetail() {
             </div>
           )}
         </>
-      )}
+        )
+      })()}
 
       <SavePrompt trigger={savePromptTrigger} />
       </main>
@@ -1823,6 +1908,328 @@ function CompareView({ itineraries, trip, wallet, onClose }: {
             })()}
           </React.Fragment>
         ))}
+      </div>
+    </div>
+  )
+}
+
+function ItineraryDetailPanel({ itinerary, trip, wallet, flightMap, onDelete, onRename, onPrint, onEmail }: {
+  itinerary: any
+  trip: any
+  wallet: any[]
+  flightMap: Record<string, any>
+  onDelete: () => void
+  onRename: (name: string) => void
+  onPrint: () => void
+  onEmail: () => void
+}) {
+  const [editing, setEditing] = useState(false)
+  const [name, setName] = useState(itinerary.name)
+
+  // Reset name when itinerary changes
+  React.useEffect(() => { setName(itinerary.name); setEditing(false) }, [itinerary.id, itinerary.name])
+
+  const travelers = itinerary.travelers || 1
+  const totals = itinerary.totals || { cash: 0, points: 0, fees: 0 }
+
+  const steps = analyzeItinerary(itinerary.assignments, trip.flights, wallet, travelers)
+  const hasShortfall = steps.some(s => s.type === 'shortfall')
+  const hasWallet = wallet.length > 0
+  const hasPointsFlights = steps.some(s => s.type !== 'cash')
+
+  const allFlights: any[] = []
+  trip.legs.forEach((_: any, i: number) => {
+    const ids = itinerary.assignments?.[i] || []
+    ids.forEach((id: string) => { if (flightMap[id]) allFlights.push(flightMap[id]) })
+  })
+  const totalStops = allFlights.reduce((sum: number, f: any) => sum + Math.max(0, (f.segments?.length || 1) - 1), 0)
+
+  const actionBtn: React.CSSProperties = {
+    padding: '7px 14px', border: '1px solid var(--border)',
+    borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+    backgroundColor: 'var(--bg-card)', fontSize: 13, color: 'var(--text-secondary)',
+    fontWeight: 500, transition: 'border-color 0.15s, background 0.15s',
+  }
+
+  return (
+    <div>
+      {/* Header */}
+      <div style={{
+        padding: '20px 20px 16px',
+        borderBottom: '1px solid var(--border-light)',
+      }}>
+        {editing ? (
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onBlur={() => { onRename(name); setEditing(false) }}
+            onKeyDown={(e) => { if (e.key === 'Enter') { onRename(name); setEditing(false) } }}
+            autoFocus
+            style={{ fontWeight: 700, fontSize: 18, padding: '2px 8px', width: '100%', border: '1.5px solid var(--primary)', borderRadius: 'var(--radius-sm)' }}
+          />
+        ) : (
+          <div style={{ fontWeight: 700, fontSize: 18, marginBottom: 4 }}>{itinerary.name}</div>
+        )}
+        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}>
+          Saved {new Date(itinerary.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+        </div>
+
+        {/* Price summary */}
+        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'baseline' }}>
+          {totals.cash > 0 && (
+            <span style={{ fontSize: 20, fontWeight: 800 }}>
+              ${(totals.cash * travelers).toLocaleString()}
+            </span>
+          )}
+          {totals.points > 0 && (
+            <span style={{ fontSize: 20, fontWeight: 800, color: 'var(--primary)' }}>
+              {(totals.points * travelers).toLocaleString()} pts
+            </span>
+          )}
+          {totals.fees > 0 && (
+            <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+              + ${(totals.fees * travelers).toLocaleString()} fees
+            </span>
+          )}
+        </div>
+
+        {/* Summary chips */}
+        <div style={{ display: 'flex', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
+          <span style={{
+            fontSize: 12, padding: '3px 10px', borderRadius: 12,
+            backgroundColor: 'var(--bg)', color: 'var(--text-secondary)', fontWeight: 500,
+          }}>
+            {trip.legs.length} leg{trip.legs.length !== 1 ? 's' : ''}
+          </span>
+          <span style={{
+            fontSize: 12, padding: '3px 10px', borderRadius: 12,
+            backgroundColor: totalStops === 0 ? 'var(--success-bg)' : 'var(--bg)',
+            color: totalStops === 0 ? 'var(--success)' : 'var(--text-secondary)', fontWeight: 500,
+          }}>
+            {totalStops === 0 ? 'All nonstop' : `${totalStops} stop${totalStops !== 1 ? 's' : ''} total`}
+          </span>
+          {travelers > 1 && (
+            <span style={{
+              fontSize: 12, padding: '3px 10px', borderRadius: 12,
+              backgroundColor: 'var(--bg)', color: 'var(--text-secondary)', fontWeight: 500,
+            }}>
+              {travelers} travelers
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Flights by leg */}
+      <div style={{ padding: '0 20px 20px' }}>
+        {trip.legs.map((leg: any, i: number) => {
+          const flightIds = itinerary.assignments?.[i] || []
+          const flights = flightIds.map((id: string) => flightMap[id]).filter(Boolean)
+
+          return (
+            <div key={i} style={{ marginTop: 18 }}>
+              <div style={{
+                fontSize: 12, fontWeight: 700, color: 'var(--text-muted)',
+                textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 10,
+                display: 'flex', alignItems: 'center', gap: 8,
+              }}>
+                <span style={{
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  width: 22, height: 22, borderRadius: '50%',
+                  backgroundColor: 'var(--primary-light)', color: 'var(--primary)',
+                  fontSize: 11, fontWeight: 700,
+                }}>{i + 1}</span>
+                {getCityName(leg.from)} ({leg.from}) &rarr; {getCityName(leg.to)} ({leg.to})
+              </div>
+              {flights.length === 0 ? (
+                <div style={{
+                  fontSize: 13, color: 'var(--text-muted)', padding: '12px 14px',
+                  backgroundColor: 'var(--bg)', borderRadius: 'var(--radius-sm)',
+                  border: '1px dashed var(--border)',
+                }}>
+                  No flights assigned
+                </div>
+              ) : (
+                flights.map((f: any) => {
+                  const segs = f.segments || []
+                  const firstSeg = segs[0] || {}
+                  const lastSeg = segs[segs.length - 1] || firstSeg
+                  const airline = firstSeg.airlineName || firstSeg.airline || ''
+                  const flightNum = firstSeg.flightNumber || firstSeg.flightCode || ''
+                  const depTime = formatTime(firstSeg.departureTime)
+                  const arrTime = formatTime(lastSeg.arrivalTime)
+                  const depDate = formatDate(firstSeg.date)
+                  const totalTime = calculateTotalTime(segs)
+                  const stopsLabel = getStopsLabel(segs)
+                  const layovers = calculateLayovers(segs)
+
+                  let priceDisplay = ''
+                  let priceColor = 'var(--text)'
+                  if (f.paymentType === 'cash' && f.cashAmount) {
+                    priceDisplay = `$${f.cashAmount.toLocaleString()}`
+                  } else if (f.paymentType === 'points' && f.pointsAmount) {
+                    priceDisplay = `${f.pointsAmount.toLocaleString()} pts`
+                    priceColor = 'var(--primary)'
+                  }
+
+                  return (
+                    <div key={f.id} style={{
+                      backgroundColor: 'var(--bg)', borderRadius: 'var(--radius)',
+                      border: '1px solid var(--border-light)', padding: '12px 14px',
+                      marginBottom: 6,
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: 14 }}>{airline} {flightNum}</div>
+                          {depDate && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>{depDate}</div>}
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <div style={{ fontWeight: 700, fontSize: 14, color: priceColor }}>{priceDisplay}</div>
+                          {f.paymentType === 'points' && f.feesAmount ? (
+                            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>+ ${f.feesAmount} fees</div>
+                          ) : null}
+                        </div>
+                      </div>
+                      {(depTime || arrTime) && (
+                        <div style={{
+                          display: 'flex', alignItems: 'center', gap: 10,
+                          padding: '6px 10px', backgroundColor: 'var(--bg-card)', borderRadius: 'var(--radius-sm)',
+                        }}>
+                          <div style={{ textAlign: 'center' }}>
+                            <div style={{ fontWeight: 700, fontSize: 14 }}>{depTime || '—'}</div>
+                            <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{firstSeg.departureAirport}</div>
+                          </div>
+                          <div style={{ flex: 1, textAlign: 'center' }}>
+                            <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{totalTime}</div>
+                            <div style={{ height: 1, backgroundColor: 'var(--border)', margin: '2px 4px' }} />
+                            <div style={{
+                              fontSize: 10, fontWeight: 500,
+                              color: stopsLabel === 'Nonstop' ? 'var(--success)' : 'var(--text-muted)',
+                            }}>{stopsLabel}</div>
+                          </div>
+                          <div style={{ textAlign: 'center' }}>
+                            <div style={{ fontWeight: 700, fontSize: 14 }}>{arrTime || '—'}</div>
+                            <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{lastSeg.arrivalAirport}</div>
+                          </div>
+                        </div>
+                      )}
+                      {layovers.length > 0 && (
+                        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 6 }}>
+                          {layovers.map((l, li) => (
+                            <span key={li} style={{ fontSize: 11, padding: '2px 6px', borderRadius: 8, backgroundColor: 'var(--warning-bg)', color: 'var(--warning)' }}>
+                              {l.duration} in {l.airport}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })
+              )}
+            </div>
+          )
+        })}
+
+        {/* Booking Steps */}
+        <div style={{
+          marginTop: 20, padding: 16,
+          backgroundColor: 'var(--bg)',
+          borderRadius: 'var(--radius)',
+          border: '1px solid var(--border-light)',
+        }}>
+          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 10 }}>
+            How to Book
+          </div>
+
+          {!hasWallet && hasPointsFlights && (
+            <div style={{
+              padding: '8px 12px', backgroundColor: 'var(--warning-bg)',
+              borderRadius: 'var(--radius-sm)', border: '1px solid #FDE68A',
+              fontSize: 12, color: 'var(--warning)', marginBottom: 10,
+            }}>
+              Add points balances in <strong>Wallet</strong> for personalized booking steps.
+            </div>
+          )}
+
+          {hasWallet && hasShortfall && (
+            <div style={{
+              padding: '8px 12px', backgroundColor: 'var(--danger-bg)',
+              borderRadius: 'var(--radius-sm)', border: '1px solid #FECACA',
+              fontSize: 12, color: 'var(--danger)', marginBottom: 10,
+            }}>
+              Not enough points. Consider switching some bookings to cash.
+            </div>
+          )}
+
+          {steps.map((step, i) => (
+            <div key={i} style={{
+              display: 'flex', gap: 10, marginBottom: 6,
+              padding: '8px 10px',
+              backgroundColor: 'var(--bg-card)',
+              borderRadius: 'var(--radius-sm)',
+              border: step.type === 'shortfall' ? '1px solid #FECACA' : '1px solid var(--border-light)',
+            }}>
+              <div style={{
+                width: 20, height: 20, borderRadius: '50%', flexShrink: 0,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 11, fontWeight: 700, marginTop: 1,
+                backgroundColor: step.type === 'shortfall' ? 'var(--danger-bg)'
+                  : step.type === 'cash' ? 'var(--success-bg)'
+                  : 'var(--primary-light)',
+                color: step.type === 'shortfall' ? 'var(--danger)'
+                  : step.type === 'cash' ? 'var(--success)'
+                  : 'var(--primary)',
+              }}>
+                {i + 1}
+              </div>
+              <div style={{ flex: 1, fontSize: 12 }}>
+                <div style={{ color: 'var(--text-muted)', marginBottom: 1 }}>{step.flightLabel}</div>
+                <div style={{ color: step.type === 'shortfall' ? 'var(--danger)' : 'var(--text)' }}>
+                  {step.message}
+                </div>
+              </div>
+            </div>
+          ))}
+
+          {steps.length === 0 && (
+            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>No flights in this plan.</div>
+          )}
+        </div>
+
+        {/* Per-person breakdown */}
+        {travelers > 1 && (
+          <div style={{
+            marginTop: 10, padding: '10px 14px',
+            backgroundColor: 'var(--bg)',
+            borderRadius: 'var(--radius-sm)',
+            fontSize: 12,
+            display: 'flex', gap: 16, flexWrap: 'wrap',
+          }}>
+            <div style={{ fontWeight: 600 }}>Total for {travelers}:</div>
+            {totals.cash > 0 && <div>${(totals.cash * travelers).toLocaleString()} <span style={{ color: 'var(--text-muted)' }}>(${totals.cash.toLocaleString()} pp)</span></div>}
+            {totals.points > 0 && <div style={{ color: 'var(--primary)' }}>{(totals.points * travelers).toLocaleString()} pts</div>}
+          </div>
+        )}
+
+        {/* Actions */}
+        <div style={{ display: 'flex', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
+          <button onClick={onPrint} style={actionBtn}
+            onMouseOver={(e) => e.currentTarget.style.borderColor = 'var(--primary)'}
+            onMouseOut={(e) => e.currentTarget.style.borderColor = 'var(--border)'}
+          >Print</button>
+          <button onClick={onEmail} style={actionBtn}
+            onMouseOver={(e) => e.currentTarget.style.borderColor = 'var(--primary)'}
+            onMouseOut={(e) => e.currentTarget.style.borderColor = 'var(--border)'}
+          >Email</button>
+          <button onClick={() => setEditing(true)} style={actionBtn}
+            onMouseOver={(e) => e.currentTarget.style.borderColor = 'var(--primary)'}
+            onMouseOut={(e) => e.currentTarget.style.borderColor = 'var(--border)'}
+          >Rename</button>
+          <div style={{ flex: 1 }} />
+          <button onClick={onDelete} style={{ ...actionBtn, color: 'var(--text-muted)' }}
+            onMouseOver={(e) => { e.currentTarget.style.color = 'var(--danger)'; e.currentTarget.style.borderColor = 'var(--danger)' }}
+            onMouseOut={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.borderColor = 'var(--border)' }}
+          >Delete</button>
+        </div>
       </div>
     </div>
   )

@@ -455,6 +455,28 @@ html, body {
   grid-template-columns: repeat(2, 1fr);
   gap: 14px;
 }
+.detail-split {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 16px;
+  align-items: start;
+}
+.detail-split-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.detail-split-panel {
+  position: sticky;
+  top: 80px;
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-light);
+  overflow: hidden;
+  max-height: calc(100vh - 100px);
+  overflow-y: auto;
+}
 @media (max-width: 1100px) {
   .trip-page-layout {
     grid-template-columns: 260px 1fr;
@@ -472,6 +494,13 @@ html, body {
   }
   .itineraries-grid {
     grid-template-columns: 1fr;
+  }
+  .detail-split {
+    grid-template-columns: 1fr;
+  }
+  .detail-split-panel {
+    position: static;
+    max-height: none;
   }
 }
 
