@@ -13,6 +13,7 @@ import CustomSelect from '@/components/CustomSelect'
 import { getCityName, calculateTotalTime, calculateFlyingTime, getStopsLabel, calculateLayovers, formatTime, formatDate } from '@/utils/airportUtils'
 import { analyzeItinerary } from '@/utils/bookingAnalyzer'
 import { optimizeTrip, getRelevantSweetSpots, type BookingStrategy } from '@/utils/tripOptimizer'
+import ItineraryBuilder from '@/components/ItineraryBuilder'
 import SavePrompt from '@/components/SavePrompt'
 import { loadTripById, saveTrip as saveTripRemote, loadWallet } from '@/lib/dataService'
 
@@ -785,29 +786,17 @@ export default function TripDetail() {
               </div>
 
               <div style={{ flex: '1 1 45%', minWidth: 0 }}>
-                <OptimizerPanel trip={trip} wallet={wallet} onSaveStrategy={(strategy: BookingStrategy) => {
-                  const assignments: Record<string, string[]> = {}
-                  strategy.bookings.forEach(b => {
-                    const key = String(b.legIndex)
-                    if (!assignments[key]) assignments[key] = []
-                    if (b.flightId && !assignments[key].includes(b.flightId)) {
-                      assignments[key].push(b.flightId)
-                    }
-                  })
-                  const itinerary = {
-                    id: crypto.randomUUID(),
-                    name: strategy.name,
-                    createdAt: new Date().toISOString(),
-                    assignments,
-                    totals: { cash: strategy.totalCash / (trip.travelers || 1), points: strategy.totalPoints / (trip.travelers || 1), fees: 0 },
-                    travelers: trip.travelers || 1,
-                  }
-                  const updatedTrip = { ...trip }
-                  if (!updatedTrip.itineraries) updatedTrip.itineraries = []
-                  updatedTrip.itineraries.push(itinerary)
-                  saveTrip(updatedTrip)
-                  setActiveTab('itineraries')
-                }} />
+                <ItineraryBuilder
+                  trip={trip}
+                  session={session}
+                  onSaveItinerary={({ itinerary, updatedFlights }: { itinerary: any; updatedFlights: any[] }) => {
+                    const updatedTrip = { ...trip, flights: updatedFlights }
+                    if (!updatedTrip.itineraries) updatedTrip.itineraries = []
+                    updatedTrip.itineraries.push(itinerary)
+                    saveTrip(updatedTrip)
+                    setActiveTab('itineraries')
+                  }}
+                />
               </div>
             </div>
           )}
@@ -1008,7 +997,8 @@ export default function TripDetail() {
   )
 }
 
-function OptimizerPanel({ trip, wallet: walletProp, onSaveStrategy }: { trip: any; wallet: any[]; onSaveStrategy: (s: BookingStrategy) => void }) {
+// Legacy OptimizerPanel — replaced by ItineraryBuilder component
+function _OptimizerPanel_UNUSED({ trip, wallet: walletProp, onSaveStrategy }: { trip: any; wallet: any[]; onSaveStrategy: (s: BookingStrategy) => void }) {
   const [strategies, setStrategies] = useState<BookingStrategy[]>([])
   const [loading, setLoading] = useState(false)
   const [hasRun, setHasRun] = useState(false)
