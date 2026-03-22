@@ -64,6 +64,7 @@ export default function TripDetail() {
   const [emailSent, setEmailSent] = useState(false)
   const [cachedSuggestions, setCachedSuggestions] = useState<any[]>([])
   const [cachedBuilderState, setCachedBuilderState] = useState<any>(null)
+  const [builderSubTab, setBuilderSubTab] = useState<'manual' | 'ai'>('manual')
   const [selectedItineraryId, setSelectedItineraryId] = useState<string | null>(null)
 
   useEffect(() => {
@@ -993,20 +994,53 @@ export default function TripDetail() {
             </div>
           ) : (
             <div>
-              {/* Manual Planner — primary feature */}
-              <TripPlanner
-                legs={trip.legs}
-                flights={trip.flights}
-                travelers={trip.travelers || 1}
-                onSave={handleSavePlan}
-                onChangeTier={handleChangeTier}
-              />
-
-              {/* AI Builder — secondary add-on */}
+              {/* Sub-tabs: Manual / AI */}
               <div style={{
-                marginTop: 24, paddingTop: 20,
-                borderTop: '1px solid var(--border-light)',
+                display: 'flex', gap: 0, marginBottom: 16,
+                borderRadius: 'var(--radius)', overflow: 'hidden',
+                border: '1px solid var(--border)',
               }}>
+                <button
+                  onClick={() => setBuilderSubTab('manual')}
+                  style={{
+                    flex: 1, padding: '10px 16px', border: 'none', cursor: 'pointer',
+                    fontSize: 14, fontWeight: 600,
+                    backgroundColor: builderSubTab === 'manual' ? 'var(--primary)' : 'var(--bg-card)',
+                    color: builderSubTab === 'manual' ? 'white' : 'var(--text-secondary)',
+                    transition: 'background-color 0.15s, color 0.15s',
+                  }}
+                >
+                  &#128295; Manual Planner
+                </button>
+                <button
+                  onClick={() => setBuilderSubTab('ai')}
+                  style={{
+                    flex: 1, padding: '10px 16px', border: 'none', cursor: 'pointer',
+                    fontSize: 14, fontWeight: 600,
+                    borderLeft: '1px solid var(--border)',
+                    backgroundColor: builderSubTab === 'ai' ? 'linear-gradient(135deg, #7C3AED, #4338CA)' : 'var(--bg-card)',
+                    background: builderSubTab === 'ai' ? 'linear-gradient(135deg, #7C3AED, #4338CA)' : 'var(--bg-card)',
+                    color: builderSubTab === 'ai' ? 'white' : 'var(--text-secondary)',
+                    transition: 'background-color 0.15s, color 0.15s',
+                  }}
+                >
+                  &#10024; AI Builder
+                </button>
+              </div>
+
+              {/* Manual Planner */}
+              {builderSubTab === 'manual' && (
+                <TripPlanner
+                  legs={trip.legs}
+                  flights={trip.flights}
+                  travelers={trip.travelers || 1}
+                  onSave={handleSavePlan}
+                  onChangeTier={handleChangeTier}
+                />
+              )}
+
+              {/* AI Builder */}
+              {builderSubTab === 'ai' && (
                 <ItineraryBuilder
                   trip={trip}
                   session={session}
@@ -1022,7 +1056,7 @@ export default function TripDetail() {
                     setActiveTab('itineraries')
                   }}
                 />
-              </div>
+              )}
             </div>
           )}
         </>
