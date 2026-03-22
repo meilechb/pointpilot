@@ -75,10 +75,12 @@ For each itinerary, compute:
 - totalDurationMinutes per leg (sum of segment durations + layovers within that flight)
 - totalCashCost, totalPointsCost, totalFeesCost across ALL legs (sum of per-flight costs)
 
-If CRITICAL info is missing that prevents building itineraries, return clarifying questions. Only ask when truly necessary:
+NEVER ask the user about connecting flights or direct flights. Simply use the available flights to build the best itineraries. The flights provided are the user's options - use them as-is.
+
+Only ask questions if it is LITERALLY IMPOSSIBLE to build any itinerary (e.g., zero flights exist for a leg and no alternatives). Never ask about preferences, flight types, or connections.
+If you must ask, return clarifying questions in the JSON. Example reasons to ask:
 - No return date set for a roundtrip (and it matters for picking flights)
 - Zero flights match a particular leg
-Do NOT ask questions if you can still build reasonable itineraries.
 
 Return ONLY valid JSON, no markdown, no explanation:
 {
