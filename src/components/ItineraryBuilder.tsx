@@ -27,12 +27,24 @@ type Suggestion = {
   totalFeesCost: number
 }
 
+type BuilderState = {
+  loading: boolean
+  suggestions: Suggestion[]
+  questions: Question[]
+  answers: Record<string, string>
+  error: string | null
+  hasRun: boolean
+  expandedIndex: number | null
+}
+
 type Props = {
   trip: any
   session: any
   onSaveItinerary: (itinerary: any) => void
   cachedSuggestions?: Suggestion[]
   onSuggestionsChange?: (suggestions: Suggestion[]) => void
+  cachedState?: BuilderState | null
+  onStateChange?: (state: BuilderState) => void
 }
 
 function getCardAccent(suggestion: Suggestion, idx: number): string {
@@ -56,25 +68,23 @@ const LOADING_MESSAGES = [
   'Almost there...',
 ]
 
-export default function ItineraryBuilder({ trip, session, onSaveItinerary, cachedSuggestions, onSuggestionsChange }: Props) {
-  const [loading, setLoading] = useState(false)
-  const [suggestions, setSuggestions] = useState<Suggestion[]>(cachedSuggestions || [])
-  const [questions, setQuestions] = useState<Question[]>([])
-  const [answers, setAnswers] = useState<Record<string, string>>({})
-  const [error, setError] = useState<string | null>(null)
-  const [hasRun, setHasRun] = useState((cachedSuggestions || []).length > 0)
-  const [expandedIndex, setExpandedIndex] = useState<number | null>(null)
+export default function ItineraryBuilder({ trip, session, onSaveItinerary, cachedSuggestions, onSuggestionsChange, cachedState, onStateChange }: Props) {
+  const cs = cachedState
+  const [loading, setLoading] = useState(cs?.loading ?? false)
+  const [suggestions, setSuggestions] = useState<Suggestion[]>(cs?.suggestions ?? cachedSuggestions ?? [])
+  const [questions, setQuestions] = useState<Question[]>(cs?.questions ?? [])
+  const [answers, setAnswers] = useState<Record<string, string>>(cs?.answers ?? {})
+  const [error, setError] = useState<string | null>(cs?.error ?? null)
+  const [hasRun, setHasRun] = useState(cs?.hasRun ?? (cachedSuggestions ?? []).length > 0)
+  const [expandedIndex, setExpandedIndex] = useState<number | null>(cs?.expandedIndex ?? null)
   const [loadingMsg, setLoadingMsg] = useState(LOADING_MESSAGES[0])
 
   const hasFlights = trip.flights && trip.flights.length > 0
 
-  // Sync from parent cache
+  // Persist state to parent whenever it changes
   useEffect(() => {
-    if (cachedSuggestions && cachedSuggestions.length > 0 && suggestions.length === 0) {
-      setSuggestions(cachedSuggestions)
-      setHasRun(true)
-    }
-  }, [cachedSuggestions])
+    onStateChange?.({ loading, suggestions, questions, answers, error, hasRun, expandedIndex })
+  }, [loading, suggestions, questions, answers, error, hasRun, expandedIndex])
 
   // Cycle loading messages
   useEffect(() => {
@@ -205,27 +215,25 @@ export default function ItineraryBuilder({ trip, session, onSaveItinerary, cache
   }
 
   if (!hasFlights) {
-    return (
-      <div style={{
-        textAlign: 'center', padding: 48,
-        backgroundColor: 'var(--bg-card)',
-        borderRadius: 'var(--radius-lg)',
-        border: '1px dashed var(--border)',
-      }}>
-        <div style={{ fontSize: 40, marginBottom: 12 }}>&#9992;&#65039;</div>
-        <p style={{ fontWeight: 600, fontSize: 16, marginBottom: 6 }}>Add flights first</p>
-        <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>
-          Capture flights from booking sites or add them manually, then come back to build smart itineraries.
-        </p>
-      </div>
-    )
+    return null
   }
 
   const gridClass = `builder-suggestions-grid${suggestions.length === 2 ? ' count-2' : suggestions.length === 1 ? ' count-1' : ''}`
 
   return (
     <div>
-      {/* Compact build button */}
+      {/* Section header */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12,
+      }}>
+        <span style={{ fontSize: 16 }}>&#10024;</span>
+        <span style={{ fontWeight: 700, fontSize: 15 }}>AI Itinerary Builder</span>
+        <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 400 }}>
+          &mdash; auto-find the best combinations
+        </span>
+      </div>
+
+      {/* Build button */}
       <button
         onClick={() => buildItineraries()}
         disabled={loading}

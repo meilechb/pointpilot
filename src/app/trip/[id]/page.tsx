@@ -62,8 +62,8 @@ export default function TripDetail() {
   const [emailAddress, setEmailAddress] = useState('')
   const [emailSending, setEmailSending] = useState(false)
   const [emailSent, setEmailSent] = useState(false)
-  const [manualPlannerOpen, setManualPlannerOpen] = useState(false)
   const [cachedSuggestions, setCachedSuggestions] = useState<any[]>([])
+  const [cachedBuilderState, setCachedBuilderState] = useState<any>(null)
   const [selectedItineraryId, setSelectedItineraryId] = useState<string | null>(null)
 
   useEffect(() => {
@@ -993,67 +993,36 @@ export default function TripDetail() {
             </div>
           ) : (
             <div>
-              {/* AI Builder */}
-              <ItineraryBuilder
-                trip={trip}
-                session={session}
-                cachedSuggestions={cachedSuggestions}
-                onSuggestionsChange={setCachedSuggestions}
-                onSaveItinerary={({ itinerary, updatedFlights }: { itinerary: any; updatedFlights: any[] }) => {
-                  const updatedTrip = { ...trip, flights: updatedFlights }
-                  if (!updatedTrip.itineraries) updatedTrip.itineraries = []
-                  updatedTrip.itineraries.push(itinerary)
-                  saveTrip(updatedTrip)
-                  setActiveTab('itineraries')
-                }}
+              {/* Manual Planner — primary feature */}
+              <TripPlanner
+                legs={trip.legs}
+                flights={trip.flights}
+                travelers={trip.travelers || 1}
+                onSave={handleSavePlan}
+                onChangeTier={handleChangeTier}
               />
 
-              {/* Manual Planner — compact toggle */}
-              {!manualPlannerOpen ? (
-                <div style={{
-                  textAlign: 'center', marginTop: 14, paddingTop: 12,
-                  borderTop: '1px solid var(--border-light)',
-                }}>
-                  <button
-                    onClick={() => setManualPlannerOpen(true)}
-                    style={{
-                      background: 'none', border: 'none', cursor: 'pointer',
-                      fontSize: 13, color: 'var(--text-muted)', fontWeight: 500,
-                      padding: '6px 12px',
-                      transition: 'color 0.15s',
-                    }}
-                    onMouseOver={(e) => { e.currentTarget.style.color = 'var(--primary)' }}
-                    onMouseOut={(e) => { e.currentTarget.style.color = 'var(--text-muted)' }}
-                  >
-                    Or build manually &#8594;
-                  </button>
-                </div>
-              ) : (
-                <div style={{ marginTop: 14 }}>
-                  <div style={{
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    marginBottom: 12,
-                  }}>
-                    <span style={{ fontSize: 14, fontWeight: 600 }}>Manual Builder</span>
-                    <button
-                      onClick={() => setManualPlannerOpen(false)}
-                      style={{
-                        background: 'none', border: 'none', cursor: 'pointer',
-                        fontSize: 12, color: 'var(--text-muted)', fontWeight: 500,
-                      }}
-                    >
-                      &#10005; Close
-                    </button>
-                  </div>
-                  <TripPlanner
-                    legs={trip.legs}
-                    flights={trip.flights}
-                    travelers={trip.travelers || 1}
-                    onSave={handleSavePlan}
-                    onChangeTier={handleChangeTier}
-                  />
-                </div>
-              )}
+              {/* AI Builder — secondary add-on */}
+              <div style={{
+                marginTop: 24, paddingTop: 20,
+                borderTop: '1px solid var(--border-light)',
+              }}>
+                <ItineraryBuilder
+                  trip={trip}
+                  session={session}
+                  cachedSuggestions={cachedSuggestions}
+                  onSuggestionsChange={setCachedSuggestions}
+                  cachedState={cachedBuilderState}
+                  onStateChange={setCachedBuilderState}
+                  onSaveItinerary={({ itinerary, updatedFlights }: { itinerary: any; updatedFlights: any[] }) => {
+                    const updatedTrip = { ...trip, flights: updatedFlights }
+                    if (!updatedTrip.itineraries) updatedTrip.itineraries = []
+                    updatedTrip.itineraries.push(itinerary)
+                    saveTrip(updatedTrip)
+                    setActiveTab('itineraries')
+                  }}
+                />
+              </div>
             </div>
           )}
         </>
