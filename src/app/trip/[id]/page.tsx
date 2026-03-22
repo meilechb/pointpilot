@@ -63,6 +63,7 @@ export default function TripDetail() {
   const [emailSending, setEmailSending] = useState(false)
   const [emailSent, setEmailSent] = useState(false)
   const [manualPlannerOpen, setManualPlannerOpen] = useState(false)
+  const [cachedSuggestions, setCachedSuggestions] = useState<any[]>([])
   const [selectedItineraryId, setSelectedItineraryId] = useState<string | null>(null)
 
   useEffect(() => {
@@ -992,10 +993,12 @@ export default function TripDetail() {
             </div>
           ) : (
             <div>
-              {/* AI Builder — full width hero */}
+              {/* AI Builder */}
               <ItineraryBuilder
                 trip={trip}
                 session={session}
+                cachedSuggestions={cachedSuggestions}
+                onSuggestionsChange={setCachedSuggestions}
                 onSaveItinerary={({ itinerary, updatedFlights }: { itinerary: any; updatedFlights: any[] }) => {
                   const updatedTrip = { ...trip, flights: updatedFlights }
                   if (!updatedTrip.itineraries) updatedTrip.itineraries = []
@@ -1005,37 +1008,52 @@ export default function TripDetail() {
                 }}
               />
 
-              {/* Manual Planner — collapsible section */}
-              <div>
-                <div
-                  className="builder-manual-header"
-                  onClick={() => setManualPlannerOpen(!manualPlannerOpen)}
-                >
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: 14 }}>Build Manually</div>
-                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
-                      Drag and drop flights into legs for full control
-                    </div>
-                  </div>
-                  <span style={{
-                    fontSize: 14, color: 'var(--text-muted)',
-                    transition: 'transform 0.2s',
-                    transform: manualPlannerOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-                    display: 'inline-block',
-                  }}>&#9660;</span>
+              {/* Manual Planner — compact toggle */}
+              {!manualPlannerOpen ? (
+                <div style={{
+                  textAlign: 'center', marginTop: 14, paddingTop: 12,
+                  borderTop: '1px solid var(--border-light)',
+                }}>
+                  <button
+                    onClick={() => setManualPlannerOpen(true)}
+                    style={{
+                      background: 'none', border: 'none', cursor: 'pointer',
+                      fontSize: 13, color: 'var(--text-muted)', fontWeight: 500,
+                      padding: '6px 12px',
+                      transition: 'color 0.15s',
+                    }}
+                    onMouseOver={(e) => { e.currentTarget.style.color = 'var(--primary)' }}
+                    onMouseOut={(e) => { e.currentTarget.style.color = 'var(--text-muted)' }}
+                  >
+                    Or build manually &#8594;
+                  </button>
                 </div>
-                {manualPlannerOpen && (
-                  <div style={{ marginTop: 16 }}>
-                    <TripPlanner
-                      legs={trip.legs}
-                      flights={trip.flights}
-                      travelers={trip.travelers || 1}
-                      onSave={handleSavePlan}
-                      onChangeTier={handleChangeTier}
-                    />
+              ) : (
+                <div style={{ marginTop: 14 }}>
+                  <div style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    marginBottom: 12,
+                  }}>
+                    <span style={{ fontSize: 14, fontWeight: 600 }}>Manual Builder</span>
+                    <button
+                      onClick={() => setManualPlannerOpen(false)}
+                      style={{
+                        background: 'none', border: 'none', cursor: 'pointer',
+                        fontSize: 12, color: 'var(--text-muted)', fontWeight: 500,
+                      }}
+                    >
+                      &#10005; Close
+                    </button>
                   </div>
-                )}
-              </div>
+                  <TripPlanner
+                    legs={trip.legs}
+                    flights={trip.flights}
+                    travelers={trip.travelers || 1}
+                    onSave={handleSavePlan}
+                    onChangeTier={handleChangeTier}
+                  />
+                </div>
+              )}
             </div>
           )}
         </>

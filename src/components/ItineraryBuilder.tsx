@@ -31,6 +31,8 @@ type Props = {
   trip: any
   session: any
   onSaveItinerary: (itinerary: any) => void
+  cachedSuggestions?: Suggestion[]
+  onSuggestionsChange?: (suggestions: Suggestion[]) => void
 }
 
 function getCardAccent(suggestion: Suggestion, idx: number): string {
@@ -54,17 +56,25 @@ const LOADING_MESSAGES = [
   'Almost there...',
 ]
 
-export default function ItineraryBuilder({ trip, session, onSaveItinerary }: Props) {
+export default function ItineraryBuilder({ trip, session, onSaveItinerary, cachedSuggestions, onSuggestionsChange }: Props) {
   const [loading, setLoading] = useState(false)
-  const [suggestions, setSuggestions] = useState<Suggestion[]>([])
+  const [suggestions, setSuggestions] = useState<Suggestion[]>(cachedSuggestions || [])
   const [questions, setQuestions] = useState<Question[]>([])
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const [error, setError] = useState<string | null>(null)
-  const [hasRun, setHasRun] = useState(false)
+  const [hasRun, setHasRun] = useState((cachedSuggestions || []).length > 0)
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null)
   const [loadingMsg, setLoadingMsg] = useState(LOADING_MESSAGES[0])
 
   const hasFlights = trip.flights && trip.flights.length > 0
+
+  // Sync from parent cache
+  useEffect(() => {
+    if (cachedSuggestions && cachedSuggestions.length > 0 && suggestions.length === 0) {
+      setSuggestions(cachedSuggestions)
+      setHasRun(true)
+    }
+  }, [cachedSuggestions])
 
   // Cycle loading messages
   useEffect(() => {
@@ -82,10 +92,15 @@ export default function ItineraryBuilder({ trip, session, onSaveItinerary }: Pro
     trip.flights.forEach((f: any) => { flightMap[f.id] = f })
   }
 
+  const updateSuggestions = (newSuggestions: Suggestion[]) => {
+    setSuggestions(newSuggestions)
+    onSuggestionsChange?.(newSuggestions)
+  }
+
   const buildItineraries = async (extraAnswers?: Record<string, string>) => {
     setLoading(true)
     setError(null)
-    setSuggestions([])
+    updateSuggestions([])
     setQuestions([])
     setExpandedIndex(null)
     setLoadingMsg(LOADING_MESSAGES[0])
@@ -133,7 +148,7 @@ export default function ItineraryBuilder({ trip, session, onSaveItinerary }: Pro
         return
       }
 
-      setSuggestions(data.itineraries || [])
+      updateSuggestions(data.itineraries || [])
       if (data.questions && data.questions.length > 0) {
         setQuestions(data.questions)
       }
@@ -210,27 +225,26 @@ export default function ItineraryBuilder({ trip, session, onSaveItinerary }: Pro
 
   return (
     <div>
-      {/* Build button */}
+      {/* Compact build button */}
       <button
         onClick={() => buildItineraries()}
         disabled={loading}
         style={{
-          width: '100%', padding: '18px 20px',
+          width: '100%', padding: '12px 16px',
           background: loading ? 'var(--border)' : 'linear-gradient(135deg, #7C3AED, #4338CA)',
           color: 'white',
-          border: 'none', borderRadius: 'var(--radius-lg)',
+          border: 'none', borderRadius: 'var(--radius)',
           cursor: loading ? 'default' : 'pointer',
-          fontSize: 17, fontWeight: 700,
-          boxShadow: loading ? 'none' : '0 4px 14px rgba(67, 56, 202, 0.35)',
+          fontSize: 15, fontWeight: 700,
+          boxShadow: loading ? 'none' : '0 3px 10px rgba(67, 56, 202, 0.3)',
           transition: 'transform 0.15s, box-shadow 0.15s',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-          letterSpacing: -0.3,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
         }}
-        onMouseOver={(e) => { if (!loading) { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(67, 56, 202, 0.45)' } }}
-        onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = loading ? 'none' : '0 4px 14px rgba(67, 56, 202, 0.35)' }}
+        onMouseOver={(e) => { if (!loading) { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 5px 16px rgba(67, 56, 202, 0.4)' } }}
+        onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = loading ? 'none' : '0 3px 10px rgba(67, 56, 202, 0.3)' }}
       >
         {loading ? (
-          <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ display: 'inline-block', animation: 'pulse 1.5s ease-in-out infinite' }}>&#9733;</span>
             {loadingMsg}
           </span>
@@ -240,33 +254,26 @@ export default function ItineraryBuilder({ trip, session, onSaveItinerary }: Pro
           <>&#10024; Build Smart Itineraries</>
         )}
       </button>
-      {!loading && hasFlights && (
-        <div style={{ textAlign: 'center', fontSize: 13, color: 'var(--text-muted)', marginTop: 8 }}>
-          {trip.flights.length} flight{trip.flights.length !== 1 ? 's' : ''} across {trip.legs.length} leg{trip.legs.length !== 1 ? 's' : ''} &mdash; AI will find the best combinations
-        </div>
-      )}
 
       {/* Loading animation */}
       {loading && (
         <div style={{
-          marginTop: 20, padding: '32px 24px', textAlign: 'center',
+          marginTop: 14, padding: '24px 20px', textAlign: 'center',
           backgroundColor: 'var(--bg-card)',
-          borderRadius: 'var(--radius-lg)',
+          borderRadius: 'var(--radius)',
           border: '1px solid var(--border-light)',
         }}>
-          <div style={{
-            display: 'flex', justifyContent: 'center', gap: 8, marginBottom: 16,
-          }}>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginBottom: 12 }}>
             {[0, 1, 2].map(i => (
               <div key={i} style={{
-                width: 10, height: 10, borderRadius: '50%',
+                width: 8, height: 8, borderRadius: '50%',
                 backgroundColor: 'var(--primary)',
                 animation: `pulse 1.2s ease-in-out ${i * 0.2}s infinite`,
               }} />
             ))}
           </div>
-          <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 4 }}>{loadingMsg}</div>
-          <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+          <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 2 }}>{loadingMsg}</div>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
             Analyzing {trip.flights.length} flights for {trip.legs.length} leg{trip.legs.length !== 1 ? 's' : ''}
           </div>
           <style>{`@keyframes pulse { 0%,100%{opacity:0.3;transform:scale(0.8)} 50%{opacity:1;transform:scale(1.2)} }`}</style>
@@ -276,12 +283,12 @@ export default function ItineraryBuilder({ trip, session, onSaveItinerary }: Pro
       {/* Error */}
       {error && (
         <div style={{
-          padding: '14px 18px', backgroundColor: '#FEF2F2',
-          borderRadius: 'var(--radius)', border: '1px solid #FECACA',
-          fontSize: 14, color: '#991B1B', marginTop: 16,
-          display: 'flex', alignItems: 'center', gap: 10,
+          padding: '12px 16px', backgroundColor: '#FEF2F2',
+          borderRadius: 'var(--radius-sm)', border: '1px solid #FECACA',
+          fontSize: 13, color: '#991B1B', marginTop: 12,
+          display: 'flex', alignItems: 'center', gap: 8,
         }}>
-          <span style={{ fontSize: 18 }}>&#9888;</span>
+          <span>&#9888;</span>
           <span>{error}</span>
         </div>
       )}
@@ -290,18 +297,18 @@ export default function ItineraryBuilder({ trip, session, onSaveItinerary }: Pro
       {questions.length > 0 && suggestions.length === 0 && (
         <div style={{
           backgroundColor: 'var(--bg-card)',
-          borderRadius: 'var(--radius-lg)',
+          borderRadius: 'var(--radius)',
           border: '1px solid var(--border-light)',
-          padding: 24, marginTop: 16,
+          padding: 20, marginTop: 14,
           boxShadow: 'var(--shadow-sm)',
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-            <span style={{ fontSize: 20 }}>&#128172;</span>
-            <span style={{ fontWeight: 700, fontSize: 16 }}>Quick question</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+            <span style={{ fontSize: 18 }}>&#128172;</span>
+            <span style={{ fontWeight: 700, fontSize: 15 }}>Quick question</span>
           </div>
           {questions.map(q => (
-            <div key={q.id} style={{ marginBottom: 16 }}>
-              <label style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: 6 }}>
+            <div key={q.id} style={{ marginBottom: 14 }}>
+              <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
                 {q.question}
               </label>
               {q.type === 'select' && q.options ? (
@@ -336,11 +343,11 @@ export default function ItineraryBuilder({ trip, session, onSaveItinerary }: Pro
             onClick={handleAnswerSubmit}
             disabled={questions.some(q => !answers[q.id])}
             style={{
-              width: '100%', padding: 14,
+              width: '100%', padding: 12,
               background: questions.every(q => answers[q.id]) ? 'linear-gradient(135deg, var(--primary), var(--primary-hover))' : 'var(--border)',
-              color: 'white', border: 'none', borderRadius: 'var(--radius)',
+              color: 'white', border: 'none', borderRadius: 'var(--radius-sm)',
               cursor: questions.every(q => answers[q.id]) ? 'pointer' : 'not-allowed',
-              fontSize: 15, fontWeight: 700,
+              fontSize: 14, fontWeight: 600,
             }}
           >
             Continue &#8594;
@@ -351,23 +358,20 @@ export default function ItineraryBuilder({ trip, session, onSaveItinerary }: Pro
       {/* Suggestion cards — grid or expanded */}
       {suggestions.length > 0 && (
         expandedIndex !== null ? (
-          <div style={{ marginTop: 16 }}>
-            <ExpandedSuggestionCard
-              suggestion={suggestions[expandedIndex]}
-              idx={expandedIndex}
-              trip={trip}
-              flightMap={flightMap}
-              onSave={() => handleSave(suggestions[expandedIndex])}
-              onCollapse={() => setExpandedIndex(null)}
-            />
+          <div style={{ marginTop: 14 }}>
+            {/* Pill nav ON TOP so it's always visible */}
             {suggestions.length > 1 && (
-              <div style={{ display: 'flex', gap: 8, marginTop: 14, justifyContent: 'center', flexWrap: 'wrap' }}>
+              <div style={{
+                display: 'flex', gap: 6, marginBottom: 14, justifyContent: 'center', flexWrap: 'wrap',
+                position: 'sticky', top: 72, zIndex: 10,
+                backgroundColor: 'var(--bg)', padding: '8px 0', borderRadius: 'var(--radius)',
+              }}>
                 {suggestions.map((s, idx) => (
                   <button
                     key={idx}
                     onClick={() => setExpandedIndex(idx)}
                     style={{
-                      padding: '9px 18px',
+                      padding: '7px 16px',
                       fontSize: 13, fontWeight: idx === expandedIndex ? 700 : 500,
                       border: idx === expandedIndex ? '2px solid var(--primary)' : '1px solid var(--border)',
                       borderRadius: 20,
@@ -383,20 +387,28 @@ export default function ItineraryBuilder({ trip, session, onSaveItinerary }: Pro
                 <button
                   onClick={() => setExpandedIndex(null)}
                   style={{
-                    padding: '9px 18px',
+                    padding: '7px 16px',
                     fontSize: 13, fontWeight: 500,
                     border: '1px solid var(--border)',
                     borderRadius: 20,
-                    backgroundColor: 'var(--bg)',
+                    backgroundColor: 'var(--bg-card)',
                     color: 'var(--text-muted)',
                     cursor: 'pointer',
                     transition: 'all 0.15s',
                   }}
                 >
-                  &#8592; Compare All
+                  &#9776; All
                 </button>
               </div>
             )}
+            <ExpandedSuggestionCard
+              suggestion={suggestions[expandedIndex]}
+              idx={expandedIndex}
+              trip={trip}
+              flightMap={flightMap}
+              onSave={() => handleSave(suggestions[expandedIndex])}
+              onCollapse={() => setExpandedIndex(null)}
+            />
           </div>
         ) : (
           <div className={gridClass}>
@@ -416,16 +428,15 @@ export default function ItineraryBuilder({ trip, session, onSaveItinerary }: Pro
 
       {hasRun && suggestions.length === 0 && !error && questions.length === 0 && (
         <div style={{
-          textAlign: 'center', padding: 32, marginTop: 16,
+          textAlign: 'center', padding: 24, marginTop: 14,
           backgroundColor: 'var(--bg-card)',
-          borderRadius: 'var(--radius-lg)',
+          borderRadius: 'var(--radius)',
           border: '1px solid var(--border-light)',
         }}>
-          <div style={{ fontSize: 28, marginBottom: 8 }}>&#128533;</div>
-          <p style={{ fontWeight: 600, fontSize: 15, marginBottom: 4 }}>
+          <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>
             No itineraries could be built
           </p>
-          <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>
             Make sure your flights match the trip legs.
           </p>
         </div>
@@ -466,23 +477,23 @@ function CompactSuggestionCard({ suggestion, idx, trip, flightMap, onClick }: {
         boxShadow: 'var(--shadow-sm)',
         border: '1px solid var(--border-light)',
         borderLeft: `4px solid ${accent}`,
-        padding: '18px 20px',
+        padding: '16px 18px',
         cursor: 'pointer',
         transition: 'transform 0.15s, box-shadow 0.15s',
         display: 'flex',
         flexDirection: 'column',
-        gap: 14,
+        gap: 10,
       }}
       onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = 'var(--shadow-md)' }}
       onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'var(--shadow-sm)' }}
     >
       {/* Name + tags */}
       <div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
-          <span style={{ fontWeight: 700, fontSize: 16 }}>{suggestion.name}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 3 }}>
+          <span style={{ fontWeight: 700, fontSize: 15 }}>{suggestion.name}</span>
           {suggestion.tags.map(tag => (
             <span key={tag} style={{
-              fontSize: 11, fontWeight: 700, padding: '2px 8px',
+              fontSize: 10, fontWeight: 700, padding: '2px 7px',
               borderRadius: 10,
               backgroundColor: tag === 'Recommended' ? 'var(--primary-light)' : 'var(--bg-accent)',
               color: tag === 'Recommended' ? 'var(--primary)' : 'var(--text-secondary)',
@@ -492,55 +503,55 @@ function CompactSuggestionCard({ suggestion, idx, trip, flightMap, onClick }: {
             </span>
           ))}
         </div>
-        <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+        <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.4 }}>
           {suggestion.description}
         </div>
       </div>
 
-      {/* Price — big and bold */}
-      <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: 14 }}>
+      {/* Price */}
+      <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: 10 }}>
         {cashCost > 0 && (
-          <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: -0.5 }}>
+          <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: -0.5 }}>
             ${(cashCost * travelers).toLocaleString()}
           </div>
         )}
         {pointsCost > 0 && (
-          <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--primary)', letterSpacing: -0.5 }}>
+          <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--primary)', letterSpacing: -0.5 }}>
             {(pointsCost * travelers).toLocaleString()} pts
           </div>
         )}
         {travelers > 1 && (
-          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>
             for {travelers} travelers
           </div>
         )}
       </div>
 
-      {/* Per-leg routes with individual durations */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      {/* Per-leg routes */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         {suggestion.legAssignments.map(la => {
           const leg = trip.legs[la.legIndex]
           if (!leg) return null
           return (
             <div key={la.legIndex} style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              padding: '8px 12px',
+              padding: '5px 10px',
               backgroundColor: 'var(--bg)', borderRadius: 'var(--radius-sm)',
-              border: '1px solid var(--border-light)',
+              fontSize: 12,
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                 <span style={{
                   display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                  width: 20, height: 20, borderRadius: '50%',
+                  width: 18, height: 18, borderRadius: '50%',
                   backgroundColor: accent + '18', color: accent,
-                  fontSize: 10, fontWeight: 700,
+                  fontSize: 9, fontWeight: 700,
                 }}>{la.legIndex + 1}</span>
-                <span style={{ fontSize: 13, fontWeight: 600 }}>{leg.from}</span>
-                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>&#8594;</span>
-                <span style={{ fontSize: 13, fontWeight: 600 }}>{leg.to}</span>
+                <span style={{ fontWeight: 600 }}>{leg.from}</span>
+                <span style={{ color: 'var(--text-muted)' }}>&#8594;</span>
+                <span style={{ fontWeight: 600 }}>{leg.to}</span>
               </div>
               {la.totalDurationMinutes > 0 && (
-                <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 500 }}>
+                <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>
                   {formatDuration(la.totalDurationMinutes)}
                 </span>
               )}
@@ -551,8 +562,8 @@ function CompactSuggestionCard({ suggestion, idx, trip, flightMap, onClick }: {
 
       {/* CTA */}
       <div style={{
-        fontSize: 13, fontWeight: 600, color: accent,
-        marginTop: 'auto', display: 'flex', alignItems: 'center', gap: 4,
+        fontSize: 12, fontWeight: 600, color: accent,
+        marginTop: 'auto',
       }}>
         View Details &#8594;
       </div>
@@ -597,17 +608,17 @@ function ExpandedSuggestionCard({ suggestion, idx, trip, flightMap, onSave, onCo
     }}>
       {/* Header */}
       <div style={{
-        padding: '24px 28px 20px',
+        padding: '20px 24px 16px',
         display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
         borderBottom: '1px solid var(--border-light)',
       }}>
         <div style={{ flex: 1 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6, flexWrap: 'wrap' }}>
-            <span style={{ fontWeight: 800, fontSize: 20 }}>{suggestion.name}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
+            <span style={{ fontWeight: 800, fontSize: 18 }}>{suggestion.name}</span>
             {suggestion.tags.map(tag => (
               <span key={tag} style={{
-                fontSize: 11, fontWeight: 700, padding: '3px 10px',
-                borderRadius: 12,
+                fontSize: 10, fontWeight: 700, padding: '2px 8px',
+                borderRadius: 10,
                 backgroundColor: tag === 'Recommended' ? 'var(--primary-light)' : 'var(--bg-accent)',
                 color: tag === 'Recommended' ? 'var(--primary)' : 'var(--text-secondary)',
                 textTransform: 'uppercase', letterSpacing: 0.5,
@@ -616,23 +627,23 @@ function ExpandedSuggestionCard({ suggestion, idx, trip, flightMap, onSave, onCo
               </span>
             ))}
           </div>
-          <div style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+          <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.4 }}>
             {suggestion.description}
           </div>
         </div>
-        <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 28 }}>
+        <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 20 }}>
           {cashCost > 0 && (
-            <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: -0.5 }}>
+            <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: -0.5 }}>
               ${(cashCost * travelers).toLocaleString()}
             </div>
           )}
           {pointsCost > 0 && (
-            <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--primary)', letterSpacing: -0.5 }}>
+            <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--primary)', letterSpacing: -0.5 }}>
               {(pointsCost * travelers).toLocaleString()} pts
             </div>
           )}
           {travelers > 1 && (
-            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
               for {travelers} travelers
             </div>
           )}
@@ -640,43 +651,43 @@ function ExpandedSuggestionCard({ suggestion, idx, trip, flightMap, onSave, onCo
       </div>
 
       {/* Leg-by-leg details */}
-      <div style={{ padding: '8px 28px 28px' }}>
+      <div style={{ padding: '4px 24px 24px' }}>
         {suggestion.legAssignments.map((la, laIdx) => {
           const leg = trip.legs[la.legIndex]
           if (!leg) return null
           const flights = la.flightIds.map(id => flightMap[id]).filter(Boolean)
 
           return (
-            <div key={la.legIndex} style={{ marginTop: 24 }}>
+            <div key={la.legIndex} style={{ marginTop: 18 }}>
               {/* Leg header */}
               <div style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                marginBottom: 14,
-                paddingBottom: 10,
+                marginBottom: 10,
+                paddingBottom: 8,
                 borderBottom: '1px solid var(--border-light)',
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{
                     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                    width: 28, height: 28, borderRadius: '50%',
+                    width: 26, height: 26, borderRadius: '50%',
                     backgroundColor: accent + '18', color: accent,
-                    fontSize: 13, fontWeight: 800,
+                    fontSize: 12, fontWeight: 800,
                   }}>{la.legIndex + 1}</span>
                   <div>
-                    <div style={{ fontSize: 15, fontWeight: 700 }}>
+                    <div style={{ fontSize: 14, fontWeight: 700 }}>
                       {getCityName(leg.from)} &#8594; {getCityName(leg.to)}
                     </div>
-                    <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
                       {leg.from} &#8594; {leg.to}
                     </div>
                   </div>
                 </div>
                 {la.totalDurationMinutes > 0 && (
                   <div style={{
-                    padding: '5px 12px',
+                    padding: '4px 10px',
                     backgroundColor: 'var(--bg)',
-                    borderRadius: 20,
-                    fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)',
+                    borderRadius: 16,
+                    fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)',
                     border: '1px solid var(--border-light)',
                   }}>
                     {formatDuration(la.totalDurationMinutes)}
@@ -686,10 +697,10 @@ function ExpandedSuggestionCard({ suggestion, idx, trip, flightMap, onSave, onCo
 
               {flights.length === 0 ? (
                 <div style={{
-                  fontSize: 14, color: '#991B1B', padding: '14px 16px',
-                  backgroundColor: '#FEF2F2', borderRadius: 'var(--radius)',
+                  fontSize: 13, color: '#991B1B', padding: '12px 14px',
+                  backgroundColor: '#FEF2F2', borderRadius: 'var(--radius-sm)',
                   border: '1px solid #FECACA',
-                  display: 'flex', alignItems: 'center', gap: 8,
+                  display: 'flex', alignItems: 'center', gap: 6,
                 }}>
                   <span>&#9888;</span> No matching flight found for this leg
                 </div>
@@ -699,14 +710,13 @@ function ExpandedSuggestionCard({ suggestion, idx, trip, flightMap, onSave, onCo
                 ))
               )}
 
-              {/* Divider between legs */}
               {laIdx < suggestion.legAssignments.length - 1 && (
                 <div style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  marginTop: 20,
+                  marginTop: 16,
                 }}>
                   <div style={{ flex: 1, height: 1, backgroundColor: 'var(--border-light)' }} />
-                  <span style={{ padding: '0 12px', fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>
+                  <span style={{ padding: '0 10px', fontSize: 10, color: 'var(--text-muted)', fontWeight: 500 }}>
                     NEXT LEG
                   </span>
                   <div style={{ flex: 1, height: 1, backgroundColor: 'var(--border-light)' }} />
@@ -716,49 +726,49 @@ function ExpandedSuggestionCard({ suggestion, idx, trip, flightMap, onSave, onCo
           )
         })}
 
-        {/* Trip total — no combined travel time */}
+        {/* Trip total */}
         <div style={{
-          marginTop: 28, padding: '18px 22px',
+          marginTop: 20, padding: '14px 18px',
           backgroundColor: 'var(--bg)',
-          borderRadius: 'var(--radius)',
+          borderRadius: 'var(--radius-sm)',
           border: '1px solid var(--border-light)',
         }}>
-          <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 12 }}>
+          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 10 }}>
             Trip Total{travelers > 1 ? ` (${travelers} travelers)` : ''}
           </div>
-          <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap', fontSize: 14 }}>
+          <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', fontSize: 13 }}>
             {cashCost > 0 && (
               <div>
-                <span style={{ color: 'var(--text-muted)', fontSize: 12, display: 'block', marginBottom: 2 }}>Cash</span>
-                <strong style={{ fontSize: 18 }}>${(cashCost * travelers).toLocaleString()}</strong>
-                {travelers > 1 && <span style={{ color: 'var(--text-muted)', fontSize: 12 }}> (${cashCost.toLocaleString()} pp)</span>}
+                <span style={{ color: 'var(--text-muted)', fontSize: 11, display: 'block', marginBottom: 1 }}>Cash</span>
+                <strong style={{ fontSize: 16 }}>${(cashCost * travelers).toLocaleString()}</strong>
+                {travelers > 1 && <span style={{ color: 'var(--text-muted)', fontSize: 11 }}> (${cashCost.toLocaleString()} pp)</span>}
               </div>
             )}
             {pointsCost > 0 && (
               <div>
-                <span style={{ color: 'var(--text-muted)', fontSize: 12, display: 'block', marginBottom: 2 }}>Points</span>
-                <strong style={{ color: 'var(--primary)', fontSize: 18 }}>{(pointsCost * travelers).toLocaleString()}</strong>
-                {travelers > 1 && <span style={{ color: 'var(--text-muted)', fontSize: 12 }}> ({pointsCost.toLocaleString()} pp)</span>}
+                <span style={{ color: 'var(--text-muted)', fontSize: 11, display: 'block', marginBottom: 1 }}>Points</span>
+                <strong style={{ color: 'var(--primary)', fontSize: 16 }}>{(pointsCost * travelers).toLocaleString()}</strong>
+                {travelers > 1 && <span style={{ color: 'var(--text-muted)', fontSize: 11 }}> ({pointsCost.toLocaleString()} pp)</span>}
               </div>
             )}
             {feesCost > 0 && (
               <div>
-                <span style={{ color: 'var(--text-muted)', fontSize: 12, display: 'block', marginBottom: 2 }}>Fees</span>
-                <strong style={{ fontSize: 18 }}>${(feesCost * travelers).toLocaleString()}</strong>
+                <span style={{ color: 'var(--text-muted)', fontSize: 11, display: 'block', marginBottom: 1 }}>Fees</span>
+                <strong style={{ fontSize: 16 }}>${(feesCost * travelers).toLocaleString()}</strong>
               </div>
             )}
           </div>
         </div>
 
-        {/* Save button — green with checkmark */}
+        {/* Save button */}
         <button
           onClick={onSave}
           style={{
-            marginTop: 18, padding: '16px 20px', width: '100%',
+            marginTop: 14, padding: '13px 18px', width: '100%',
             background: 'linear-gradient(135deg, #059669, #10B981)',
             color: 'white', border: 'none',
             borderRadius: 'var(--radius)', cursor: 'pointer',
-            fontSize: 16, fontWeight: 700,
+            fontSize: 15, fontWeight: 700,
             boxShadow: '0 3px 10px rgba(5, 150, 105, 0.3)',
             transition: 'transform 0.15s, box-shadow 0.15s',
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
@@ -823,23 +833,23 @@ function FlightRow({ flight }: { flight: any }) {
   return (
     <div style={{
       backgroundColor: 'var(--bg)', borderRadius: 'var(--radius)',
-      border: '1px solid var(--border-light)', padding: '14px 16px',
-      marginBottom: 8,
+      border: '1px solid var(--border-light)', padding: '12px 14px',
+      marginBottom: 6,
     }}>
       {/* Top: airline + price */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
         <div>
-          <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)' }}>
+          <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>
             {airline}{flightCode ? ` ${flightCode}` : ''}
           </div>
           {depDate && (
-            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 1 }}>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>
               {new Date(depDate + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
             </div>
           )}
         </div>
         {priceStr && (
-          <div style={{ fontWeight: 700, fontSize: 16, color: priceColor }}>
+          <div style={{ fontWeight: 700, fontSize: 15, color: priceColor }}>
             {priceStr}
           </div>
         )}
@@ -847,18 +857,18 @@ function FlightRow({ flight }: { flight: any }) {
 
       {/* Middle: timeline */}
       <div style={{
-        display: 'flex', alignItems: 'center', gap: 14,
-        padding: '10px 14px',
+        display: 'flex', alignItems: 'center', gap: 12,
+        padding: '8px 12px',
         backgroundColor: 'var(--bg-card)',
         borderRadius: 'var(--radius-sm)',
       }}>
-        <div style={{ textAlign: 'center', minWidth: 52 }}>
-          <div style={{ fontWeight: 700, fontSize: 17 }}>{depTime}</div>
-          <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 500 }}>{depAirport}</div>
+        <div style={{ textAlign: 'center', minWidth: 48 }}>
+          <div style={{ fontWeight: 700, fontSize: 16 }}>{depTime}</div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>{depAirport}</div>
         </div>
 
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
-          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 3, fontWeight: 500 }}>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2, fontWeight: 500 }}>
             {totalMin > 0 ? formatDuration(Math.round(totalMin)) : ''}
           </div>
           <div style={{
@@ -875,7 +885,7 @@ function FlightRow({ flight }: { flight: any }) {
               }} />
             ))}
           </div>
-          <div style={{ fontSize: 11, color: stops === 0 ? 'var(--success)' : 'var(--text-muted)', marginTop: 3, fontWeight: stops === 0 ? 600 : 400 }}>
+          <div style={{ fontSize: 10, color: stops === 0 ? 'var(--success)' : 'var(--text-muted)', marginTop: 2, fontWeight: stops === 0 ? 600 : 400 }}>
             {stopsLabel}
             {stops > 0 && segs.length > 1 && (
               <span> via {segs.slice(0, -1).map((s: any) => s.arrivalAirport).join(', ')}</span>
@@ -883,17 +893,17 @@ function FlightRow({ flight }: { flight: any }) {
           </div>
         </div>
 
-        <div style={{ textAlign: 'center', minWidth: 52 }}>
-          <div style={{ fontWeight: 700, fontSize: 17 }}>
+        <div style={{ textAlign: 'center', minWidth: 48 }}>
+          <div style={{ fontWeight: 700, fontSize: 16 }}>
             {arrTime}{isNextDay ? <sup style={{ fontSize: 10, color: 'var(--text-muted)' }}>+1</sup> : ''}
           </div>
-          <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 500 }}>{arrAirport}</div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>{arrAirport}</div>
         </div>
       </div>
 
       {/* Bottom: booking site */}
       {flight.bookingSite && (
-        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 8 }}>
+        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6 }}>
           Book via {flight.bookingSite}
         </div>
       )}
