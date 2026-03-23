@@ -1,6 +1,9 @@
 // Static transfer partner data for major bank points programs
 // Ratio format: [bankPoints, partnerPoints] — e.g. [1000, 800] means 1000 bank pts = 800 partner pts
 
+/** Last time this data was verified/updated */
+export const transferPartnersLastUpdated = '2025-03-01'
+
 export type TransferPartner = {
   partner: string
   ratio: [number, number] // [bankPoints, partnerPoints]

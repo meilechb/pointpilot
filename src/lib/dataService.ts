@@ -304,6 +304,19 @@ export async function loadWallet(): Promise<any[]> {
   return JSON.parse(localStorage.getItem(walletKey()) || '[]')
 }
 
+export async function loadTransferBonuses(): Promise<any[]> {
+  const today = new Date().toISOString().split('T')[0]
+  const { data, error } = await getSupabase()
+    .from('transfer_bonuses')
+    .select('*')
+    .or(`expires_at.is.null,expires_at.gte.${today}`)
+  if (error) {
+    console.error('Failed to load transfer bonuses:', error)
+    return []
+  }
+  return data || []
+}
+
 export async function saveWalletEntry(entry: any): Promise<void> {
   const user = await getUser()
   const key = walletKey(user?.id)

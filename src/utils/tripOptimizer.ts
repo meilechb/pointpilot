@@ -42,6 +42,14 @@ type WalletEntry = {
   notes: string
 }
 
+export type TransferBonus = {
+  bank_program: string
+  partner: string
+  bonus_percent: number
+  expires_at: string | null
+  notes: string | null
+}
+
 type Segment = {
   flightCode: string
   airlineName: string
@@ -224,7 +232,7 @@ type PayOption = {
   tierLabel?: string // cabin class label if from a pricing tier
 }
 
-function getPayOptions(flight: Flight, wallet: WalletEntry[], travelers: number): PayOption[] {
+function getPayOptions(flight: Flight, wallet: WalletEntry[], travelers: number, transferBonuses: TransferBonus[] = []): PayOption[] {
   const options: PayOption[] = []
   const label = getFlightLabel(flight)
 
@@ -318,8 +326,20 @@ function getPayOptions(flight: Flight, wallet: WalletEntry[], travelers: number)
           if (w.currency_type !== 'bank_points') continue
           if (!programNamesMatch(w.program, program.name)) continue
 
-          const bankPointsNeeded = Math.ceil(totalPoints * partner.ratio[0] / partner.ratio[1])
-          const ratioStr = partner.ratio[0] === partner.ratio[1] ? '1:1' : `${partner.ratio[0]}:${partner.ratio[1]}`
+          // Check for active transfer bonus
+          const bonus = transferBonuses.find(b =>
+            programNamesMatch(b.bank_program, program.name) &&
+            programNamesMatch(b.partner, partner.partner) &&
+            (!b.expires_at || new Date(b.expires_at) > new Date())
+          )
+          const bonusPct = bonus ? bonus.bonus_percent : 0
+          // With bonus, each bank point yields more airline miles
+          const effectiveRatio: [number, number] = bonusPct > 0
+            ? [partner.ratio[0], Math.round(partner.ratio[1] * (1 + bonusPct / 100))]
+            : partner.ratio
+          const bankPointsNeeded = Math.ceil(totalPoints * effectiveRatio[0] / effectiveRatio[1])
+          const ratioStr = effectiveRatio[0] === effectiveRatio[1] ? '1:1' : `${effectiveRatio[0]}:${effectiveRatio[1]}`
+          const bonusLabel = bonusPct > 0 ? ` +${bonusPct}% bonus!` : ''
           const cpp = estimatedCashValue > 0 ? (estimatedCashValue - totalFees) / bankPointsNeeded * 100 : 1.5
 
           options.push({
@@ -333,8 +353,8 @@ function getPayOptions(flight: Flight, wallet: WalletEntry[], travelers: number)
             transferRatio: ratioStr,
             estimatedCashValue,
             description: w.balance >= bankPointsNeeded
-              ? `Transfer ${bankPointsNeeded.toLocaleString()} ${program.name} → ${partner.partner} (${ratioStr}), book on ${flight.bookingSite}${totalFees ? ` + $${totalFees.toLocaleString()} fees` : ''}`
-              : `Transfer ${bankPointsNeeded.toLocaleString()} ${program.name} → ${partner.partner} (${ratioStr}), book on ${flight.bookingSite}${totalFees ? ` + $${totalFees.toLocaleString()} fees` : ''} (need ${(bankPointsNeeded - w.balance).toLocaleString()} more pts)`,
+              ? `Transfer ${bankPointsNeeded.toLocaleString()} ${program.name} → ${partner.partner} (${ratioStr}${bonusLabel}), book on ${flight.bookingSite}${totalFees ? ` + $${totalFees.toLocaleString()} fees` : ''}`
+              : `Transfer ${bankPointsNeeded.toLocaleString()} ${program.name} → ${partner.partner} (${ratioStr}${bonusLabel}), book on ${flight.bookingSite}${totalFees ? ` + $${totalFees.toLocaleString()} fees` : ''} (need ${(bankPointsNeeded - w.balance).toLocaleString()} more pts)`,
             cpp,
           })
         }
@@ -392,7 +412,7 @@ function getPayOptions(flight: Flight, wallet: WalletEntry[], travelers: number)
         feesAmount: tier.feesAmount,
         pricingTiers: undefined, // prevent recursion
       }
-      const tierOptions = getPayOptions(tierFlight, wallet, travelers)
+      const tierOptions = getPayOptions(tierFlight, wallet, travelers, transferBonuses)
       for (const opt of tierOptions) {
         opt.tierLabel = tier.label
         opt.description = `[${tier.label}] ${opt.description}`
@@ -410,7 +430,8 @@ export function optimizeTrip(
   legs: Leg[],
   flights: Flight[],
   wallet: WalletEntry[],
-  travelers: number
+  travelers: number,
+  transferBonuses: TransferBonus[] = []
 ): BookingStrategy[] {
   // Auto-assign unassigned flights to matching legs by route
   const assignedFlights = flights.map(f => {
@@ -472,7 +493,7 @@ export function optimizeTrip(
     const flightsForLeg = legFlights[i]
     const flightOpts: FlightPayOptions[] = []
     for (const f of flightsForLeg) {
-      const payOpts = getPayOptions(f, wallet, travelers)
+      const payOpts = getPayOptions(f, wallet, travelers, transferBonuses)
       flightOpts.push({ flight: f, payOptions: payOpts })
     }
     legFlightOptions.push(flightOpts)

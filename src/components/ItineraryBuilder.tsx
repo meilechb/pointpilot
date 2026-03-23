@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { getCityName, formatTime, formatDuration } from '@/utils/airportUtils'
+import { optimizeTrip, type BookingStrategy } from '@/utils/tripOptimizer'
 
 type Question = {
   id: string
@@ -40,6 +41,8 @@ type BuilderState = {
 type Props = {
   trip: any
   session: any
+  wallet?: any[]
+  transferBonuses?: any[]
   onSaveItinerary: (itinerary: any) => void
   cachedSuggestions?: Suggestion[]
   onSuggestionsChange?: (suggestions: Suggestion[]) => void
@@ -68,7 +71,7 @@ const LOADING_MESSAGES = [
   'Almost there...',
 ]
 
-export default function ItineraryBuilder({ trip, session, onSaveItinerary, cachedSuggestions, onSuggestionsChange, cachedState, onStateChange }: Props) {
+export default function ItineraryBuilder({ trip, session, wallet = [], transferBonuses = [], onSaveItinerary, cachedSuggestions, onSuggestionsChange, cachedState, onStateChange }: Props) {
   const cs = cachedState
   const [loading, setLoading] = useState(cs?.loading ?? false)
   const [suggestions, setSuggestions] = useState<Suggestion[]>(cs?.suggestions ?? cachedSuggestions ?? [])
@@ -78,6 +81,7 @@ export default function ItineraryBuilder({ trip, session, onSaveItinerary, cache
   const [hasRun, setHasRun] = useState(cs?.hasRun ?? (cachedSuggestions ?? []).length > 0)
   const [expandedIndex, setExpandedIndex] = useState<number | null>(cs?.expandedIndex ?? null)
   const [loadingMsg, setLoadingMsg] = useState(LOADING_MESSAGES[0])
+  const [bookingStrategies, setBookingStrategies] = useState<Record<number, BookingStrategy[]>>({})
 
   const hasFlights = trip.flights && trip.flights.length > 0
 
@@ -105,6 +109,30 @@ export default function ItineraryBuilder({ trip, session, onSaveItinerary, cache
   const updateSuggestions = (newSuggestions: Suggestion[]) => {
     setSuggestions(newSuggestions)
     onSuggestionsChange?.(newSuggestions)
+    // Run optimizer for each suggestion to generate booking guides
+    if (wallet.length > 0 && newSuggestions.length > 0) {
+      const strategies: Record<number, BookingStrategy[]> = {}
+      newSuggestions.forEach((suggestion, idx) => {
+        // Collect flights assigned in this suggestion
+        const assignedFlightIds = new Set<string>()
+        suggestion.legAssignments.forEach(la => la.flightIds.forEach(id => assignedFlightIds.add(id)))
+        const assignedFlights = (trip.flights || []).filter((f: any) => assignedFlightIds.has(f.id))
+        // Set legIndex on flights based on the suggestion's assignments
+        const flightsWithLegs = assignedFlights.map((f: any) => {
+          for (const la of suggestion.legAssignments) {
+            if (la.flightIds.includes(f.id)) return { ...f, legIndex: la.legIndex }
+          }
+          return f
+        })
+        try {
+          strategies[idx] = optimizeTrip(trip.legs, flightsWithLegs, wallet, trip.travelers || 1, transferBonuses)
+        } catch (e) {
+          console.error('Optimizer error for suggestion', idx, e)
+          strategies[idx] = []
+        }
+      })
+      setBookingStrategies(strategies)
+    }
   }
 
   const buildItineraries = async (extraAnswers?: Record<string, string>) => {
@@ -414,6 +442,8 @@ export default function ItineraryBuilder({ trip, session, onSaveItinerary, cache
               idx={expandedIndex}
               trip={trip}
               flightMap={flightMap}
+              strategies={bookingStrategies[expandedIndex] || []}
+              hasWallet={wallet.length > 0}
               onSave={() => handleSave(suggestions[expandedIndex])}
               onCollapse={() => setExpandedIndex(null)}
             />
@@ -580,14 +610,17 @@ function CompactSuggestionCard({ suggestion, idx, trip, flightMap, onClick }: {
 }
 
 /** Full-width expanded card with leg-by-leg detail */
-function ExpandedSuggestionCard({ suggestion, idx, trip, flightMap, onSave, onCollapse }: {
+function ExpandedSuggestionCard({ suggestion, idx, trip, flightMap, strategies, hasWallet, onSave, onCollapse }: {
   suggestion: Suggestion
   idx: number
   trip: any
   flightMap: Record<string, any>
+  strategies: BookingStrategy[]
+  hasWallet: boolean
   onSave: () => void
   onCollapse: () => void
 }) {
+  const [activeStrategy, setActiveStrategy] = useState(0)
   const travelers = trip.travelers || 1
   const accent = getCardAccent(suggestion, idx)
 
@@ -767,6 +800,181 @@ function ExpandedSuggestionCard({ suggestion, idx, trip, flightMap, onSave, onCo
             )}
           </div>
         </div>
+
+        {/* Booking Guide — powered by optimizer */}
+        {hasWallet && strategies.length > 0 && (
+          <div style={{
+            marginTop: 20, padding: '18px 18px',
+            backgroundColor: 'var(--bg)',
+            borderRadius: 'var(--radius)',
+            border: '1px solid var(--primary)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+              <span style={{ fontSize: 18 }}>&#128161;</span>
+              <span style={{ fontWeight: 800, fontSize: 15 }}>How to Book This</span>
+            </div>
+
+            {/* Strategy tabs */}
+            {strategies.length > 1 && (
+              <div style={{ display: 'flex', gap: 6, marginBottom: 14, flexWrap: 'wrap' }}>
+                {strategies.map((s, sIdx) => (
+                  <button
+                    key={s.id}
+                    onClick={() => setActiveStrategy(sIdx)}
+                    style={{
+                      padding: '5px 12px', fontSize: 12, fontWeight: sIdx === activeStrategy ? 700 : 500,
+                      border: sIdx === activeStrategy ? '2px solid var(--primary)' : '1px solid var(--border)',
+                      borderRadius: 16,
+                      backgroundColor: sIdx === activeStrategy ? 'var(--primary-light)' : 'var(--bg-card)',
+                      color: sIdx === activeStrategy ? 'var(--primary)' : 'var(--text-secondary)',
+                      cursor: 'pointer', transition: 'all 0.15s',
+                    }}
+                  >
+                    {s.name}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {(() => {
+              const strategy = strategies[activeStrategy]
+              if (!strategy) return null
+              return (
+                <div>
+                  <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 14, lineHeight: 1.5 }}>
+                    {strategy.description}
+                  </div>
+
+                  {/* Step-by-step booking instructions */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {strategy.bookings.map((booking, bIdx) => (
+                      <div key={bIdx} style={{
+                        display: 'flex', gap: 12, padding: '10px 14px',
+                        backgroundColor: 'var(--bg-card)',
+                        borderRadius: 'var(--radius-sm)',
+                        border: '1px solid var(--border-light)',
+                      }}>
+                        <div style={{
+                          width: 24, height: 24, borderRadius: '50%', flexShrink: 0,
+                          background: booking.method === 'cash' ? '#6B7280' :
+                            booking.method === 'transfer' ? 'linear-gradient(135deg, #7C3AED, #4338CA)' :
+                            booking.method === 'portal' ? '#2563EB' : '#059669',
+                          color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontWeight: 700, fontSize: 11, marginTop: 1,
+                        }}>
+                          {bIdx + 1}
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', lineHeight: 1.4 }}>
+                            {booking.description}
+                          </div>
+                          {booking.tierLabel && (
+                            <span style={{
+                              display: 'inline-block', marginTop: 3,
+                              fontSize: 10, fontWeight: 600, padding: '1px 6px',
+                              borderRadius: 8, backgroundColor: 'var(--bg-accent)', color: 'var(--text-secondary)',
+                            }}>
+                              {booking.tierLabel}
+                            </span>
+                          )}
+                        </div>
+                        <div style={{ textAlign: 'right', flexShrink: 0, fontSize: 13 }}>
+                          {booking.method === 'cash' ? (
+                            <span style={{ fontWeight: 700 }}>${booking.cashCost.toLocaleString()}</span>
+                          ) : (
+                            <>
+                              <div style={{ fontWeight: 700, color: 'var(--primary)' }}>
+                                {booking.pointsCost.toLocaleString()} pts
+                              </div>
+                              {booking.cashCost > 0 && (
+                                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                                  + ${booking.cashCost.toLocaleString()} fees
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Summary bar */}
+                  <div style={{
+                    marginTop: 14, padding: '12px 14px',
+                    backgroundColor: 'var(--bg-card)',
+                    borderRadius: 'var(--radius-sm)',
+                    border: '1px solid var(--border-light)',
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12,
+                  }}>
+                    <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
+                      {strategy.totalCash > 0 && (
+                        <div>
+                          <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5 }}>Cash</div>
+                          <div style={{ fontWeight: 800, fontSize: 16 }}>${strategy.totalCash.toLocaleString()}</div>
+                        </div>
+                      )}
+                      {strategy.totalPoints > 0 && (
+                        <div>
+                          <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5 }}>Points</div>
+                          <div style={{ fontWeight: 800, fontSize: 16, color: 'var(--primary)' }}>{strategy.totalPoints.toLocaleString()}</div>
+                        </div>
+                      )}
+                      {strategy.estimatedCpp > 0 && (
+                        <div>
+                          <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5 }}>Value</div>
+                          <div style={{ fontWeight: 800, fontSize: 16, color: '#059669' }}>{strategy.estimatedCpp} cpp</div>
+                        </div>
+                      )}
+                    </div>
+                    {strategy.savingsVsCash > 0 && (
+                      <div style={{
+                        padding: '4px 10px', borderRadius: 12,
+                        backgroundColor: '#ECFDF5', border: '1px solid #A7F3D0',
+                        fontSize: 12, fontWeight: 700, color: '#059669',
+                      }}>
+                        Save ${strategy.savingsVsCash.toLocaleString()} vs cash
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Warnings */}
+                  {strategy.warnings.length > 0 && (
+                    <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      {strategy.warnings.map((w, wIdx) => (
+                        <div key={wIdx} style={{
+                          fontSize: 12, color: '#92400E', padding: '6px 10px',
+                          backgroundColor: '#FFFBEB', borderRadius: 'var(--radius-sm)',
+                          border: '1px solid #FDE68A',
+                          display: 'flex', alignItems: 'center', gap: 6,
+                        }}>
+                          <span>&#9888;</span> {w}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
+          </div>
+        )}
+
+        {/* Empty wallet prompt */}
+        {!hasWallet && (
+          <div style={{
+            marginTop: 20, padding: '16px 18px',
+            backgroundColor: '#F5F3FF',
+            borderRadius: 'var(--radius)',
+            border: '1px solid #DDD6FE',
+            textAlign: 'center',
+          }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: '#5B21B6', marginBottom: 4 }}>
+              &#128161; Add your points to see booking recommendations
+            </div>
+            <div style={{ fontSize: 12, color: '#7C3AED' }}>
+              Go to the <a href="/wallet" style={{ fontWeight: 700, color: '#5B21B6', textDecoration: 'underline' }}>Wallet</a> tab to add your credit card points and airline miles. We&apos;ll show you the best way to book this itinerary.
+            </div>
+          </div>
+        )}
 
         {/* Save button */}
         <button

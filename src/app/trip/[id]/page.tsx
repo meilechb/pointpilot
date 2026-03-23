@@ -15,7 +15,7 @@ import { analyzeItinerary } from '@/utils/bookingAnalyzer'
 import { optimizeTrip, getRelevantSweetSpots, type BookingStrategy } from '@/utils/tripOptimizer'
 import ItineraryBuilder from '@/components/ItineraryBuilder'
 import SavePrompt from '@/components/SavePrompt'
-import { loadTripById, saveTrip as saveTripRemote, loadWallet } from '@/lib/dataService'
+import { loadTripById, saveTrip as saveTripRemote, loadWallet, loadTransferBonuses } from '@/lib/dataService'
 
 function formatShortDate(dateStr: string): string {
   if (!dateStr) return ''
@@ -56,6 +56,7 @@ export default function TripDetail() {
   const [editTravelers, setEditTravelers] = useState(1)
   const [editDateFlexibility, setEditDateFlexibility] = useState('exact')
   const [wallet, setWallet] = useState<any[]>([])
+  const [transferBonuses, setTransferBonuses] = useState<any[]>([])
   const [compareIds, setCompareIds] = useState<string[]>([])
   const [showCompare, setShowCompare] = useState(false)
   const [emailTarget, setEmailTarget] = useState<any>(null)
@@ -72,10 +73,12 @@ export default function TripDetail() {
     Promise.all([
       loadTripById(params.id as string),
       loadWallet(),
-    ]).then(([found, walletData]) => {
+      loadTransferBonuses(),
+    ]).then(([found, walletData, bonusData]) => {
       if (found && !found.itineraries) found.itineraries = []
       setTrip(found)
       setWallet(walletData || [])
+      setTransferBonuses(bonusData || [])
       // No longer caching wallet in unscoped localStorage — dataService handles scoping
       setTripLoading(false)
     })
@@ -1044,6 +1047,8 @@ export default function TripDetail() {
                 <ItineraryBuilder
                   trip={trip}
                   session={session}
+                  wallet={wallet}
+                  transferBonuses={transferBonuses}
                   cachedSuggestions={cachedSuggestions}
                   onSuggestionsChange={setCachedSuggestions}
                   cachedState={cachedBuilderState}
