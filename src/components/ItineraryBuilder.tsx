@@ -804,17 +804,12 @@ function ExpandedSuggestionCard({ suggestion, idx, trip, flightMap, strategies, 
         {/* Booking Guide — powered by optimizer */}
         {hasWallet && strategies.length > 0 && (
           <div style={{
-            marginTop: 20, padding: '18px 18px',
+            marginTop: 20, padding: '16px 18px',
             backgroundColor: 'var(--bg)',
             borderRadius: 'var(--radius)',
-            border: '1px solid var(--primary)',
+            border: '1px solid var(--border-light)',
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-              <span style={{ fontSize: 18 }}>&#128161;</span>
-              <span style={{ fontWeight: 800, fontSize: 15 }}>How to Book This</span>
-            </div>
-
-            {/* Strategy tabs */}
+            {/* Strategy tabs as top-level toggle */}
             {strategies.length > 1 && (
               <div style={{ display: 'flex', gap: 6, marginBottom: 14, flexWrap: 'wrap' }}>
                 {strategies.map((s, sIdx) => (
@@ -839,51 +834,47 @@ function ExpandedSuggestionCard({ suggestion, idx, trip, flightMap, strategies, 
             {(() => {
               const strategy = strategies[activeStrategy]
               if (!strategy) return null
+              const hasTransfers = strategy.bookings.some(b => b.method === 'transfer')
               return (
                 <div>
-                  <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 14, lineHeight: 1.5 }}>
-                    {strategy.description}
-                  </div>
-
-                  {/* Step-by-step booking instructions */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {/* Per-flight booking lines — clean and compact */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     {strategy.bookings.map((booking, bIdx) => (
                       <div key={bIdx} style={{
-                        display: 'flex', gap: 12, padding: '10px 14px',
-                        backgroundColor: 'var(--bg-card)',
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                        padding: booking.method === 'transfer' ? '10px 12px' : '8px 12px',
+                        backgroundColor: booking.method === 'transfer' ? 'var(--primary-light)' : 'var(--bg-card)',
                         borderRadius: 'var(--radius-sm)',
-                        border: '1px solid var(--border-light)',
+                        border: booking.method === 'transfer' ? '1px solid var(--primary)' : '1px solid var(--border-light)',
                       }}>
-                        <div style={{
-                          width: 24, height: 24, borderRadius: '50%', flexShrink: 0,
-                          background: booking.method === 'cash' ? '#6B7280' :
-                            booking.method === 'transfer' ? 'linear-gradient(135deg, #7C3AED, #4338CA)' :
-                            booking.method === 'portal' ? '#2563EB' : '#059669',
-                          color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontWeight: 700, fontSize: 11, marginTop: 1,
-                        }}>
-                          {bIdx + 1}
-                        </div>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', lineHeight: 1.4 }}>
-                            {booking.description}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ flexShrink: 0 }}>{booking.flightLabel}</span>
+                            {booking.tierLabel && (
+                              <span style={{
+                                fontSize: 10, fontWeight: 600, padding: '1px 5px',
+                                borderRadius: 6, backgroundColor: 'var(--bg)', color: 'var(--text-muted)',
+                              }}>
+                                {booking.tierLabel}
+                              </span>
+                            )}
                           </div>
-                          {booking.tierLabel && (
-                            <span style={{
-                              display: 'inline-block', marginTop: 3,
-                              fontSize: 10, fontWeight: 600, padding: '1px 6px',
-                              borderRadius: 8, backgroundColor: 'var(--bg-accent)', color: 'var(--text-secondary)',
+                          {/* Only show description for transfers and portals — the interesting ones */}
+                          {(booking.method === 'transfer' || booking.method === 'portal') && (
+                            <div style={{
+                              fontSize: 12, color: booking.method === 'transfer' ? 'var(--primary)' : 'var(--text-secondary)',
+                              marginTop: 2, fontWeight: booking.method === 'transfer' ? 600 : 400,
                             }}>
-                              {booking.tierLabel}
-                            </span>
+                              {booking.description}
+                            </div>
                           )}
                         </div>
-                        <div style={{ textAlign: 'right', flexShrink: 0, fontSize: 13 }}>
+                        <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 12 }}>
                           {booking.method === 'cash' ? (
-                            <span style={{ fontWeight: 700 }}>${booking.cashCost.toLocaleString()}</span>
+                            <span style={{ fontSize: 14, fontWeight: 700 }}>${booking.cashCost.toLocaleString()}</span>
                           ) : (
-                            <>
-                              <div style={{ fontWeight: 700, color: 'var(--primary)' }}>
+                            <div>
+                              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--primary)' }}>
                                 {booking.pointsCost.toLocaleString()} pts
                               </div>
                               {booking.cashCost > 0 && (
@@ -891,7 +882,7 @@ function ExpandedSuggestionCard({ suggestion, idx, trip, flightMap, strategies, 
                                   + ${booking.cashCost.toLocaleString()} fees
                                 </div>
                               )}
-                            </>
+                            </div>
                           )}
                         </div>
                       </div>
@@ -900,40 +891,30 @@ function ExpandedSuggestionCard({ suggestion, idx, trip, flightMap, strategies, 
 
                   {/* Summary bar */}
                   <div style={{
-                    marginTop: 14, padding: '12px 14px',
-                    backgroundColor: 'var(--bg-card)',
-                    borderRadius: 'var(--radius-sm)',
-                    border: '1px solid var(--border-light)',
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12,
+                    marginTop: 12, padding: '10px 14px',
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10,
+                    borderTop: '1px solid var(--border-light)',
                   }}>
-                    <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'baseline' }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>Total:</span>
                       {strategy.totalCash > 0 && (
-                        <div>
-                          <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5 }}>Cash</div>
-                          <div style={{ fontWeight: 800, fontSize: 16 }}>${strategy.totalCash.toLocaleString()}</div>
-                        </div>
+                        <span style={{ fontWeight: 800, fontSize: 15 }}>${strategy.totalCash.toLocaleString()}</span>
                       )}
                       {strategy.totalPoints > 0 && (
-                        <div>
-                          <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5 }}>Points</div>
-                          <div style={{ fontWeight: 800, fontSize: 16, color: 'var(--primary)' }}>{strategy.totalPoints.toLocaleString()}</div>
-                        </div>
+                        <span style={{ fontWeight: 800, fontSize: 15, color: 'var(--primary)' }}>{strategy.totalPoints.toLocaleString()} pts</span>
                       )}
                       {strategy.estimatedCpp > 0 && (
-                        <div>
-                          <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5 }}>Value</div>
-                          <div style={{ fontWeight: 800, fontSize: 16, color: '#059669' }}>{strategy.estimatedCpp} cpp</div>
-                        </div>
+                        <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>({strategy.estimatedCpp}cpp)</span>
                       )}
                     </div>
                     {strategy.savingsVsCash > 0 && (
-                      <div style={{
-                        padding: '4px 10px', borderRadius: 12,
+                      <span style={{
+                        padding: '3px 8px', borderRadius: 10,
                         backgroundColor: '#ECFDF5', border: '1px solid #A7F3D0',
                         fontSize: 12, fontWeight: 700, color: '#059669',
                       }}>
-                        Save ${strategy.savingsVsCash.toLocaleString()} vs cash
-                      </div>
+                        Save ${strategy.savingsVsCash.toLocaleString()}
+                      </span>
                     )}
                   </div>
 

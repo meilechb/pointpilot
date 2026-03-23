@@ -245,7 +245,7 @@ function getPayOptions(flight: Flight, wallet: WalletEntry[], travelers: number,
       pointsProgram: 'Cash',
       walletId: '__cash__',
       estimatedCashValue: flight.cashAmount * travelers,
-      description: `Pay $${(flight.cashAmount * travelers).toLocaleString()} cash on ${flight.bookingSite || 'booking site'}`,
+      description: `Book on ${flight.bookingSite || 'booking site'}`,
       cpp: 0,
     })
   }
@@ -278,8 +278,8 @@ function getPayOptions(flight: Flight, wallet: WalletEntry[], travelers: number,
           walletId: w.id,
           estimatedCashValue,
           description: w.balance >= totalPoints
-            ? `Use ${totalPoints.toLocaleString()} ${w.program}${totalFees ? ` + $${totalFees.toLocaleString()} fees` : ''} on ${flight.bookingSite}`
-            : `Use ${totalPoints.toLocaleString()} ${w.program}${totalFees ? ` + $${totalFees.toLocaleString()} fees` : ''} on ${flight.bookingSite} (need ${(totalPoints - w.balance).toLocaleString()} more miles)`,
+            ? `Book on ${flight.bookingSite} with your ${w.program}`
+            : `Book on ${flight.bookingSite} with ${w.program} (need ${(totalPoints - w.balance).toLocaleString()} more)`,
           cpp,
         })
       }
@@ -295,7 +295,7 @@ function getPayOptions(flight: Flight, wallet: WalletEntry[], travelers: number,
           pointsProgram: programLabel,
           walletId: '__points_no_wallet__',
           estimatedCashValue,
-          description: `Use ${totalPoints.toLocaleString()} ${programLabel}${totalFees ? ` + $${totalFees.toLocaleString()} fees` : ''} on ${flight.bookingSite} (not in your wallet)`,
+          description: `Book on ${flight.bookingSite} with ${programLabel} (not in your wallet)`,
           cpp,
         })
       }
@@ -308,7 +308,7 @@ function getPayOptions(flight: Flight, wallet: WalletEntry[], travelers: number,
         pointsProgram: flight.bookingSite || 'points',
         walletId: '__points_no_wallet__',
         estimatedCashValue,
-        description: `Use ${totalPoints.toLocaleString()} points${totalFees ? ` + $${totalFees.toLocaleString()} fees` : ''} on ${flight.bookingSite || 'booking site'}`,
+        description: `Book on ${flight.bookingSite || 'booking site'} with points`,
         cpp: estimatedCashValue > 0 ? (estimatedCashValue - totalFees) / totalPoints * 100 : 1.5,
       })
     }
@@ -342,6 +342,10 @@ function getPayOptions(flight: Flight, wallet: WalletEntry[], travelers: number,
           const bonusLabel = bonusPct > 0 ? ` +${bonusPct}% bonus!` : ''
           const cpp = estimatedCashValue > 0 ? (estimatedCashValue - totalFees) / bankPointsNeeded * 100 : 1.5
 
+          const shortFrom = program.name.replace(/(Chase |Amex |Citi |Capital One |Bilt )/, '')
+          const shortTo = partner.partner.replace(/ (Executive Club|Flying Club|AerClub|Mileage Club|Asia Miles|SkyMiles|AAdvantage|MileagePlus|Rapid Rewards|TrueBlue|KrisFlyer|Frequent Flyer|Privilege Club|Skywards|Guest|Plus|LifeMiles|Mileage Plan|Miles&Smiles|Miles&Go|Free Spirit|Mileage Bank|MileageLands|Flying Blue|Royal Orchid Plus|Rewards|Club Premier|SKYPASS)/, '')
+          const shortfall = w.balance < bankPointsNeeded ? ` (need ${(bankPointsNeeded - w.balance).toLocaleString()} more)` : ''
+
           options.push({
             method: 'transfer',
             cashCost: totalFees,
@@ -352,9 +356,7 @@ function getPayOptions(flight: Flight, wallet: WalletEntry[], travelers: number,
             transferTo: partner.partner,
             transferRatio: ratioStr,
             estimatedCashValue,
-            description: w.balance >= bankPointsNeeded
-              ? `Transfer ${bankPointsNeeded.toLocaleString()} ${program.name} → ${partner.partner} (${ratioStr}${bonusLabel}), book on ${flight.bookingSite}${totalFees ? ` + $${totalFees.toLocaleString()} fees` : ''}`
-              : `Transfer ${bankPointsNeeded.toLocaleString()} ${program.name} → ${partner.partner} (${ratioStr}${bonusLabel}), book on ${flight.bookingSite}${totalFees ? ` + $${totalFees.toLocaleString()} fees` : ''} (need ${(bankPointsNeeded - w.balance).toLocaleString()} more pts)`,
+            description: `Transfer ${w.program} → ${shortTo} (${ratioStr}${bonusLabel}), then book on ${flight.bookingSite}${shortfall}`,
             cpp,
           })
         }
@@ -386,8 +388,8 @@ function getPayOptions(flight: Flight, wallet: WalletEntry[], travelers: number,
         portalCpp: cpp,
         estimatedCashValue: totalCash,
         description: w.balance >= pointsNeeded
-          ? `Book through ${portal.name} for ${pointsNeeded.toLocaleString()} ${w.program} (${cpp} cpp)`
-          : `Book through ${portal.name} for ${pointsNeeded.toLocaleString()} ${w.program} (${cpp} cpp) (need ${(pointsNeeded - w.balance).toLocaleString()} more pts)`,
+          ? `Book through ${portal.name} (${cpp}cpp)`
+          : `Book through ${portal.name} (${cpp}cpp) — need ${(pointsNeeded - w.balance).toLocaleString()} more`,
         cpp,
       })
     }
@@ -397,7 +399,6 @@ function getPayOptions(flight: Flight, wallet: WalletEntry[], travelers: number,
   if (flight.defaultTierLabel && flight.pricingTiers && flight.pricingTiers.length > 0) {
     for (const opt of options) {
       opt.tierLabel = flight.defaultTierLabel
-      opt.description = `[${flight.defaultTierLabel}] ${opt.description}`
     }
   }
 
@@ -415,7 +416,6 @@ function getPayOptions(flight: Flight, wallet: WalletEntry[], travelers: number,
       const tierOptions = getPayOptions(tierFlight, wallet, travelers, transferBonuses)
       for (const opt of tierOptions) {
         opt.tierLabel = tier.label
-        opt.description = `[${tier.label}] ${opt.description}`
       }
       options.push(...tierOptions)
     }
