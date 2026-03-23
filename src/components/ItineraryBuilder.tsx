@@ -1041,10 +1041,13 @@ function FlightRow({ flight }: { flight: any }) {
   } else if (flight.paymentType === 'points' && flight.pointsAmount) {
     priceStr = `${flight.pointsAmount.toLocaleString()} pts`
     priceColor = 'var(--primary)'
+    if (flight.feesAmount) priceStr += ` + $${flight.feesAmount.toLocaleString()} fees`
   }
-  if (flight.feesAmount && flight.paymentType === 'points') {
-    priceStr += ` + $${flight.feesAmount.toLocaleString()} fees`
-  }
+
+  const depDateFormatted = depDate
+    ? new Date(depDate + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+    : ''
+  const airlineDesc = airline + (flightCode ? ` ${flightCode}` : '')
 
   return (
     <div style={{
@@ -1052,26 +1055,20 @@ function FlightRow({ flight }: { flight: any }) {
       border: '1px solid var(--border-light)', padding: '12px 14px',
       marginBottom: 6,
     }}>
-      {/* Top: airline + price */}
+      {/* Top: date + airline + price */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-        <div>
-          <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>
-            {airline}{flightCode ? ` ${flightCode}` : ''}
-          </div>
-          {depDate && (
-            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>
-              {new Date(depDate + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-            </div>
-          )}
+        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+          {depDateFormatted && <span style={{ fontWeight: 600, color: 'var(--text)' }}>{depDateFormatted}</span>}
+          {airlineDesc && <span> · {airlineDesc}</span>}
         </div>
         {priceStr && (
-          <div style={{ fontWeight: 700, fontSize: 15, color: priceColor }}>
+          <div style={{ fontWeight: 700, fontSize: 14, color: priceColor, flexShrink: 0, marginLeft: 12 }}>
             {priceStr}
           </div>
         )}
       </div>
 
-      {/* Middle: timeline */}
+      {/* Timeline hero */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: 12,
         padding: '8px 12px',
@@ -1079,8 +1076,8 @@ function FlightRow({ flight }: { flight: any }) {
         borderRadius: 'var(--radius-sm)',
       }}>
         <div style={{ textAlign: 'center', minWidth: 48 }}>
-          <div style={{ fontWeight: 700, fontSize: 16 }}>{depTime}</div>
-          <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>{depAirport}</div>
+          <div style={{ fontWeight: 700, fontSize: 18, color: 'var(--text)', letterSpacing: -0.3 }}>{depTime}</div>
+          <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600 }}>{depAirport}</div>
         </div>
 
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
@@ -1110,10 +1107,10 @@ function FlightRow({ flight }: { flight: any }) {
         </div>
 
         <div style={{ textAlign: 'center', minWidth: 48 }}>
-          <div style={{ fontWeight: 700, fontSize: 16 }}>
-            {arrTime}{isNextDay ? <sup style={{ fontSize: 10, color: 'var(--text-muted)' }}>+1</sup> : ''}
+          <div style={{ fontWeight: 700, fontSize: 18, color: 'var(--text)', letterSpacing: -0.3 }}>
+            {arrTime}{isNextDay ? <sup style={{ fontSize: 10, fontWeight: 700, color: 'var(--warning)' }}>+1</sup> : ''}
           </div>
-          <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>{arrAirport}</div>
+          <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600 }}>{arrAirport}</div>
         </div>
       </div>
 

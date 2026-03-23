@@ -1734,31 +1734,29 @@ function printItinerary(itinerary: any, trip: any, wallet: any[]) {
         layovers.forEach(l => chips.push(`<span style="padding:2px 8px;border-radius:10px;background:#fef3c7;color:#92400e;font-size:11px">${l.duration} in ${l.airport}</span>`))
 
         return `<div style="background:#f9f9fb;border-radius:10px;border:1px solid #e5e7eb;padding:14px 16px;margin-bottom:8px">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
-            <div>
-              <div style="font-weight:700;font-size:15px;color:#1a1a2e">${airline} ${flightNum}</div>
-              ${depDate ? `<div style="font-size:12px;color:#888;margin-top:1px">${depDate}</div>` : ''}
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+            <div style="font-size:12px;color:#888">
+              ${depDate ? `<span style="font-weight:600;color:#1a1a2e">${depDate}</span>` : ''}
+              ${airline || flightNum ? ` · ${airline} ${flightNum}` : ''}
             </div>
-            <div style="text-align:right">
+            <div style="text-align:right;flex-shrink:0;margin-left:12px">
               <div style="font-weight:700;font-size:15px;color:${priceColor}">${priceDisplay}</div>
-              ${feesDisplay ? `<div style="font-size:12px;color:#888">${feesDisplay}</div>` : ''}
+              ${feesDisplay ? `<div style="font-size:11px;color:#888">${feesDisplay}</div>` : ''}
             </div>
           </div>
-          <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;padding:8px 12px;background:white;border-radius:8px">
-            <div style="text-align:center">
-              <div style="font-weight:700;font-size:16px">${depTime}</div>
-              <div style="font-size:11px;color:#888">${depAirport}</div>
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;padding:10px 14px;background:white;border-radius:8px">
+            <div style="text-align:center;min-width:48px">
+              <div style="font-weight:700;font-size:18px;color:#1a1a2e;letter-spacing:-0.3px">${depTime}</div>
+              <div style="font-size:12px;color:#666;font-weight:600">${depAirport}</div>
             </div>
             <div style="flex:1;text-align:center">
               <div style="font-size:11px;color:#888;margin-bottom:2px">${totalTime || ''}</div>
-              <div style="height:1px;background:#ddd;margin:0 8px;position:relative">
-                <span style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:10px;color:#888;background:white;padding:0 4px">✈</span>
-              </div>
-              <div style="font-size:11px;margin-top:2px;font-weight:500;color:${stopsColor}">${stopsLabel}</div>
+              <div style="height:2px;background:#ddd;margin:0 4px"></div>
+              <div style="font-size:10px;margin-top:2px;font-weight:500;color:${stopsColor}">${stopsLabel}</div>
             </div>
-            <div style="text-align:center">
-              <div style="font-weight:700;font-size:16px">${arrTime}</div>
-              <div style="font-size:11px;color:#888">${arrAirport}</div>
+            <div style="text-align:center;min-width:48px">
+              <div style="font-weight:700;font-size:18px;color:#1a1a2e;letter-spacing:-0.3px">${arrTime}</div>
+              <div style="font-size:12px;color:#666;font-weight:600">${arrAirport}</div>
             </div>
           </div>
           ${chips.length > 0 ? `<div style="display:flex;gap:6px;flex-wrap:wrap">${chips.join('')}</div>` : ''}
@@ -2026,24 +2024,17 @@ function CompareView({ itineraries, trip, wallet, onClose }: {
                     return (
                       <div key={`${it.id}-flight-${i}`} style={rowValue}>
                         {flights.length === 0 ? <span style={{ color: 'var(--text-muted)' }}>—</span> : flights.map((f: any) => {
-                          const seg = f.segments?.[0] || {}
-                          return <div key={f.id} style={{ fontWeight: 600 }}>{seg.airlineName || seg.airline || ''} {seg.flightNumber || seg.flightCode || ''}</div>
-                        })}
-                      </div>
-                    )
-                  })}
-
-                  <div style={rowLabel}>Times</div>
-                  {itineraries.map(it => {
-                    const flightIds = it.assignments?.[i] || []
-                    const flights = flightIds.map((id: string) => flightMap[id]).filter(Boolean)
-                    return (
-                      <div key={`${it.id}-times-${i}`} style={rowValue}>
-                        {flights.length === 0 ? '—' : flights.map((f: any) => {
                           const segs = f.segments || []
                           const dep = formatTime(segs[0]?.departureTime)
                           const arr = formatTime(segs[segs.length - 1]?.arrivalTime)
-                          return <div key={f.id}>{dep && arr ? `${dep} – ${arr}` : '—'}</div>
+                          const seg = segs[0] || {}
+                          const airlineLine = (seg.airlineName || seg.airline || '') + ' ' + (seg.flightNumber || seg.flightCode || '')
+                          return (
+                            <div key={f.id}>
+                              <div style={{ fontWeight: 700, fontSize: 14 }}>{dep && arr ? `${dep} – ${arr}` : '—'}</div>
+                              <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 400 }}>{airlineLine.trim()}</div>
+                            </div>
+                          )
                         })}
                       </div>
                     )
@@ -2261,44 +2252,62 @@ function ItineraryDetailPanel({ itinerary, trip, wallet, flightMap, onDelete, on
                     priceColor = 'var(--primary)'
                   }
 
+                  const arrDateStr = lastSeg.arrivalDate || lastSeg.date
+                  const isNextDay2 = arrDateStr && firstSeg.date && arrDateStr !== firstSeg.date
+                  const stops2 = segs.length - 1
+                  const airlineDesc2 = airline + (flightNum ? ` ${flightNum}` : '')
+
                   return (
                     <div key={f.id} style={{
                       backgroundColor: 'var(--bg)', borderRadius: 'var(--radius)',
                       border: '1px solid var(--border-light)', padding: '12px 14px',
                       marginBottom: 6,
                     }}>
+                      {/* Top: date + airline + price */}
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                        <div>
-                          <div style={{ fontWeight: 700, fontSize: 14 }}>{airline} {flightNum}</div>
-                          {depDate && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>{depDate}</div>}
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                          {depDate && <span style={{ fontWeight: 600, color: 'var(--text)' }}>{depDate}</span>}
+                          {airlineDesc2 && <span> · {airlineDesc2}</span>}
                         </div>
-                        <div style={{ textAlign: 'right' }}>
+                        <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 12 }}>
                           <div style={{ fontWeight: 700, fontSize: 14, color: priceColor }}>{priceDisplay}</div>
                           {f.paymentType === 'points' && f.feesAmount ? (
                             <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>+ ${f.feesAmount} fees</div>
                           ) : null}
                         </div>
                       </div>
+                      {/* Timeline hero */}
                       {(depTime || arrTime) && (
                         <div style={{
                           display: 'flex', alignItems: 'center', gap: 10,
-                          padding: '6px 10px', backgroundColor: 'var(--bg-card)', borderRadius: 'var(--radius-sm)',
+                          padding: '8px 12px', backgroundColor: 'var(--bg-card)', borderRadius: 'var(--radius-sm)',
                         }}>
-                          <div style={{ textAlign: 'center' }}>
-                            <div style={{ fontWeight: 700, fontSize: 14 }}>{depTime || '—'}</div>
-                            <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{firstSeg.departureAirport}</div>
+                          <div style={{ textAlign: 'center', minWidth: 44 }}>
+                            <div style={{ fontWeight: 700, fontSize: 18, color: 'var(--text)', letterSpacing: -0.3 }}>{depTime || '—'}</div>
+                            <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600 }}>{firstSeg.departureAirport}</div>
                           </div>
                           <div style={{ flex: 1, textAlign: 'center' }}>
-                            <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{totalTime}</div>
-                            <div style={{ height: 1, backgroundColor: 'var(--border)', margin: '2px 4px' }} />
+                            <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>{totalTime}</div>
+                            <div style={{ height: 2, backgroundColor: 'var(--border)', margin: '2px 4px', position: 'relative' }}>
+                              {stops2 > 0 && Array.from({ length: stops2 }).map((_, si) => (
+                                <div key={si} style={{
+                                  position: 'absolute', left: `${((si + 1) / (stops2 + 1)) * 100}%`,
+                                  top: -3, width: 8, height: 8, borderRadius: '50%',
+                                  backgroundColor: 'var(--text-muted)', transform: 'translateX(-50%)',
+                                }} />
+                              ))}
+                            </div>
                             <div style={{
-                              fontSize: 10, fontWeight: 500,
+                              fontSize: 10, fontWeight: stopsLabel === 'Nonstop' ? 600 : 400, marginTop: 2,
                               color: stopsLabel === 'Nonstop' ? 'var(--success)' : 'var(--text-muted)',
                             }}>{stopsLabel}</div>
                           </div>
-                          <div style={{ textAlign: 'center' }}>
-                            <div style={{ fontWeight: 700, fontSize: 14 }}>{arrTime || '—'}</div>
-                            <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{lastSeg.arrivalAirport}</div>
+                          <div style={{ textAlign: 'center', minWidth: 44 }}>
+                            <div style={{ fontWeight: 700, fontSize: 18, color: 'var(--text)', letterSpacing: -0.3 }}>
+                              {arrTime || '—'}
+                              {isNextDay2 && <sup style={{ fontSize: 10, fontWeight: 700, color: 'var(--warning)' }}>+1</sup>}
+                            </div>
+                            <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600 }}>{lastSeg.arrivalAirport}</div>
                           </div>
                         </div>
                       )}
@@ -2614,67 +2623,69 @@ function ItineraryCard({ itinerary, trip, wallet, onDelete, onRename, onPrint, o
                       priceColor = 'var(--primary)'
                     }
 
+                    const arrDateStr2 = lastSeg.arrivalDate || lastSeg.date
+                    const isNextDay3 = arrDateStr2 && firstSeg.date && arrDateStr2 !== firstSeg.date
+                    const stops3 = segs.length - 1
+                    const airlineDesc3 = airline + (flightNum ? ` ${flightNum}` : '')
+
                     return (
                       <div key={f.id} style={{
                         backgroundColor: 'var(--bg)', borderRadius: 'var(--radius)',
                         border: '1px solid var(--border-light)', padding: '14px 16px',
                         marginBottom: 8,
                       }}>
-                        {/* Top row: airline + price */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
-                          <div>
-                            <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)' }}>
-                              {airline} {flightNum}
-                            </div>
-                            {depDate && <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 1 }}>{depDate}</div>}
+                        {/* Top: date + airline + price */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                          <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                            {depDate && <span style={{ fontWeight: 600, color: 'var(--text)' }}>{depDate}</span>}
+                            {airlineDesc3 && <span> · {airlineDesc3}</span>}
                           </div>
-                          <div style={{ textAlign: 'right' }}>
+                          <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 12 }}>
                             <div style={{ fontWeight: 700, fontSize: 15, color: priceColor }}>{priceDisplay}</div>
                             {f.paymentType === 'points' && f.feesAmount ? (
-                              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>+ ${f.feesAmount} fees</div>
+                              <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>+ ${f.feesAmount} fees</div>
                             ) : null}
                           </div>
                         </div>
 
-                        {/* Time row */}
+                        {/* Timeline hero */}
                         {(depTime || arrTime) && (
                           <div style={{
-                            display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10,
-                            padding: '8px 12px', backgroundColor: 'var(--bg-card)', borderRadius: 'var(--radius-sm)',
+                            display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8,
+                            padding: '10px 14px', backgroundColor: 'var(--bg-card)', borderRadius: 'var(--radius-sm)',
                           }}>
-                            <div style={{ textAlign: 'center' }}>
-                              <div style={{ fontWeight: 700, fontSize: 16 }}>{depTime || '—'}</div>
-                              <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{firstSeg.departureAirport}</div>
+                            <div style={{ textAlign: 'center', minWidth: 48 }}>
+                              <div style={{ fontWeight: 700, fontSize: 18, color: 'var(--text)', letterSpacing: -0.3 }}>{depTime || '—'}</div>
+                              <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600 }}>{firstSeg.departureAirport}</div>
                             </div>
                             <div style={{ flex: 1, textAlign: 'center' }}>
-                              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>{totalTime}</div>
-                              <div style={{ height: 1, backgroundColor: 'var(--border)', margin: '0 8px', position: 'relative' }}>
-                                <div style={{
-                                  position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-                                  fontSize: 10, color: 'var(--text-muted)', backgroundColor: 'var(--bg-card)', padding: '0 4px',
-                                }}>
-                                  &#9992;
-                                </div>
+                              <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500, marginBottom: 2 }}>{totalTime}</div>
+                              <div style={{ height: 2, backgroundColor: 'var(--border)', margin: '0 4px', position: 'relative' }}>
+                                {stops3 > 0 && Array.from({ length: stops3 }).map((_, si) => (
+                                  <div key={si} style={{
+                                    position: 'absolute', left: `${((si + 1) / (stops3 + 1)) * 100}%`,
+                                    top: -3, width: 8, height: 8, borderRadius: '50%',
+                                    backgroundColor: 'var(--text-muted)', transform: 'translateX(-50%)',
+                                  }} />
+                                ))}
                               </div>
                               <div style={{
-                                fontSize: 11, marginTop: 2, fontWeight: 500,
+                                fontSize: 10, marginTop: 2, fontWeight: stopsLabel === 'Nonstop' ? 600 : 400,
                                 color: stopsLabel === 'Nonstop' ? 'var(--success)' : 'var(--text-muted)',
                               }}>{stopsLabel}</div>
                             </div>
-                            <div style={{ textAlign: 'center' }}>
-                              <div style={{ fontWeight: 700, fontSize: 16 }}>{arrTime || '—'}</div>
-                              <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{lastSeg.arrivalAirport}</div>
+                            <div style={{ textAlign: 'center', minWidth: 48 }}>
+                              <div style={{ fontWeight: 700, fontSize: 18, color: 'var(--text)', letterSpacing: -0.3 }}>
+                                {arrTime || '—'}
+                                {isNextDay3 && <sup style={{ fontSize: 10, fontWeight: 700, color: 'var(--warning)' }}>+1</sup>}
+                              </div>
+                              <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600 }}>{lastSeg.arrivalAirport}</div>
                             </div>
                           </div>
                         )}
 
                         {/* Detail chips */}
                         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', fontSize: 12 }}>
-                          {totalTime && (
-                            <span style={{ padding: '2px 8px', borderRadius: 10, backgroundColor: 'var(--bg-card)', color: 'var(--text-secondary)' }}>
-                              Total: {totalTime}
-                            </span>
-                          )}
                           {flyingTime && flyingTime !== totalTime && (
                             <span style={{ padding: '2px 8px', borderRadius: 10, backgroundColor: 'var(--bg-card)', color: 'var(--text-secondary)' }}>
                               Flying: {flyingTime}
