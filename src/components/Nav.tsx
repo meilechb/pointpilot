@@ -58,6 +58,7 @@ export default function Nav() {
       <div className="nav-links">
         <a href="/trips" className="nav-link">Trips</a>
         <a href="/wallet" className="nav-link">Wallet</a>
+        <a href="/tools" className="nav-link">Tools</a>
         <a href="/news" className="nav-link">News</a>
         <a href="/pricing" className="nav-link">Chrome Extension</a>
         {!loading && (
@@ -158,6 +159,7 @@ export default function Nav() {
       <div className={`mobile-menu ${menuOpen ? 'open' : ''}`}>
         <a href="/trips" style={mobileLinkStyle} onClick={() => setMenuOpen(false)}>Trips</a>
         <a href="/wallet" style={mobileLinkStyle} onClick={() => setMenuOpen(false)}>Wallet</a>
+        <a href="/tools" style={mobileLinkStyle} onClick={() => setMenuOpen(false)}>Tools</a>
         <a href="/news" style={mobileLinkStyle} onClick={() => setMenuOpen(false)}>News</a>
         <a href="/pricing" style={mobileLinkStyle} onClick={() => setMenuOpen(false)}>Chrome Extension</a>
         {user ? (
