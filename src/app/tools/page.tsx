@@ -3,25 +3,11 @@
 export default function ToolsPage() {
   const tools = [
     {
-      title: 'Sweet Spot Explorer',
-      description: 'Discover the best-value award redemptions matched to your wallet. See exactly how to use your points for maximum value.',
-      href: '/tools/sweet-spots',
-      icon: '🎯',
-      color: '#4338CA',
-    },
-    {
       title: 'Transfer Calculator',
       description: 'Find the optimal path to transfer bank points to any airline. Compare transfer ratios, bonuses, and total cost.',
       href: '/tools/transfer-calculator',
       icon: '🔄',
       color: '#059669',
-    },
-    {
-      title: 'Earning Calculator',
-      description: 'Figure out which credit card earns the most points for every spending category. Optimize your entire wallet.',
-      href: '/tools/earning-calculator',
-      icon: '📊',
-      color: '#D97706',
     },
   ]
 
