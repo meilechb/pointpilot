@@ -3,6 +3,27 @@
 export default function ToolsPage() {
   const tools = [
     {
+      title: 'Route Points Advisor',
+      description: 'Enter a route and cabin class — see every way to book it with your points, ranked by value. Factors in transfers, bonuses, and surcharges.',
+      href: '/tools/route-advisor',
+      icon: '🧭',
+      color: '#2563eb',
+    },
+    {
+      title: 'Sweet Spots',
+      description: 'The best-value redemptions in award travel, personalized to your wallet. See which aspirational trips your points can unlock.',
+      href: '/tools/sweet-spots',
+      icon: '🎯',
+      color: '#d97706',
+    },
+    {
+      title: 'Award Charts',
+      description: 'Browse award pricing by program, route, and cabin class. Compare how many points you need across different programs.',
+      href: '/tools/award-charts',
+      icon: '📊',
+      color: '#7c3aed',
+    },
+    {
       title: 'Transfer Calculator',
       description: 'Find the optimal path to transfer bank points to any airline. Compare transfer ratios, bonuses, and total cost.',
       href: '/tools/transfer-calculator',
