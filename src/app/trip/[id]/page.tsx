@@ -59,6 +59,9 @@ export default function TripDetail() {
   const [transferBonuses, setTransferBonuses] = useState<any[]>([])
   const [compareIds, setCompareIds] = useState<string[]>([])
   const [showCompare, setShowCompare] = useState(false)
+  const [shareToken, setShareToken] = useState<string | null>(null)
+  const [shareCopied, setShareCopied] = useState(false)
+  const [shareLoading, setShareLoading] = useState(false)
   const [emailTarget, setEmailTarget] = useState<any>(null)
   const [emailAddress, setEmailAddress] = useState('')
   const [emailSending, setEmailSending] = useState(false)
@@ -89,6 +92,36 @@ export default function TripDetail() {
     saveTripRemote(updatedTrip).catch(err => {
       console.error('Failed to save trip to Supabase:', err)
     })
+  }
+
+  const handleShare = async () => {
+    if (!session?.access_token || !trip?.id) return
+    if (shareToken) {
+      // Already have a token — just copy the link
+      const url = `${window.location.origin}/share/${shareToken}`
+      await navigator.clipboard.writeText(url).catch(() => {})
+      setShareCopied(true)
+      setTimeout(() => setShareCopied(false), 2500)
+      return
+    }
+    setShareLoading(true)
+    try {
+      const res = await fetch(`/api/trips/${trip.id}/share`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      })
+      if (!res.ok) throw new Error('Failed to create share link')
+      const { token } = await res.json()
+      setShareToken(token)
+      const url = `${window.location.origin}/share/${token}`
+      await navigator.clipboard.writeText(url).catch(() => {})
+      setShareCopied(true)
+      setTimeout(() => setShareCopied(false), 2500)
+    } catch {
+      // silently fail — user can retry
+    } finally {
+      setShareLoading(false)
+    }
   }
 
   const parseDate = (dateStr: string): Date | null => {
@@ -619,6 +652,35 @@ export default function TripDetail() {
               onMouseOut={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-secondary)' }}
             >
               Edit Trip
+            </button>
+
+            {/* Share button */}
+            <button
+              onClick={handleShare}
+              disabled={shareLoading}
+              style={{
+                width: '100%', padding: '10px 0', marginTop: 8,
+                border: '1.5px solid var(--border)', borderRadius: 'var(--radius-sm)',
+                cursor: shareLoading ? 'wait' : 'pointer', backgroundColor: 'var(--bg-card)',
+                fontSize: 13, fontWeight: 600,
+                color: shareCopied ? 'var(--success)' : 'var(--text-secondary)',
+                borderColor: shareCopied ? 'var(--success)' : 'var(--border)',
+                transition: 'all 0.15s',
+              }}
+              onMouseOver={(e) => {
+                if (!shareCopied) {
+                  e.currentTarget.style.borderColor = 'var(--primary)'
+                  e.currentTarget.style.color = 'var(--primary)'
+                }
+              }}
+              onMouseOut={(e) => {
+                if (!shareCopied) {
+                  e.currentTarget.style.borderColor = 'var(--border)'
+                  e.currentTarget.style.color = 'var(--text-secondary)'
+                }
+              }}
+            >
+              {shareLoading ? 'Creating link…' : shareCopied ? '✓ Link copied!' : shareToken ? 'Copy share link' : 'Share Trip'}
             </button>
           </div>
         </aside>
