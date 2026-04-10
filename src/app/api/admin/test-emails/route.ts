@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
 import { sendSubscriptionEmail, sendAdminGrantEmail, wrapEmail } from '@/lib/email'
 
-const ADMIN_EMAIL = 'meilechbiller18@gmail.com'
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'meilechbiller18@gmail.com'
 
 async function verifyAdmin(req: NextRequest) {
   const token = req.headers.get('Authorization')?.replace('Bearer ', '')

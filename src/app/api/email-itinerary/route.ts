@@ -50,6 +50,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
   }
 
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  if (!emailRegex.test(to)) {
+    return NextResponse.json({ error: 'Invalid recipient email address' }, { status: 400 })
+  }
+
   const travelers = itinerary.travelers || 1
   const totals = itinerary.totals || { cash: 0, points: 0, fees: 0 }
   const flightMap: Record<string, any> = {}

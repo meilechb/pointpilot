@@ -431,7 +431,7 @@ export default function Home() {
           ].map((item, i) => (
             <div key={i} style={{
               padding: '14px 20px',
-              borderBottom: i < 4 ? '1px solid var(--border-light)' : 'none',
+              borderBottom: i < 3 ? '1px solid var(--border-light)' : 'none',
             }}>
               <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 3 }}>{item.q}</div>
               <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{item.a}</div>

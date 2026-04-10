@@ -29,9 +29,6 @@ export default function TripsPage() {
   useEffect(() => {
     loadTrips().then(saved => {
       setTrips(saved)
-      if (saved.length === 1) {
-        setSavePromptTrigger('trip')
-      }
       setLoading(false)
     }).catch(() => { setLoading(false) })
   }, [])

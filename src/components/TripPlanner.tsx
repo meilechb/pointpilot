@@ -115,7 +115,7 @@ function getFlightPrice(flight: Flight): { cash: number; points: number; fees: n
 
 function canFlightGoInLeg(flight: Flight, leg: Leg): boolean {
   const route = getFlightRoute(flight)
-  return airportsMatch(route.from, leg.from) || airportsMatch(route.to, leg.to)
+  return airportsMatch(route.from, leg.from) && airportsMatch(route.to, leg.to)
 }
 
 function validateLeg(leg: Leg, flights: Flight[]): { complete: boolean; warnings: Warning[] } {

@@ -356,7 +356,7 @@ export async function deleteWalletEntry(entryId: string): Promise<void> {
   localStorage.setItem(key, JSON.stringify(local.filter((e: any) => e.id !== entryId)))
 
   if (!user) return
-  const { error } = await getSupabase().from('wallet').delete().eq('id', entryId)
+  const { error } = await getSupabase().from('wallet').delete().eq('id', entryId).eq('user_id', user.id)
   if (error) console.error('Failed to delete wallet entry:', error)
 }
 

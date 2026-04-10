@@ -116,11 +116,17 @@ export default function WalletPage() {
       }
     }
 
+    const parsedBalance = parseFloat(balance)
+    if (isNaN(parsedBalance) || parsedBalance < 0) {
+      alert('Balance must be a non-negative number.')
+      return
+    }
+
     const entry: WalletEntry = {
       id: editingId || crypto.randomUUID(),
       currency_type: currencyType,
       program,
-      balance: parseFloat(balance) || 0,
+      balance: parsedBalance,
       redemption_value: currencyType === 'cashback' ? (parseFloat(redemptionValue) || null) : null,
       notes,
     }

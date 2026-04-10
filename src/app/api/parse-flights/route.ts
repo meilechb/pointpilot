@@ -99,9 +99,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ flights: [] })
   }
 
-  // Record the scan AFTER validating we have actual payloads to process
-  await supabase.from('scan_usage').insert({ user_id: user.id, page_url: url || '' })
-
   // Filter to payloads that look like flight data, truncate each, keep best 3
   // Keep payloads small (15K each) for faster AI response
   const filtered = payloads
@@ -118,6 +115,9 @@ export async function POST(request: NextRequest) {
   if (toSend.length === 0) {
     return NextResponse.json({ flights: [] })
   }
+
+  // Record the scan only after confirming we have payloads to actually process
+  await supabase.from('scan_usage').insert({ user_id: user.id, page_url: url || '' })
 
   const apiKey = process.env.GEMINI_API_KEY
   if (!apiKey) {
