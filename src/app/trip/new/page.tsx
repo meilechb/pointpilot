@@ -32,12 +32,6 @@ const fieldInput: React.CSSProperties = {
 export default function NewTrip() {
   const router = useRouter()
   const [tripName, setTripName] = useState('')
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const name = params.get('name')
-    if (name) setTripName(name)
-  }, [])
   const [tripType, setTripType] = useState('roundtrip')
   const [departureCity, setDepartureCity] = useState('')
   const [destinationCity, setDestinationCity] = useState('')
@@ -46,6 +40,13 @@ export default function NewTrip() {
   const [returnDate, setReturnDate] = useState<Date | null>(null)
   const [travelers, setTravelers] = useState(1)
   const [dateFlexibility, setDateFlexibility] = useState('exact')
+  const [creating, setCreating] = useState(false)
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const name = params.get('name')
+    if (name) setTripName(name)
+  }, [])
 
   const addStop = () => setStops([...stops, ''])
   const updateStop = (index: number, value: string) => {
@@ -74,6 +75,8 @@ export default function NewTrip() {
   }
 
   const handleCreate = async () => {
+    if (creating) return
+    setCreating(true)
     const trip = {
       id: crypto.randomUUID(),
       tripName,
@@ -90,7 +93,11 @@ export default function NewTrip() {
       itineraries: [],
       createdAt: new Date().toISOString(),
     }
-    await saveTrip(trip)
+    try {
+      await saveTrip(trip)
+    } catch (err) {
+      console.error('Failed to save trip:', err)
+    }
     router.push(`/trip/${trip.id}`)
   }
 
@@ -269,23 +276,23 @@ export default function NewTrip() {
 
         <button
           onClick={handleCreate}
-          disabled={!canCreate}
+          disabled={!canCreate || creating}
           style={{
             width: '100%',
             padding: 14,
             height: 48,
-            background: canCreate ? 'linear-gradient(135deg, var(--primary), var(--primary-hover))' : 'var(--border)',
-            color: canCreate ? 'var(--text-inverse)' : 'var(--text-muted)',
+            background: canCreate && !creating ? 'linear-gradient(135deg, var(--primary), var(--primary-hover))' : 'var(--border)',
+            color: canCreate && !creating ? 'var(--text-inverse)' : 'var(--text-muted)',
             border: 'none',
             borderRadius: 'var(--radius)',
-            cursor: canCreate ? 'pointer' : 'default',
+            cursor: !canCreate ? 'default' : creating ? 'wait' : 'pointer',
             fontSize: 16,
             fontWeight: 600,
-            boxShadow: canCreate ? '0 2px 8px rgba(67, 56, 202, 0.3)' : 'none',
+            boxShadow: canCreate && !creating ? '0 2px 8px rgba(67, 56, 202, 0.3)' : 'none',
             transition: 'transform 0.15s, box-shadow 0.15s',
           }}
         >
-          Start Trip →
+          {creating ? 'Creating...' : 'Start Trip →'}
         </button>
       </div>
     </div>

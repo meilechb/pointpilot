@@ -75,11 +75,32 @@ export default function TripDetail() {
       loadWallet(),
       loadTransferBonuses(),
     ]).then(([found, walletData, bonusData]) => {
-      if (found && !found.itineraries) found.itineraries = []
+      if (found) {
+        if (!found.itineraries) found.itineraries = []
+        if (!found.flights) found.flights = []
+        if (!found.legs) found.legs = []
+      }
       setTrip(found)
       setWallet(walletData || [])
       setTransferBonuses(bonusData || [])
-      // No longer caching wallet in unscoped localStorage — dataService handles scoping
+      // Quick-add trips have no route yet — open the editor immediately so the
+      // user can finish setup instead of landing on a half-empty detail view.
+      if (found && (!found.legs || found.legs.length === 0)) {
+        setEditName(found.tripName || '')
+        setEditTripType(found.tripType || 'roundtrip')
+        setEditDepartureCity(found.departureCity || '')
+        setEditDestinationCity(found.destinationCity || '')
+        setEditStops(found.stops || [])
+        setEditDepartureDate(found.departureDate ? new Date(found.departureDate + 'T00:00:00') : null)
+        setEditReturnDate(found.returnDate ? new Date(found.returnDate + 'T00:00:00') : null)
+        setEditTravelers(found.travelers || 1)
+        setEditDateFlexibility(found.dateFlexibility || 'exact')
+        setIsEditing(true)
+      }
+      setTripLoading(false)
+    }).catch(err => {
+      console.error('Failed to load trip:', err)
+      setTrip(null)
       setTripLoading(false)
     })
   }, [params.id])

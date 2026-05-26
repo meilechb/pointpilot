@@ -63,11 +63,15 @@ export default function SavePrompt({ trigger }: Props) {
       setLoading(false)
       return
     }
+    setEmail('')
+    setPassword('')
+    setFullName('')
     setSuccess(true)
     setLoading(false)
   }
 
   const handleGoogleSignup = async () => {
+    setError('')
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: `${window.location.origin}/auth/callback` },
