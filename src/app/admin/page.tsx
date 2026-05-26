@@ -4,6 +4,8 @@ import { useState, useEffect, useMemo } from 'react'
 import { useAuth } from '@/components/AuthProvider'
 import { createClient } from '@/lib/supabase'
 import ProgramSelect from '@/components/ProgramSelect'
+import AdminCrudTab from '@/components/AdminCrudTab'
+import type { FieldDef, ListColumn } from '@/components/AdminCrudTab'
 import { transferPartners } from '@/data/transferPartners'
 
 type Article = {
@@ -106,7 +108,7 @@ export default function AdminPage() {
   const supabase = createClient()
 
   // Tab state
-  const [tab, setTab] = useState<'dashboard' | 'articles' | 'bonuses' | 'users' | 'emails'>('dashboard')
+  const [tab, setTab] = useState<'dashboard' | 'articles' | 'bonuses' | 'users' | 'emails' | 'award-charts' | 'surcharges' | 'program-rules' | 'sweet-spots'>('dashboard')
 
   // Stats
   const [stats, setStats] = useState<Stats | null>(null)
@@ -567,6 +569,10 @@ export default function AdminPage() {
     ['users', 'Users'],
     ['articles', 'Articles'],
     ['bonuses', 'Bonuses'],
+    ['award-charts', 'Award Charts'],
+    ['surcharges', 'Surcharges'],
+    ['program-rules', 'Rules'],
+    ['sweet-spots', 'Sweet Spots'],
     ['emails', 'Emails'],
   ] as const
 
@@ -831,6 +837,132 @@ export default function AdminPage() {
             )
           })}
         </>
+      )}
+
+      {/* ═══ Award Charts Tab ═══ */}
+      {tab === 'award-charts' && (
+        <AdminCrudTab
+          tableName="award-charts"
+          title="Award Charts"
+          getToken={getToken}
+          fields={[
+            { name: 'program_name', label: 'Program Name', type: 'text', required: true, placeholder: 'e.g. United MileagePlus' },
+            { name: 'origin_region', label: 'Origin Region', type: 'text', required: true, placeholder: 'e.g. North America' },
+            { name: 'destination_region', label: 'Destination Region', type: 'text', required: true, placeholder: 'e.g. Europe' },
+            { name: 'cabin_class', label: 'Cabin Class', type: 'select', required: true, options: [
+              { value: 'economy', label: 'Economy' },
+              { value: 'premium_economy', label: 'Premium Economy' },
+              { value: 'business', label: 'Business' },
+              { value: 'first', label: 'First' },
+            ]},
+            { name: 'pricing_type', label: 'Pricing Type', type: 'select', required: true, options: [
+              { value: 'fixed', label: 'Fixed' },
+              { value: 'dynamic', label: 'Dynamic' },
+              { value: 'mixed', label: 'Mixed' },
+            ]},
+            { name: 'points_min', label: 'Points Min', type: 'number', required: true, placeholder: 'e.g. 30000' },
+            { name: 'points_max', label: 'Points Max', type: 'number', placeholder: 'e.g. 60000 (for dynamic)' },
+            { name: 'is_one_way', label: 'One-way pricing', type: 'checkbox' },
+            { name: 'partner_airlines', label: 'Partner Airlines', type: 'array', placeholder: 'e.g. LH, LX, OS (IATA codes, comma-separated)' },
+            { name: 'notes', label: 'Notes', type: 'text', placeholder: 'Optional notes' },
+          ] satisfies FieldDef[]}
+          listColumns={[
+            { key: 'program_name', label: 'Program' },
+            { key: 'origin_region', label: 'Route', render: (_v, row) => `${row.origin_region} → ${row.destination_region}` },
+            { key: 'cabin_class', label: 'Cabin', render: (v) => ({ economy: 'Economy', premium_economy: 'Prem Econ', business: 'Business', first: 'First' }[v as string] || v) },
+            { key: 'points_min', label: 'Points', render: (v, row) => `${Number(v).toLocaleString()}${row.points_max ? `–${Number(row.points_max).toLocaleString()}` : ''} ${row.is_one_way ? 'OW' : 'RT'}` },
+          ] satisfies ListColumn[]}
+        />
+      )}
+
+      {/* ═══ Surcharges Tab ═══ */}
+      {tab === 'surcharges' && (
+        <AdminCrudTab
+          tableName="surcharges"
+          title="Surcharges"
+          getToken={getToken}
+          fields={[
+            { name: 'booking_program', label: 'Booking Program', type: 'text', required: true, placeholder: 'e.g. British Airways Avios' },
+            { name: 'operating_airline', label: 'Operating Airline', type: 'text', required: true, placeholder: 'e.g. BA' },
+            { name: 'route_type', label: 'Route Type', type: 'text', placeholder: 'e.g. transatlantic, transpacific' },
+            { name: 'cabin_class', label: 'Cabin Class', type: 'select', options: [
+              { value: 'economy', label: 'Economy' },
+              { value: 'premium_economy', label: 'Premium Economy' },
+              { value: 'business', label: 'Business' },
+              { value: 'first', label: 'First' },
+            ]},
+            { name: 'estimated_surcharge_usd', label: 'Estimated Surcharge ($)', type: 'number', required: true, placeholder: 'e.g. 500' },
+            { name: 'surcharge_level', label: 'Surcharge Level', type: 'select', required: true, options: [
+              { value: 'none', label: 'None' },
+              { value: 'low', label: 'Low' },
+              { value: 'medium', label: 'Medium' },
+              { value: 'high', label: 'High' },
+              { value: 'extreme', label: 'Extreme' },
+            ]},
+            { name: 'notes', label: 'Notes', type: 'text', placeholder: 'Optional notes' },
+          ] satisfies FieldDef[]}
+          listColumns={[
+            { key: 'booking_program', label: 'Program' },
+            { key: 'operating_airline', label: 'Airline', render: (v, row) => `${v} — ${row.route_type || 'all routes'}` },
+            { key: 'surcharge_level', label: 'Level', render: (v) => String(v).toUpperCase() },
+            { key: 'estimated_surcharge_usd', label: 'Amount', render: (v) => v != null ? `$${Number(v).toLocaleString()}` : '' },
+          ] satisfies ListColumn[]}
+        />
+      )}
+
+      {/* ═══ Program Rules Tab ═══ */}
+      {tab === 'program-rules' && (
+        <AdminCrudTab
+          tableName="program-rules"
+          title="Program Rules"
+          getToken={getToken}
+          fields={[
+            { name: 'program_name', label: 'Program Name', type: 'text', required: true, placeholder: 'e.g. Aeroplan' },
+            { name: 'rule_type', label: 'Rule Type', type: 'text', required: true, placeholder: 'e.g. transfer_time, stopover, mixed_cabin, booking_window' },
+            { name: 'rule_value', label: 'Rule Value (JSON)', type: 'textarea', required: true, placeholder: '{"hours": 24, "description": "Transfers take 24 hours"}' },
+            { name: 'notes', label: 'Notes', type: 'text', placeholder: 'Optional notes' },
+          ] satisfies FieldDef[]}
+          listColumns={[
+            { key: 'program_name', label: 'Program' },
+            { key: 'rule_type', label: 'Rule', render: (v) => String(v).replace(/_/g, ' ') },
+            { key: 'notes', label: 'Notes' },
+          ] satisfies ListColumn[]}
+        />
+      )}
+
+      {/* ═══ Sweet Spots Tab ═══ */}
+      {tab === 'sweet-spots' && (
+        <AdminCrudTab
+          tableName="sweet-spots-db"
+          title="Sweet Spots"
+          getToken={getToken}
+          fields={[
+            { name: 'title', label: 'Title', type: 'text', required: true, placeholder: 'e.g. ANA First Class via Virgin Atlantic' },
+            { name: 'programs', label: 'Programs', type: 'array', required: true, placeholder: 'e.g. Virgin Atlantic, ANA Mileage Club' },
+            { name: 'origin_region', label: 'Origin Region', type: 'text', placeholder: 'e.g. North America' },
+            { name: 'destination_region', label: 'Destination Region', type: 'text', placeholder: 'e.g. Asia' },
+            { name: 'cabin_class', label: 'Cabin Class', type: 'select', options: [
+              { value: 'economy', label: 'Economy' },
+              { value: 'premium_economy', label: 'Premium Economy' },
+              { value: 'business', label: 'Business' },
+              { value: 'first', label: 'First' },
+            ]},
+            { name: 'points_required', label: 'Points Required', type: 'number', placeholder: 'e.g. 120000' },
+            { name: 'estimated_cpp', label: 'Estimated CPP', type: 'number', placeholder: 'e.g. 8.5' },
+            { name: 'estimated_cash_value', label: 'Estimated Cash Value ($)', type: 'number', placeholder: 'e.g. 20000' },
+            { name: 'description', label: 'Description', type: 'textarea', required: true, placeholder: 'Why this is a great deal...' },
+            { name: 'booking_steps', label: 'Booking Steps', type: 'array', placeholder: 'Step 1, Step 2, Step 3 (comma-separated)' },
+            { name: 'is_active', label: 'Active', type: 'checkbox' },
+            { name: 'priority', label: 'Priority', type: 'number', placeholder: '0 = normal, higher = show first' },
+            { name: 'tags', label: 'Tags', type: 'array', placeholder: 'e.g. luxury, value, family' },
+          ] satisfies FieldDef[]}
+          listColumns={[
+            { key: 'title', label: 'Title' },
+            { key: 'programs', label: 'Programs', render: (v) => Array.isArray(v) ? v.join(', ') : String(v || '') },
+            { key: 'points_required', label: 'Points', render: (v, row) => v ? `${Number(v).toLocaleString()} pts (${row.estimated_cpp || '?'} cpp)` : '' },
+            { key: 'is_active', label: 'Status', render: (v) => v ? 'Active' : 'Inactive' },
+          ] satisfies ListColumn[]}
+        />
       )}
 
       {/* ═══ Emails Tab ═══ */}
