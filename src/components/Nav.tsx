@@ -20,7 +20,10 @@ export default function Nav() {
       }
     }
     document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
+    return () => {
+      document.removeEventListener('mousedown', handleClick)
+      if (dropdownTimer.current) clearTimeout(dropdownTimer.current)
+    }
   }, [])
 
   const handleMouseEnter = () => {

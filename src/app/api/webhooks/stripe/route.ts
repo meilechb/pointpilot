@@ -44,6 +44,14 @@ export async function POST(request: NextRequest) {
 
         if (!userId || !customerId) break
 
+        // Check existing state first to make the handler idempotent on Stripe retries.
+        const { data: priorSub } = await supabase
+          .from('subscriptions')
+          .select('status, plan')
+          .eq('user_id', userId)
+          .maybeSingle()
+        const wasAlreadyActivePro = priorSub?.status === 'active' && priorSub?.plan === 'pro'
+
         // Get subscription details for period end
         const stripeSub = await stripe.subscriptions.retrieve(subscriptionId)
         const periodEnd = (stripeSub.items?.data?.[0] as any)?.current_period_end || (stripeSub as any).current_period_end
@@ -60,11 +68,13 @@ export async function POST(request: NextRequest) {
             cancel_at_period_end: false,
           }, { onConflict: 'user_id' })
 
-        // Send welcome email
-        const customerEmail = session.customer_details?.email || session.customer_email
-        if (customerEmail) {
-          const nextBilling = periodEnd ? new Date(periodEnd * 1000).toISOString() : null
-          await sendSubscriptionEmail(customerEmail, 'welcome', { nextBillingDate: nextBilling })
+        // Send welcome email only on the first transition into active/pro.
+        if (!wasAlreadyActivePro) {
+          const customerEmail = session.customer_details?.email || session.customer_email
+          if (customerEmail) {
+            const nextBilling = periodEnd ? new Date(periodEnd * 1000).toISOString() : null
+            await sendSubscriptionEmail(customerEmail, 'welcome', { nextBillingDate: nextBilling })
+          }
         }
 
         console.log(`[stripe-webhook] checkout.session.completed for user ${userId}`)
@@ -111,12 +121,13 @@ export async function POST(request: NextRequest) {
         const customerId = subscription.customer as string
         const cancelPeriodEnd = (subscription as any).current_period_end
 
-        // Get user email for cancellation email
+        // Get user email + prior status for idempotency
         const { data: sub } = await supabase
           .from('subscriptions')
-          .select('user_id, current_period_end')
+          .select('user_id, status, current_period_end')
           .eq('stripe_customer_id', customerId)
           .single()
+        const wasAlreadyCanceled = sub?.status === 'canceled'
 
         // Keep plan as 'pro' so the grace period logic works:
         // subscription/route.ts checks status=canceled + plan=pro + period not expired
@@ -129,8 +140,8 @@ export async function POST(request: NextRequest) {
           })
           .eq('stripe_customer_id', customerId)
 
-        // Send cancellation email
-        if (sub?.user_id) {
+        // Send cancellation email only on the first transition into canceled.
+        if (!wasAlreadyCanceled && sub?.user_id) {
           const { data: { user } } = await supabase.auth.admin.getUserById(sub.user_id)
           if (user?.email) {
             const endDate = cancelPeriodEnd ? new Date(cancelPeriodEnd * 1000).toISOString() : sub.current_period_end

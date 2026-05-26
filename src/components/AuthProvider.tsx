@@ -34,11 +34,13 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
       setLoading(false)
     })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session)
       setUser(session?.user ?? null)
       setLoading(false)
-      if (session?.user) {
+      // Only run the localStorage → Supabase migration on real sign-ins,
+      // not on every token refresh or tab focus event.
+      if (event === 'SIGNED_IN' && session?.user) {
         migrateLocalDataToSupabase().catch(console.error)
       }
     })
