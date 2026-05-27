@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { getCityName, formatTime, formatDuration } from '@/utils/airportUtils'
 import { optimizeTrip, type BookingStrategy } from '@/utils/tripOptimizer'
+import { enrichStrategiesWithSurcharges, fetchSurchargeProfiles, type SurchargeProfile } from '@/utils/surchargeCalculator'
 
 type Question = {
   id: string
@@ -82,8 +83,13 @@ export default function ItineraryBuilder({ trip, session, wallet = [], transferB
   const [expandedIndex, setExpandedIndex] = useState<number | null>(cs?.expandedIndex ?? null)
   const [loadingMsg, setLoadingMsg] = useState(LOADING_MESSAGES[0])
   const [bookingStrategies, setBookingStrategies] = useState<Record<number, BookingStrategy[]>>({})
+  const [surchargeProfiles, setSurchargeProfiles] = useState<SurchargeProfile[]>([])
 
   const hasFlights = trip.flights && trip.flights.length > 0
+
+  useEffect(() => {
+    fetchSurchargeProfiles().then(setSurchargeProfiles)
+  }, [])
 
   // Persist state to parent whenever it changes
   useEffect(() => {
@@ -125,7 +131,8 @@ export default function ItineraryBuilder({ trip, session, wallet = [], transferB
           return f
         })
         try {
-          strategies[idx] = optimizeTrip(trip.legs, flightsWithLegs, wallet, trip.travelers || 1, transferBonuses)
+          const raw = optimizeTrip(trip.legs, flightsWithLegs, wallet, trip.travelers || 1, transferBonuses)
+          strategies[idx] = enrichStrategiesWithSurcharges(raw, surchargeProfiles)
         } catch (e) {
           console.error('Optimizer error for suggestion', idx, e)
           strategies[idx] = []

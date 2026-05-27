@@ -5,6 +5,8 @@ import { useAuth } from '@/components/AuthProvider'
 import SavePrompt from '@/components/SavePrompt'
 import ProgramSelect from '@/components/ProgramSelect'
 import WalletCard from '@/components/WalletCard'
+import TransferBonusRecommendations from '@/components/TransferBonusRecommendations'
+import SweetSpotAlerts from '@/components/SweetSpotAlerts'
 import { bankPointPrograms, airlineMilesPrograms, cashbackPrograms } from '@/data/programOptions'
 import { pointValuations } from '@/data/pointsKnowledge'
 import { createClient } from '@/lib/supabase'
@@ -260,6 +262,16 @@ export default function WalletPage() {
             </div>
           )}
         </div>
+      )}
+
+      {/* Transfer Bonus Recommendations */}
+      {entries.length > 0 && bonuses.length > 0 && (
+        <TransferBonusRecommendations bonuses={bonuses} entries={entries} />
+      )}
+
+      {/* Sweet Spot Alerts */}
+      {entries.length > 0 && !loading && (
+        <SweetSpotAlerts entries={entries} />
       )}
 
       {/* Filter chips + toolbar */}
