@@ -275,7 +275,7 @@ export default function TripPlanner({ legs, flights, travelers, onSave, onChange
   return (
     <div>
       {bounceMessage && (
-        <div style={{ padding: '10px 16px', backgroundColor: '#FFEBEE', color: '#C62828', borderRadius: 8, marginBottom: 12, fontSize: 13, fontWeight: 500 }}>
+        <div style={{ padding: '10px 14px', backgroundColor: 'var(--danger-bg)', color: 'var(--danger)', borderRadius: 'var(--radius-sm)', marginBottom: 12, fontSize: 13, fontWeight: 500 }}>
           ✕ {bounceMessage}
         </div>
       )}
@@ -284,12 +284,14 @@ export default function TripPlanner({ legs, flights, travelers, onSave, onChange
         onDragOver={handleDragOverUnassigned}
         onDrop={handleDropOnUnassigned}
         style={{
-          padding: 16, backgroundColor: dragOverLeg === -1 ? '#f0f0f0' : '#fafafa',
-          borderRadius: 10, marginBottom: 20, border: '2px dashed #ddd', minHeight: 60,
-          transition: 'background-color 0.15s ease',
+          padding: 14, backgroundColor: 'var(--bg)',
+          borderRadius: 'var(--radius)', marginBottom: 18,
+          border: `1.5px dashed ${dragOverLeg === -1 ? 'var(--primary)' : 'var(--border)'}`,
+          minHeight: 60,
+          transition: 'border-color 0.15s ease',
         }}
       >
-        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-muted)', marginBottom: unassigned.length > 0 ? 10 : 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)', marginBottom: unassigned.length > 0 ? 10 : 0 }}>
           {unassigned.length > 0 ? `${unassigned.length} flight${unassigned.length > 1 ? 's' : ''} to assign` : 'All flights assigned ✓'}
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
@@ -315,34 +317,38 @@ export default function TripPlanner({ legs, flights, travelers, onSave, onChange
           const validation = validateLeg(leg, legFlights)
           const isOver = dragOverLeg === i
 
+          const borderColor = validation.complete ? 'var(--success)'
+            : legFlights.length > 0 && validation.warnings.length > 0 ? 'var(--warning)'
+            : isOver ? 'var(--primary)' : 'var(--border)'
+
           return (
             <div key={i}
               onDragOver={(e) => handleDragOverLeg(e, i)}
               onDrop={() => handleDropOnLeg(i)}
               onDragLeave={() => { setDragOverLeg(null); setDropPosition(null) }}
               style={{
-                flex: 1, minWidth: 240, backgroundColor: isOver ? '#e8f4e8' : '#f7f7f7',
-                borderRadius: 10, padding: 14,
-                border: validation.complete ? '2px solid #4CAF50'
-                  : legFlights.length > 0 && validation.warnings.length > 0 ? '2px solid #FF9800'
-                  : '2px dashed #ddd',
-                transition: 'all 0.15s ease',
+                flex: 1, minWidth: 240,
+                backgroundColor: 'var(--bg-card)',
+                borderRadius: 'var(--radius)', padding: 14,
+                border: `1.5px ${validation.complete || (legFlights.length > 0 && validation.warnings.length > 0) ? 'solid' : 'dashed'} ${borderColor}`,
+                transition: 'border-color 0.15s ease',
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 1 }}>Leg {i + 1}</div>
-                  <div style={{ fontSize: 18, fontWeight: 700, marginTop: 2 }}>{leg.from} → {leg.to}</div>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Leg {i + 1}</div>
+                  <div style={{ fontSize: 16, fontWeight: 700, marginTop: 2, color: 'var(--text)' }}>{leg.from} → {leg.to}</div>
                 </div>
-                {validation.complete && <div style={{ fontSize: 20 }}>✅</div>}
-                {!validation.complete && legFlights.length > 0 && <div style={{ fontSize: 20 }}>⚠️</div>}
+                {validation.complete && <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--success)', padding: '3px 8px', backgroundColor: 'var(--success-bg)', borderRadius: 10 }}>OK</span>}
+                {!validation.complete && legFlights.length > 0 && <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--warning)', padding: '3px 8px', backgroundColor: 'var(--warning-bg)', borderRadius: 10 }}>Check</span>}
               </div>
 
               {legFlights.length === 0 ? (
                 <div style={{
-                  padding: 30, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13,
-                  border: '2px dashed #ddd', borderRadius: 8,
-                  backgroundColor: isOver ? '#d4edda' : 'transparent',
+                  padding: '24px 12px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13,
+                  border: `1.5px dashed ${isOver ? 'var(--primary)' : 'var(--border)'}`,
+                  borderRadius: 'var(--radius-sm)',
+                  backgroundColor: isOver ? 'var(--primary-light)' : 'var(--bg)',
                   transition: 'all 0.15s ease',
                 }}>
                   Drop flights here
@@ -352,7 +358,7 @@ export default function TripPlanner({ legs, flights, travelers, onSave, onChange
                   {legFlights.map((f, pos) => (
                     <div key={f.id}>
                       {dropPosition && dropPosition.leg === i && dropPosition.index === pos && (
-                        <div style={{ height: 3, backgroundColor: '#2196F3', borderRadius: 2, marginBottom: 4 }} />
+                        <div style={{ height: 3, backgroundColor: 'var(--primary)', borderRadius: 2, marginBottom: 4 }} />
                       )}
                       <div onDragOver={(e) => handleDragOverCard(e, i, pos)} style={{ marginBottom: 6 }}>
                         <FlightCard
@@ -399,19 +405,19 @@ export default function TripPlanner({ legs, flights, travelers, onSave, onChange
                             const cTo = getFlightRoute(legFlights[pos]).to
                             const nFrom = getFlightRoute(legFlights[pos + 1]).from
                             if (cTo === nFrom) {
-                              return <span style={{ color: '#4CAF50' }}>↓ via {cTo}</span>
+                              return <span style={{ color: 'var(--success)' }}>↓ via {cTo}</span>
                             }
                             if (airportsMatch(cTo, nFrom)) {
-                              return <div style={{ padding: '6px 10px', backgroundColor: '#FFF3E0', borderRadius: 6, fontSize: 13, color: '#E65100', margin: '4px 0' }}>⚠ Airport change: {cTo} → {nFrom} — allow extra transfer time</div>
+                              return <div style={{ padding: '6px 10px', backgroundColor: 'var(--warning-bg)', borderRadius: 'var(--radius-sm)', fontSize: 12, color: 'var(--warning)', margin: '4px 0' }}>⚠ Airport change: {cTo} → {nFrom} — allow extra transfer time</div>
                             }
-                            return <span style={{ color: '#f44336', fontWeight: 500 }}>⚠ {cTo} ✕ {nFrom}</span>
+                            return <span style={{ color: 'var(--danger)', fontWeight: 500 }}>⚠ {cTo} ✕ {nFrom}</span>
                           })()}
                         </div>
                       )}
                     </div>
                   ))}
                   {dropPosition && dropPosition.leg === i && dropPosition.index === legFlights.length && (
-                    <div style={{ height: 3, backgroundColor: '#2196F3', borderRadius: 2, marginTop: 2 }} />
+                    <div style={{ height: 3, backgroundColor: 'var(--primary)', borderRadius: 2, marginTop: 2 }} />
                   )}
                 </div>
               )}
@@ -420,9 +426,9 @@ export default function TripPlanner({ legs, flights, travelers, onSave, onChange
                 <div style={{ marginTop: 8 }}>
                   {validation.warnings.map((w, wi) => (
                     <div key={wi} style={{
-                      padding: '6px 10px', borderRadius: 6, fontSize: 13, marginBottom: 4,
-                      backgroundColor: w.type === 'short_layover' ? '#FFF3E0' : '#FFEBEE',
-                      color: w.type === 'short_layover' ? '#E65100' : '#C62828',
+                      padding: '6px 10px', borderRadius: 'var(--radius-sm)', fontSize: 12, marginBottom: 4,
+                      backgroundColor: w.type === 'short_layover' ? 'var(--warning-bg)' : 'var(--danger-bg)',
+                      color: w.type === 'short_layover' ? 'var(--warning)' : 'var(--danger)',
                     }}>
                       {w.type === 'short_layover' ? '⏱' : '⚠'} {w.message}
                     </div>
@@ -480,28 +486,46 @@ export default function TripPlanner({ legs, flights, travelers, onSave, onChange
       </div>
 
       {assignedIds.size > 0 && (
-        <div style={{ marginTop: 16, padding: 14, backgroundColor: 'var(--bg)', borderRadius: 8, border: '1px solid var(--border-light)' }}>
-          <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 8 }}>Trip Total{travelers > 1 ? ` (${travelers} travelers)` : ''}</div>
-          {totalCash > 0 && <div style={{ fontSize: 14, marginBottom: 4 }}>💵 Cash: <strong>${(totalCash * travelers).toLocaleString()}</strong>{travelers > 1 && <span style={{ color: 'var(--text-muted)' }}> (${totalCash.toLocaleString()} pp)</span>}</div>}
-          {totalPoints > 0 && <div style={{ fontSize: 14, marginBottom: 4 }}>⭐ Points: <strong>{(totalPoints * travelers).toLocaleString()}</strong>{travelers > 1 && <span style={{ color: 'var(--text-muted)' }}> ({totalPoints.toLocaleString()} pp)</span>}</div>}
-          {totalFees > 0 && <div style={{ fontSize: 14, color: 'var(--text-secondary)' }}>+ Fees: ${(totalFees * travelers).toLocaleString()}</div>}
+        <div style={{ marginTop: 16, padding: 14, backgroundColor: 'var(--bg)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)' }}>
+          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 8, color: 'var(--text)' }}>
+            Trip Total{travelers > 1 ? ` · ${travelers} travelers` : ''}
+          </div>
+          {totalCash > 0 && (
+            <div style={{ fontSize: 13, marginBottom: 4, color: 'var(--text)' }}>
+              Cash: <strong style={{ color: 'var(--success)' }}>${(totalCash * travelers).toLocaleString()}</strong>
+              {travelers > 1 && <span style={{ color: 'var(--text-muted)' }}> (${totalCash.toLocaleString()} pp)</span>}
+            </div>
+          )}
+          {totalPoints > 0 && (
+            <div style={{ fontSize: 13, marginBottom: 4, color: 'var(--text)' }}>
+              Points: <strong style={{ color: 'var(--primary)' }}>{(totalPoints * travelers).toLocaleString()}</strong>
+              {travelers > 1 && <span style={{ color: 'var(--text-muted)' }}> ({totalPoints.toLocaleString()} pp)</span>}
+            </div>
+          )}
+          {totalFees > 0 && <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>+ Fees: ${(totalFees * travelers).toLocaleString()}</div>}
         </div>
       )}
 
-      <div style={{ marginTop: 16 }}>
+      <div style={{ marginTop: 14 }}>
         <input
           type="text"
           placeholder="Name this plan (e.g. Points Option, Budget Option)"
           value={planName}
           onChange={(e) => setPlanName(e.target.value)}
           style={{
-            width: '100%', padding: 12, border: '1px solid var(--border)', borderRadius: 6,
+            width: '100%', padding: '10px 12px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)',
             fontSize: 14, marginBottom: 8, boxSizing: 'border-box',
+            backgroundColor: 'var(--bg-input)', color: 'var(--text)', outline: 'none',
           }}
         />
         <button onClick={() => onSave(assignments, planName || `Plan ${(new Date()).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`)} style={{
-          width: '100%', padding: 12, backgroundColor: allLegsComplete ? '#4CAF50' : '#000',
-          color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 15, fontWeight: 600,
+          width: '100%', padding: 12,
+          background: allLegsComplete ? 'linear-gradient(135deg, var(--primary), var(--primary-hover))' : 'var(--border)',
+          color: allLegsComplete ? 'var(--text-inverse)' : 'var(--text-muted)',
+          border: 'none', borderRadius: 'var(--radius-sm)',
+          cursor: allLegsComplete ? 'pointer' : 'default',
+          fontSize: 14, fontWeight: 600,
+          boxShadow: allLegsComplete ? '0 2px 8px rgba(67, 56, 202, 0.3)' : 'none',
         }}>
           {allLegsComplete ? '✓ Save Plan' : 'Save Plan (incomplete)'}
         </button>
