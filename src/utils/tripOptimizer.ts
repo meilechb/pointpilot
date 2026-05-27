@@ -3,7 +3,7 @@
 // Generates up to 3 optimal booking combinations
 
 import { transferPartners } from '@/data/transferPartners'
-import { bookingPortals, pointValuations, sweetSpots, findProgramByIata, findBookablePrograms } from '@/data/pointsKnowledge'
+import { bookingPortals, sweetSpots, findProgramByIata } from '@/data/pointsKnowledge'
 
 // City-airport groups for matching flights to legs
 const CITY_AIRPORTS: Record<string, string[]> = {
@@ -149,12 +149,6 @@ function matchWalletToProgram(wallet: WalletEntry): string | null {
   return null
 }
 
-// Match a wallet entry to an airline program name
-function matchWalletToAirline(wallet: WalletEntry): string | null {
-  if (wallet.currency_type !== 'airline_miles') return null
-  return wallet.program
-}
-
 // Find which airline program a booking site maps to
 const SITE_TO_PROGRAM: Record<string, string> = {
   // Airline names
@@ -234,7 +228,6 @@ type PayOption = {
 
 function getPayOptions(flight: Flight, wallet: WalletEntry[], travelers: number, transferBonuses: TransferBonus[] = []): PayOption[] {
   const options: PayOption[] = []
-  const label = getFlightLabel(flight)
 
   // Option A: Pay cash (always available if flight has a cash price)
   if (flight.cashAmount) {
@@ -342,7 +335,6 @@ function getPayOptions(flight: Flight, wallet: WalletEntry[], travelers: number,
           const bonusLabel = bonusPct > 0 ? ` +${bonusPct}% bonus!` : ''
           const cpp = estimatedCashValue > 0 ? (estimatedCashValue - totalFees) / bankPointsNeeded * 100 : 1.5
 
-          const shortFrom = program.name.replace(/(Chase |Amex |Citi |Capital One |Bilt )/, '')
           const shortTo = partner.partner.replace(/ (Executive Club|Flying Club|AerClub|Mileage Club|Asia Miles|SkyMiles|AAdvantage|MileagePlus|Rapid Rewards|TrueBlue|KrisFlyer|Frequent Flyer|Privilege Club|Skywards|Guest|Plus|LifeMiles|Mileage Plan|Miles&Smiles|Miles&Go|Free Spirit|Mileage Bank|MileageLands|Flying Blue|Royal Orchid Plus|Rewards|Club Premier|SKYPASS)/, '')
           const shortfall = w.balance < bankPointsNeeded ? ` (need ${(bankPointsNeeded - w.balance).toLocaleString()} more)` : ''
 
@@ -476,9 +468,6 @@ export function optimizeTrip(
       uncoveredLegs.push(i)
     }
   }
-
-  // Also include unassigned flights (legIndex = -1 or null)
-  const unassigned = flightsByLeg[-1] || []
 
   // Build strategies
   const strategies: BookingStrategy[] = []

@@ -30,7 +30,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       title,
       description,
       type: 'article',
-      url: `https://pointpilot-delta.vercel.app/news/${slug}`,
+      url: `https://pointtripper.com/news/${slug}`,
     },
     twitter: {
       card: 'summary_large_image',

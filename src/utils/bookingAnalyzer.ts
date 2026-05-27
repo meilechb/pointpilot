@@ -1,4 +1,4 @@
-import { transferPartners, PointsProgram, TransferPartner } from '@/data/transferPartners'
+import { transferPartners } from '@/data/transferPartners'
 
 type WalletEntry = {
   id: string

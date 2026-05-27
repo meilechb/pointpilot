@@ -48,7 +48,6 @@ export default function FlightCard({ flight, compact = false, draggable = false,
   const firstSeg = segs[0]
   const lastSeg = segs[segs.length - 1]
 
-  const airportChain = segs.map((s: any) => s.departureAirport).concat([lastSeg.arrivalAirport]).join(' → ')
   const flightCodes = segs.map((s: any) => s.flightCode).filter(Boolean).join(', ')
   const airlines = [...new Set(segs.map((s: any) => s.airlineName).filter(Boolean))]
 

@@ -67,12 +67,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Stripe price not configured' }, { status: 500 })
   }
 
+  const origin = request.headers.get('origin') || request.nextUrl.origin || 'https://www.pointtripper.com'
   const session = await stripe.checkout.sessions.create({
     customer: customerId,
     mode: 'subscription',
     line_items: [{ price: priceId, quantity: 1 }],
-    success_url: 'https://www.pointtripper.com/account?upgraded=true',
-    cancel_url: 'https://www.pointtripper.com/pricing',
+    success_url: `${origin}/account?upgraded=true`,
+    cancel_url: `${origin}/pricing`,
     metadata: { user_id: user.id },
   })
 

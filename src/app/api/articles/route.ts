@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from('articles')
-      .select('*')
+      .select('id, slug, title, summary, created_at')
       .eq('published', true)
       .order('created_at', { ascending: false })
 

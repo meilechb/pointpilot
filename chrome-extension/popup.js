@@ -427,7 +427,7 @@ function renderHeader() {
           <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 5L6 8L9 5"/></svg>
         </button>
         <div id="accountMenu" style="display:none;position:absolute;top:100%;right:0;margin-top:4px;background:white;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.15);border:1px solid #e5e7eb;min-width:200px;z-index:100;overflow:hidden">
-          <div style="padding:10px 14px;border-bottom:1px solid #f3f4f6;font-size:12px;color:#6b7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${state.userEmail}</div>
+          <div style="padding:10px 14px;border-bottom:1px solid #f3f4f6;font-size:12px;color:#6b7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(state.userEmail || '')}</div>
           <a href="https://www.pointtripper.com/account" target="_blank" id="menuAccount" style="display:block;padding:8px 14px;border-bottom:1px solid #f3f4f6;font-size:13px;color:#374151;text-decoration:none">Manage Account</a>
           <button id="menuLogout" style="display:block;width:100%;padding:8px 14px;font-size:13px;color:#dc2626;text-align:left;background:none;border:none;cursor:pointer">Sign Out</button>
         </div>
@@ -459,7 +459,7 @@ function renderLogin() {
   el.innerHTML = `
     <div class="login-title">Sign in to Point Tripper</div>
     <div class="login-sub">Log in to add flights to your trips</div>
-    ${state.error ? `<div class="error">${state.error}</div>` : ''}
+    ${state.error ? `<div class="error">${esc(state.error)}</div>` : ''}
     <label>Email</label>
     <input type="email" id="email" placeholder="you@example.com" autocomplete="email" />
     <label>Password</label>
@@ -591,17 +591,17 @@ function renderFlightPicker() {
     const price = formatPrice(f)
     card.innerHTML = `
       <div class="flight-times">
-        ${depTime ? `<span class="time-big">${depTime}</span>` : ''}
+        ${depTime ? `<span class="time-big">${esc(depTime)}</span>` : ''}
         ${depTime ? `<span class="time-arrow">→</span>` : ''}
-        ${arrTime ? `<span class="time-big">${arrTime}</span>` : ''}
-        ${f.duration ? `<span class="time-duration">${formatDuration(f.duration)}</span>` : ''}
-        ${stopsLabel ? `<span class="time-stops">${stopsLabel}</span>` : ''}
+        ${arrTime ? `<span class="time-big">${esc(arrTime)}</span>` : ''}
+        ${f.duration ? `<span class="time-duration">${esc(formatDuration(f.duration))}</span>` : ''}
+        ${stopsLabel ? `<span class="time-stops">${esc(stopsLabel)}</span>` : ''}
       </div>
       <div class="flight-meta">
-        <span class="flight-route-inline">${formatRoute(f)}</span>
-        ${f.flightCode ? `<span>${f.flightCode}</span>` : ''}
-        ${f.airlineName ? `<span>${f.airlineName}</span>` : ''}
-        ${price ? `<span class="badge">${price}</span>` : ''}
+        <span class="flight-route-inline">${esc(formatRoute(f))}</span>
+        ${f.flightCode ? `<span>${esc(f.flightCode)}</span>` : ''}
+        ${f.airlineName ? `<span>${esc(f.airlineName)}</span>` : ''}
+        ${price ? `<span class="badge">${esc(price)}</span>` : ''}
         ${isAdded ? `<span class="badge added-badge">Added</span>` : ''}
       </div>
     `
@@ -650,12 +650,12 @@ function renderDetails() {
 
   let summaryHTML = `
     <div class="segment-summary">
-      <div class="seg-route">${formatRoute(f)}</div>
+      <div class="seg-route">${esc(formatRoute(f))}</div>
       <div class="seg-detail">
-        ${f.flightCode ? `${f.flightCode} · ` : ''}${f.airlineName || ''}
-        ${f.date ? ` · ${f.date}` : ''}
-        ${f.departureTime ? ` · ${formatTime(f.departureTime)} → ${formatTime(f.arrivalTime)}` : ''}
-        ${f.duration ? ` · ${formatDuration(f.duration)}` : ''}
+        ${f.flightCode ? `${esc(f.flightCode)} · ` : ''}${esc(f.airlineName || '')}
+        ${f.date ? ` · ${esc(f.date)}` : ''}
+        ${f.departureTime ? ` · ${esc(formatTime(f.departureTime))} → ${esc(formatTime(f.arrivalTime))}` : ''}
+        ${f.duration ? ` · ${esc(formatDuration(f.duration))}` : ''}
       </div>
     </div>
   `
@@ -691,8 +691,8 @@ function renderDetails() {
       <div class="section-title">Pricing</div>
       <div class="tier-card selected" style="cursor:default">
         <div class="tier-info">
-          <div class="tier-label">${t.label}</div>
-          <div class="tier-price">${priceStr} · ${t.paymentType === 'points' ? 'Points' : 'Cash'}</div>
+          <div class="tier-label">${esc(t.label)}</div>
+          <div class="tier-price">${esc(priceStr)} · ${t.paymentType === 'points' ? 'Points' : 'Cash'}</div>
         </div>
         <span style="color:#4338ca;font-size:18px">✓</span>
       </div>
@@ -708,8 +708,8 @@ function renderDetails() {
         <label class="tier-card" id="tier_${i}">
           <input type="checkbox" value="${i}" ${i === 0 ? 'checked' : ''} />
           <div class="tier-info">
-            <div class="tier-label">${t.label}</div>
-            <div class="tier-price">${priceStr} · ${t.paymentType === 'points' ? 'Points' : 'Cash'}</div>
+            <div class="tier-label">${esc(t.label)}</div>
+            <div class="tier-price">${esc(priceStr)} · ${t.paymentType === 'points' ? 'Points' : 'Cash'}</div>
           </div>
         </label>
       `
@@ -720,9 +720,9 @@ function renderDetails() {
   el.innerHTML = `
     ${summaryHTML}
     <label>Booking site</label>
-    <input type="text" id="bookingSite" value="${f.bookingSite || ''}" placeholder="e.g. united.com" />
+    <input type="text" id="bookingSite" value="${esc(f.bookingSite || '')}" placeholder="e.g. united.com" />
     ${tierHTML}
-    ${state.error ? `<div class="error">${state.error}</div>` : ''}
+    ${state.error ? `<div class="error">${esc(state.error)}</div>` : ''}
     <button class="btn" id="nextBtn">Select Trip →</button>
     <button class="btn btn-secondary" id="backBtn" style="margin-top:8px">← Back</button>
   `
@@ -821,9 +821,9 @@ function renderTripPicker() {
       ? trip.legs.map(l => l.from).concat(trip.legs[trip.legs.length - 1].to).join(' → ')
       : ''
     item.innerHTML = `
-      <div class="trip-name">${trip.name || 'Untitled Trip'}</div>
-      ${route ? `<div class="trip-route">${route}</div>` : ''}
-      ${trip.departureDate ? `<div class="trip-route">${trip.departureDate}</div>` : ''}
+      <div class="trip-name">${esc(trip.name || 'Untitled Trip')}</div>
+      ${route ? `<div class="trip-route">${esc(route)}</div>` : ''}
+      ${trip.departureDate ? `<div class="trip-route">${esc(trip.departureDate)}</div>` : ''}
     `
     item.addEventListener('click', () => addFlight(trip))
     list.appendChild(item)
@@ -901,7 +901,7 @@ function renderSuccess() {
   el.innerHTML = `
     <div class="success-icon">✅</div>
     <div class="success-title">Flight added!</div>
-    <div class="success-sub">Successfully added to "${trip?.name || 'your trip'}"</div>
+    <div class="success-sub">Successfully added to "${esc(trip?.name || 'your trip')}"</div>
     <a href="https://www.pointtripper.com/trip/${state.selectedTripId}" target="_blank" class="btn">
       Open Trip in Point Tripper
     </a>
