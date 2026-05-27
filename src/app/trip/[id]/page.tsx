@@ -350,72 +350,41 @@ export default function TripDetail() {
           {/* Gradient header with route summary */}
           <div style={{
             background: 'linear-gradient(135deg, var(--primary), var(--primary-hover))',
-            padding: '18px 20px 16px',
+            padding: '22px 20px 18px',
             color: 'var(--text-inverse)',
           }}>
-            <h1 style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, color: 'rgba(255,255,255,0.8)', lineHeight: 1.3 }}>
+            <h1 style={{ fontSize: 14, fontWeight: 600, marginBottom: 10, color: 'rgba(255,255,255,0.85)', lineHeight: 1.3 }}>
               {trip.tripName || 'Untitled Trip'}
             </h1>
-            {/* Large route display */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-              <span style={{ fontSize: 24, fontWeight: 800, letterSpacing: '0.02em', color: 'var(--text-inverse)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+              <span style={{ fontSize: 26, fontWeight: 800, letterSpacing: '0.02em', color: 'var(--text-inverse)' }}>
                 {trip.legs?.[0]?.from || '\u2014'}
               </span>
-              <span style={{ fontSize: 18, color: 'rgba(255,255,255,0.6)' }}>{trip.tripType === 'roundtrip' ? '\u21C4' : '\u2192'}</span>
-              <span style={{ fontSize: 24, fontWeight: 800, letterSpacing: '0.02em', color: 'var(--text-inverse)' }}>
+              <span style={{ fontSize: 20, color: 'rgba(255,255,255,0.6)' }}>{trip.tripType === 'roundtrip' ? '\u21C4' : '\u2192'}</span>
+              <span style={{ fontSize: 26, fontWeight: 800, letterSpacing: '0.02em', color: 'var(--text-inverse)' }}>
                 {trip.legs?.[trip.legs.length - 1]?.to || '\u2014'}
               </span>
             </div>
-            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.65)', marginBottom: 10 }}>
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', marginBottom: 10 }}>
               {[getCityName(trip.legs?.[0]?.from) || trip.legs?.[0]?.from,
                 getCityName(trip.legs?.[trip.legs.length - 1]?.to) || trip.legs?.[trip.legs.length - 1]?.to]
                 .filter(Boolean).join(' \u2022 ')}
             </div>
-            {/* Inline chips: trip type \u00B7 dates \u00B7 travelers */}
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {trip.tripType && (
-                <span style={{
-                  fontSize: 10, fontWeight: 600, padding: '3px 8px', borderRadius: 10,
-                  backgroundColor: 'rgba(255,255,255,0.18)', color: 'var(--text-inverse)',
-                  textTransform: 'uppercase', letterSpacing: '0.05em',
-                }}>
-                  {trip.tripType === 'oneway' ? 'One Way' : trip.tripType === 'multicity' ? 'Multi-City' : 'Round Trip'}
-                </span>
-              )}
-              {trip.departureDate && (
-                <span style={{
-                  fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 10,
-                  backgroundColor: 'rgba(255,255,255,0.15)', color: 'var(--text-inverse)',
-                }}>
-                  {formatShortDate(trip.departureDate)}
-                  {trip.returnDate && trip.tripType !== 'oneway' && ` \u2013 ${formatShortDate(trip.returnDate)}`}
-                </span>
-              )}
-              {trip.travelers > 1 && (
-                <span style={{
-                  fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 10,
-                  backgroundColor: 'rgba(255,255,255,0.15)', color: 'var(--text-inverse)',
-                }}>
-                  {trip.travelers} travelers
-                </span>
-              )}
-              {trip.dateFlexibility && trip.dateFlexibility !== 'exact' && (
-                <span style={{
-                  fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 10,
-                  backgroundColor: 'rgba(255,255,255,0.15)', color: 'var(--text-inverse)',
-                }}>
-                  {trip.dateFlexibility === 'plus_minus_1' ? '\u00B1 1 day' :
-                   trip.dateFlexibility === 'plus_minus_2' ? '\u00B1 2 days' :
-                   trip.dateFlexibility === 'plus_minus_3' ? '\u00B1 3 days' :
-                   trip.dateFlexibility === 'flexible' ? 'Flexible' : trip.dateFlexibility}
-                </span>
-              )}
-            </div>
+            {trip.tripType && (
+              <span style={{
+                display: 'inline-block', fontSize: 10, fontWeight: 600,
+                padding: '3px 10px', borderRadius: 12,
+                backgroundColor: 'rgba(255,255,255,0.18)', color: 'var(--text-inverse)',
+                textTransform: 'uppercase', letterSpacing: '0.05em',
+              }}>
+                {trip.tripType === 'oneway' ? 'One Way' : trip.tripType === 'multicity' ? 'Multi-City' : 'Round Trip'}
+              </span>
+            )}
           </div>
 
           {/* Sidebar body */}
           <div style={{ padding: '14px 16px' }}>
-            {/* Compact stats \u2014 single row */}
+            {/* Stats row */}
             {(() => {
               const cashFlights = trip.flights.filter((f: any) => f.paymentType === 'cash' && f.cashAmount)
               const pointsFlights = trip.flights.filter((f: any) => f.paymentType === 'points' && f.pointsAmount)
@@ -434,12 +403,15 @@ export default function TripDetail() {
                 <div style={{
                   display: 'grid',
                   gridTemplateColumns: `repeat(${cells.length}, 1fr)`,
-                  gap: 4,
+                  gap: 6,
                   marginBottom: 14,
                 }}>
                   {cells.map((c, i) => (
-                    <div key={i} style={{ textAlign: 'center', padding: '6px 2px' }}>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: c.color || 'var(--text)' }}>{c.value}</div>
+                    <div key={i} style={{
+                      textAlign: 'center', padding: '8px 4px',
+                      backgroundColor: 'var(--bg)', borderRadius: 'var(--radius-sm)',
+                    }}>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: c.color || 'var(--text)' }}>{c.value}</div>
                       <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{c.label}</div>
                     </div>
                   ))}
@@ -447,24 +419,60 @@ export default function TripDetail() {
               )
             })()}
 
-            {/* Multi-city stop list (only if relevant) */}
-            {trip.legs.length > 2 && (
-              <div style={{
-                marginBottom: 12, padding: '8px 12px',
-                backgroundColor: 'var(--bg)', borderRadius: 'var(--radius-sm)',
-                border: '1px solid var(--border-light)',
-                fontSize: 12, color: 'var(--text-secondary)',
-              }}>
-                <span style={{ fontWeight: 600, color: 'var(--text-muted)', marginRight: 6 }}>Stops:</span>
-                {trip.legs.slice(1).map((l: any) => l.from).join(' \u2192 ')}
-              </div>
-            )}
+            {/* Trip details \u2014 compact two-column grid */}
+            <div style={{
+              marginBottom: 12, padding: '10px 12px',
+              backgroundColor: 'var(--bg)', borderRadius: 'var(--radius-sm)',
+              border: '1px solid var(--border-light)',
+            }}>
+              {(() => {
+                const items: { label: string; value: string }[] = []
+                if (trip.departureDate) {
+                  items.push({
+                    label: trip.tripType === 'oneway' ? 'Departure' : 'Travel',
+                    value: trip.returnDate && trip.tripType !== 'oneway'
+                      ? `${formatShortDate(trip.departureDate)} \u2013 ${formatShortDate(trip.returnDate)}`
+                      : formatShortDate(trip.departureDate),
+                  })
+                }
+                items.push({
+                  label: 'Travelers',
+                  value: `${trip.travelers} ${trip.travelers > 1 ? 'people' : 'person'}`,
+                })
+                if (trip.dateFlexibility && trip.dateFlexibility !== 'exact') {
+                  items.push({
+                    label: 'Flexibility',
+                    value: trip.dateFlexibility === 'plus_minus_1' ? '\u00B1 1 day'
+                      : trip.dateFlexibility === 'plus_minus_2' ? '\u00B1 2 days'
+                      : trip.dateFlexibility === 'plus_minus_3' ? '\u00B1 3 days'
+                      : trip.dateFlexibility === 'flexible' ? 'Flexible'
+                      : trip.dateFlexibility,
+                  })
+                }
+                if (trip.legs.length > 2) {
+                  items.push({
+                    label: 'Stops',
+                    value: trip.legs.slice(1).map((l: any) => l.from).join(' \u2192 '),
+                  })
+                }
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {items.map((item, i) => (
+                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+                        <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>{item.label}</span>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', textAlign: 'right' }}>{item.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                )
+              })()}
+            </div>
 
             {/* Edit button */}
             <button
               onClick={startEditing}
               style={{
-                width: '100%', padding: '8px 0',
+                width: '100%', padding: '9px 0',
                 border: '1.5px solid var(--border)', borderRadius: 'var(--radius-sm)',
                 cursor: 'pointer', backgroundColor: 'var(--bg-card)',
                 fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)',
