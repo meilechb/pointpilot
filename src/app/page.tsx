@@ -17,6 +17,7 @@ export default function Home() {
   const [tripName, setTripName] = useState('')
   const [articles, setArticles] = useState<Article[]>([])
   const [carouselIndex, setCarouselIndex] = useState(0)
+  const [creating, setCreating] = useState(false)
 
   useEffect(() => {
     fetch('/api/articles')
@@ -26,6 +27,8 @@ export default function Home() {
   }, [])
 
   const handleStartTrip = async () => {
+    if (creating) return
+    setCreating(true)
     const trip = {
       id: crypto.randomUUID(),
       tripName: tripName || 'My Trip',
@@ -42,7 +45,12 @@ export default function Home() {
       itineraries: [],
       createdAt: new Date().toISOString(),
     }
-    await saveTrip(trip)
+    try {
+      await saveTrip(trip)
+    } catch (err) {
+      console.error('Failed to save trip:', err)
+    }
+    setTripName('')
     router.push(`/trip/${trip.id}`)
   }
 
@@ -101,22 +109,26 @@ export default function Home() {
             <input
               type="text" placeholder="Name your trip" value={tripName}
               onChange={(e) => setTripName(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') handleStartTrip() }}
+              onKeyDown={(e) => { if (e.key === 'Enter' && !creating) handleStartTrip() }}
+              disabled={creating}
               style={{ ...fieldInput, flex: 1, borderRadius: '12px 0 0 12px', borderRight: 'none' }}
             />
             <button
               onClick={handleStartTrip}
+              disabled={creating}
               style={{
                 padding: '0 28px', height: 48, fontSize: 15, fontWeight: 700,
                 background: 'linear-gradient(135deg, var(--accent), #E8C36A)', color: '#1A1A2E',
-                border: 'none', borderRadius: '0 12px 12px 0', cursor: 'pointer',
+                border: 'none', borderRadius: '0 12px 12px 0',
+                cursor: creating ? 'wait' : 'pointer',
+                opacity: creating ? 0.7 : 1,
                 boxShadow: '0 2px 12px rgba(212, 168, 71, 0.3)',
                 transition: 'transform 0.15s, box-shadow 0.15s', whiteSpace: 'nowrap',
               }}
-              onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(212, 168, 71, 0.4)' }}
+              onMouseOver={(e) => { if (!creating) { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(212, 168, 71, 0.4)' } }}
               onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 12px rgba(212, 168, 71, 0.3)' }}
             >
-              Create Trip
+              {creating ? 'Creating...' : 'Create Trip'}
             </button>
           </div>
           <div style={{ textAlign: 'center', marginTop: 10 }}>
@@ -456,19 +468,23 @@ export default function Home() {
             <input
               type="text" placeholder="Name your trip" value={tripName}
               onChange={(e) => setTripName(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') handleStartTrip() }}
+              onKeyDown={(e) => { if (e.key === 'Enter' && !creating) handleStartTrip() }}
+              disabled={creating}
               style={{ ...fieldInput, flex: 1, borderRadius: '12px 0 0 12px', borderRight: 'none' }}
             />
             <button
               onClick={handleStartTrip}
+              disabled={creating}
               style={{
                 padding: '0 28px', height: 48, fontSize: 15, fontWeight: 700,
                 background: 'linear-gradient(135deg, var(--accent), #E8C36A)', color: '#1A1A2E',
-                border: 'none', borderRadius: '0 12px 12px 0', cursor: 'pointer',
+                border: 'none', borderRadius: '0 12px 12px 0',
+                cursor: creating ? 'wait' : 'pointer',
+                opacity: creating ? 0.7 : 1,
                 boxShadow: '0 2px 12px rgba(212, 168, 71, 0.3)', whiteSpace: 'nowrap',
               }}
             >
-              Create Trip
+              {creating ? 'Creating...' : 'Create Trip'}
             </button>
           </div>
           <div style={{ display: 'flex', gap: 20, justifyContent: 'center', marginTop: 20 }}>

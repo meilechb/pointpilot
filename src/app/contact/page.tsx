@@ -14,11 +14,13 @@ export default function ContactPage() {
     if (!canSend) return
     setSending(true)
     try {
-      await fetch('/api/contact', {
+      const res = await fetch('/api/contact', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       })
+      if (!res.ok) throw new Error('Request failed')
+      setForm({ name: '', email: '', subject: '', message: '' })
       setSent(true)
     } catch {
       alert('Failed to send. Please try emailing us directly.')

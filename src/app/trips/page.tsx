@@ -139,8 +139,11 @@ export default function TripsPage() {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {trips.map((trip: any) => {
-            const route = trip.legs?.map((l: any) => l.from).concat(trip.legs?.[trip.legs.length - 1]?.to).filter(Boolean)
-            const hasRoute = route && route.length >= 2
+            const legs = trip.legs || []
+            const route = legs.length > 0
+              ? [...legs.map((l: any) => l.from), legs[legs.length - 1]?.to].filter(Boolean)
+              : []
+            const hasRoute = route.length >= 2
             const flightCount = trip.flights?.length || 0
             const itineraryCount = trip.itineraries?.length || 0
 

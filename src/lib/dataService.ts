@@ -148,17 +148,24 @@ export async function loadTripById(tripId: string): Promise<any | null> {
       .eq('id', tripId)
       .limit(1)
 
-    if (error || !tripRows || tripRows.length === 0) {
-      return null
+    if (!error && tripRows && tripRows.length > 0) {
+      const [{ data: legRows }, { data: flightRows }, { data: itinRows }] = await Promise.all([
+        sb.from('legs').select('*').eq('trip_id', tripId),
+        sb.from('flights').select('*').eq('trip_id', tripId),
+        sb.from('itineraries').select('*').eq('trip_id', tripId),
+      ])
+
+      return assembleTrip(tripRows[0], legRows || [], flightRows || [], itinRows || [])
     }
 
-    const [{ data: legRows }, { data: flightRows }, { data: itinRows }] = await Promise.all([
-      sb.from('legs').select('*').eq('trip_id', tripId),
-      sb.from('flights').select('*').eq('trip_id', tripId),
-      sb.from('itineraries').select('*').eq('trip_id', tripId),
-    ])
+    // Fall back to localStorage cache — covers in-flight saves, transient network
+    // errors, and anonymous-then-logged-in races where data hasn't synced yet.
+    const userLocal = JSON.parse(localStorage.getItem(tripsKey(user.id)) || '[]')
+    const fromUserLocal = userLocal.find((t: any) => t.id === tripId)
+    if (fromUserLocal) return fromUserLocal
 
-    return assembleTrip(tripRows[0], legRows || [], flightRows || [], itinRows || [])
+    const anonLocal = JSON.parse(localStorage.getItem(tripsKey()) || '[]')
+    return anonLocal.find((t: any) => t.id === tripId) ?? null
   }
   const local = JSON.parse(localStorage.getItem(tripsKey()) || '[]')
   return local.find((t: any) => t.id === tripId) ?? null
