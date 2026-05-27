@@ -46,7 +46,7 @@ export default function Footer() {
             <FooterLink href="/trips">My Trips</FooterLink>
             <FooterLink href="/wallet">My Points</FooterLink>
             <FooterLink href="/news">Travel News</FooterLink>
-            <FooterLink href="https://chromewebstore.google.com/detail/point-tripper/ogdahpmanlbjfcmpklbachojcihjakoa" external>Chrome Extension</FooterLink>
+            <FooterLink href="https://chromewebstore.google.com/detail/point-tripper-%E2%80%93-add-fligh/ddiknjcbiedmmcbhgamdbeljcafljapi" external>Chrome Extension</FooterLink>
           </div>
         </div>
 
@@ -77,7 +77,7 @@ export default function Footer() {
               Get the Extension
             </div>
             <a
-              href="https://chromewebstore.google.com/detail/point-tripper/ogdahpmanlbjfcmpklbachojcihjakoa"
+              href="https://chromewebstore.google.com/detail/point-tripper-%E2%80%93-add-fligh/ddiknjcbiedmmcbhgamdbeljcafljapi"
               target="_blank"
               rel="noopener noreferrer"
               style={{
