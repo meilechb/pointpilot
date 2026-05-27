@@ -1,21 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
-import { sendSubscriptionEmail, sendAdminGrantEmail, wrapEmail } from '@/lib/email'
-
-const ADMIN_EMAIL = 'meilechbiller18@gmail.com'
-
-async function verifyAdmin(req: NextRequest) {
-  const token = req.headers.get('Authorization')?.replace('Bearer ', '')
-  if (!token) return null
-  const sb = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  )
-  const { data: { user } } = await sb.auth.getUser(token)
-  if (!user || user.email !== ADMIN_EMAIL) return null
-  return user
-}
+import { sendSubscriptionEmail, sendAdminGrantEmail } from '@/lib/email'
+import { verifyAdmin } from '@/lib/adminAuth'
 
 // Send all email templates as test to the specified address
 export async function POST(req: NextRequest) {

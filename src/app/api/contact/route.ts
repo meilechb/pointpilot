@@ -14,6 +14,12 @@ export async function POST(request: NextRequest) {
   if (!name || !email || !message) {
     return NextResponse.json({ error: 'Name, email, and message are required' }, { status: 400 })
   }
+  if (typeof email !== 'string' || !/^[^\s@<>"]+@[^\s@<>"]+\.[^\s@<>"]+$/.test(email.trim())) {
+    return NextResponse.json({ error: 'Invalid email address' }, { status: 400 })
+  }
+  if (typeof message !== 'string' || message.length > 5000) {
+    return NextResponse.json({ error: 'Message is too long' }, { status: 400 })
+  }
 
   // Store in Supabase contact_messages table (create if needed, or just log)
   try {

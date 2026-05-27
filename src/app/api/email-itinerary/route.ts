@@ -7,6 +7,37 @@ function getResend() {
   return new Resend(process.env.RESEND_API_KEY)
 }
 
+// HTML-escape user-controlled values before interpolating into email markup.
+function esc(value: unknown): string {
+  if (value === null || value === undefined) return ''
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+// Strip CR/LF from header-bound values to block header injection.
+function stripHeader(value: string): string {
+  return value.replace(/[\r\n]+/g, ' ').trim().slice(0, 200)
+}
+
+const EMAIL_RE = /^[^\s@<>"]+@[^\s@<>"]+\.[^\s@<>"]+$/
+
+function validRecipients(raw: unknown): string[] | null {
+  const list = Array.isArray(raw) ? raw : [raw]
+  if (list.length === 0 || list.length > 5) return null
+  const cleaned: string[] = []
+  for (const item of list) {
+    if (typeof item !== 'string') return null
+    const trimmed = item.trim()
+    if (!EMAIL_RE.test(trimmed)) return null
+    cleaned.push(trimmed)
+  }
+  return cleaned
+}
+
 const FOOTER = `
   <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:32px;border-top:1px solid #E5E7EB;padding-top:20px">
     <tr>
@@ -50,13 +81,23 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
   }
 
+  const recipients = validRecipients(to)
+  if (!recipients) {
+    return NextResponse.json({ error: 'Invalid recipient address(es). Up to 5 valid emails.' }, { status: 400 })
+  }
+
   const travelers = itinerary.travelers || 1
   const totals = itinerary.totals || { cash: 0, points: 0, fees: 0 }
   const flightMap: Record<string, any> = {}
   ;(flights || []).forEach((f: any) => { flightMap[f.id] = f })
 
-  const displayName = senderName || senderEmail || 'Someone'
-  const tripName = trip?.tripName || 'Trip'
+  const displayNameRaw = senderName || senderEmail || 'Someone'
+  const displayName = esc(displayNameRaw)
+  const tripName = esc(trip?.tripName || 'Trip')
+  const itineraryName = esc(itinerary.name || 'Itinerary')
+  const senderEmailValid = typeof senderEmail === 'string' && EMAIL_RE.test(senderEmail.trim())
+    ? senderEmail.trim()
+    : undefined
 
   // Build cost summary cells
   const costCells: string[] = []
@@ -108,15 +149,15 @@ export async function POST(request: NextRequest) {
         const segs = f.segments || []
         const firstSeg = segs[0] || {}
         const lastSeg = segs[segs.length - 1] || firstSeg
-        const airline = firstSeg.airline || firstSeg.airlineName || ''
-        const flightNum = firstSeg.flightNumber || firstSeg.flightCode || ''
-        const depAirport = firstSeg.departureAirport || '?'
-        const arrAirport = lastSeg.arrivalAirport || '?'
-        const depart = firstSeg.departureTime || ''
-        const arrive = lastSeg.arrivalTime || ''
-        const date = firstSeg.date || ''
+        const airline = esc(firstSeg.airline || firstSeg.airlineName || '')
+        const flightNum = esc(firstSeg.flightNumber || firstSeg.flightCode || '')
+        const depAirport = esc(firstSeg.departureAirport || '?')
+        const arrAirport = esc(lastSeg.arrivalAirport || '?')
+        const depart = esc(firstSeg.departureTime || '')
+        const arrive = esc(lastSeg.arrivalTime || '')
+        const date = esc(firstSeg.date || '')
         const stops = f.segments?.length > 1 ? `${f.segments.length - 1} stop` : 'Nonstop'
-        const cabin = firstSeg.cabinClass || ''
+        const cabin = esc(firstSeg.cabinClass || '')
 
         const priceLabel = f.paymentType === 'cash'
           ? `$${(f.cashAmount || 0).toLocaleString()}`
@@ -157,7 +198,7 @@ export async function POST(request: NextRequest) {
         <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:8px">
           <tr>
             <td style="font-weight:700;font-size:12px;color:#6B7280;text-transform:uppercase;letter-spacing:1px">
-              Leg ${i + 1}: ${leg.from} &rarr; ${leg.to}
+              Leg ${i + 1}: ${esc(leg.from)} &rarr; ${esc(leg.to)}
             </td>
           </tr>
         </table>
@@ -173,7 +214,7 @@ export async function POST(request: NextRequest) {
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="color-scheme" content="light" />
-  <title>${itinerary.name}</title>
+  <title>${itineraryName}</title>
 </head>
 <body style="margin:0;padding:0;background-color:#F3F4F6;-webkit-text-size-adjust:100%">
   <div style="display:none;max-height:0;overflow:hidden;mso-hide:all">${displayName} shared their ${tripName} itinerary with you — ${costCells.length > 0 ? 'view flights and pricing details' : 'view flight details'}</div>
@@ -187,7 +228,7 @@ export async function POST(request: NextRequest) {
               <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:rgba(255,255,255,0.8);font-size:13px;margin-bottom:4px">
                 ${displayName} shared an itinerary with you
               </div>
-              <h1 style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:white;font-size:24px;font-weight:700;margin:0 0 4px">${itinerary.name}</h1>
+              <h1 style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:white;font-size:24px;font-weight:700;margin:0 0 4px">${itineraryName}</h1>
               <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:rgba(255,255,255,0.7);font-size:14px">
                 ${tripName}${travelers > 1 ? ` &middot; ${travelers} travelers` : ''}
               </div>
@@ -209,15 +250,16 @@ export async function POST(request: NextRequest) {
 </body>
 </html>`
 
-  // Use reply-to for the sender so recipients can reply directly
-  const fromName = senderName || 'Point Tripper'
+  // Header-bound values must not contain CR/LF.
+  const fromName = stripHeader(senderName || 'Point Tripper').replace(/[<>"]/g, '')
+  const subject = stripHeader(`${displayNameRaw} shared their ${trip?.tripName || 'Trip'} itinerary with you`)
 
   try {
     await resend.emails.send({
-      from: `${fromName} via Point Tripper <noreply@pointtripper.com>`,
-      replyTo: senderEmail || undefined,
-      to,
-      subject: `${displayName} shared their ${tripName} itinerary with you`,
+      from: `${fromName || 'Point Tripper'} via Point Tripper <noreply@pointtripper.com>`,
+      replyTo: senderEmailValid,
+      to: recipients,
+      subject,
       html,
       headers: {
         'X-Entity-Ref-ID': `itin-${Date.now()}`,
