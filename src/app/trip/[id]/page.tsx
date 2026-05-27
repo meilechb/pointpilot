@@ -83,20 +83,6 @@ export default function TripDetail() {
       setTrip(found)
       setWallet(walletData || [])
       setTransferBonuses(bonusData || [])
-      // Quick-add trips have no route yet — open the editor immediately so the
-      // user can finish setup instead of landing on a half-empty detail view.
-      if (found && (!found.legs || found.legs.length === 0)) {
-        setEditName(found.tripName || '')
-        setEditTripType(found.tripType || 'roundtrip')
-        setEditDepartureCity(found.departureCity || '')
-        setEditDestinationCity(found.destinationCity || '')
-        setEditStops(found.stops || [])
-        setEditDepartureDate(found.departureDate ? new Date(found.departureDate + 'T00:00:00') : null)
-        setEditReturnDate(found.returnDate ? new Date(found.returnDate + 'T00:00:00') : null)
-        setEditTravelers(found.travelers || 1)
-        setEditDateFlexibility(found.dateFlexibility || 'exact')
-        setIsEditing(true)
-      }
       setTripLoading(false)
     }).catch(err => {
       console.error('Failed to load trip:', err)
@@ -364,43 +350,72 @@ export default function TripDetail() {
           {/* Gradient header with route summary */}
           <div style={{
             background: 'linear-gradient(135deg, var(--primary), var(--primary-hover))',
-            padding: '24px 20px 20px',
+            padding: '18px 20px 16px',
             color: 'var(--text-inverse)',
           }}>
-            <h1 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12, color: 'rgba(255,255,255,0.85)', lineHeight: 1.3 }}>
+            <h1 style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, color: 'rgba(255,255,255,0.8)', lineHeight: 1.3 }}>
               {trip.tripName || 'Untitled Trip'}
             </h1>
             {/* Large route display */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-              <span style={{ fontSize: 26, fontWeight: 800, letterSpacing: '0.02em', color: 'var(--text-inverse)' }}>
-                {trip.legs?.[0]?.from || '???'}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+              <span style={{ fontSize: 24, fontWeight: 800, letterSpacing: '0.02em', color: 'var(--text-inverse)' }}>
+                {trip.legs?.[0]?.from || '\u2014'}
               </span>
-              <span style={{ fontSize: 20, color: 'rgba(255,255,255,0.6)' }}>{trip.tripType === 'roundtrip' ? '\u21C4' : '\u2192'}</span>
-              <span style={{ fontSize: 26, fontWeight: 800, letterSpacing: '0.02em', color: 'var(--text-inverse)' }}>
-                {trip.legs?.[trip.legs.length - 1]?.to || '???'}
+              <span style={{ fontSize: 18, color: 'rgba(255,255,255,0.6)' }}>{trip.tripType === 'roundtrip' ? '\u21C4' : '\u2192'}</span>
+              <span style={{ fontSize: 24, fontWeight: 800, letterSpacing: '0.02em', color: 'var(--text-inverse)' }}>
+                {trip.legs?.[trip.legs.length - 1]?.to || '\u2014'}
               </span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'rgba(255,255,255,0.7)' }}>
-              <span>{getCityName(trip.legs?.[0]?.from) || trip.legs?.[0]?.from}</span>
-              <span style={{ color: 'rgba(255,255,255,0.4)' }}>&#8226;</span>
-              <span>{getCityName(trip.legs?.[trip.legs.length - 1]?.to) || trip.legs?.[trip.legs.length - 1]?.to}</span>
+            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.65)', marginBottom: 10 }}>
+              {[getCityName(trip.legs?.[0]?.from) || trip.legs?.[0]?.from,
+                getCityName(trip.legs?.[trip.legs.length - 1]?.to) || trip.legs?.[trip.legs.length - 1]?.to]
+                .filter(Boolean).join(' \u2022 ')}
             </div>
-            {trip.tripType && (
-              <span style={{
-                display: 'inline-block', fontSize: 10, fontWeight: 600, marginTop: 10,
-                padding: '3px 10px', borderRadius: 12,
-                backgroundColor: 'rgba(255,255,255,0.18)', color: 'var(--text-inverse)',
-                textTransform: 'uppercase', letterSpacing: '0.05em',
-              }}>
-                {trip.tripType === 'oneway' ? 'One Way' : trip.tripType === 'multicity' ? 'Multi-City' : 'Round Trip'}
-              </span>
-            )}
+            {/* Inline chips: trip type \u00B7 dates \u00B7 travelers */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {trip.tripType && (
+                <span style={{
+                  fontSize: 10, fontWeight: 600, padding: '3px 8px', borderRadius: 10,
+                  backgroundColor: 'rgba(255,255,255,0.18)', color: 'var(--text-inverse)',
+                  textTransform: 'uppercase', letterSpacing: '0.05em',
+                }}>
+                  {trip.tripType === 'oneway' ? 'One Way' : trip.tripType === 'multicity' ? 'Multi-City' : 'Round Trip'}
+                </span>
+              )}
+              {trip.departureDate && (
+                <span style={{
+                  fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 10,
+                  backgroundColor: 'rgba(255,255,255,0.15)', color: 'var(--text-inverse)',
+                }}>
+                  {formatShortDate(trip.departureDate)}
+                  {trip.returnDate && trip.tripType !== 'oneway' && ` \u2013 ${formatShortDate(trip.returnDate)}`}
+                </span>
+              )}
+              {trip.travelers > 1 && (
+                <span style={{
+                  fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 10,
+                  backgroundColor: 'rgba(255,255,255,0.15)', color: 'var(--text-inverse)',
+                }}>
+                  {trip.travelers} travelers
+                </span>
+              )}
+              {trip.dateFlexibility && trip.dateFlexibility !== 'exact' && (
+                <span style={{
+                  fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 10,
+                  backgroundColor: 'rgba(255,255,255,0.15)', color: 'var(--text-inverse)',
+                }}>
+                  {trip.dateFlexibility === 'plus_minus_1' ? '\u00B1 1 day' :
+                   trip.dateFlexibility === 'plus_minus_2' ? '\u00B1 2 days' :
+                   trip.dateFlexibility === 'plus_minus_3' ? '\u00B1 3 days' :
+                   trip.dateFlexibility === 'flexible' ? 'Flexible' : trip.dateFlexibility}
+                </span>
+              )}
+            </div>
           </div>
 
           {/* Sidebar body */}
-          <div style={{ padding: '16px 20px' }}>
-
-            {/* Quick stats row */}
+          <div style={{ padding: '14px 16px' }}>
+            {/* Compact stats \u2014 single row */}
             {(() => {
               const cashFlights = trip.flights.filter((f: any) => f.paymentType === 'cash' && f.cashAmount)
               const pointsFlights = trip.flights.filter((f: any) => f.paymentType === 'points' && f.pointsAmount)
@@ -408,229 +423,48 @@ export default function TripDetail() {
               const minPoints = pointsFlights.length > 0 ? Math.min(...pointsFlights.map((f: any) => f.pointsAmount)) : null
               const itinCount = trip.itineraries?.length || 0
 
+              const cells = [
+                { value: trip.flights.length, label: 'Flights' },
+                { value: itinCount, label: 'Plans' },
+                ...(minCash !== null ? [{ value: `$${minCash.toLocaleString()}`, label: 'Best $', color: 'var(--success)' }] : []),
+                ...(minPoints !== null ? [{ value: `${minPoints.toLocaleString()}`, label: 'Best pts', color: 'var(--primary)' }] : []),
+              ]
+
               return (
                 <div style={{
-                  display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8,
-                  marginBottom: 18, padding: '12px 0',
-                  borderBottom: '1px solid var(--border-light)',
+                  display: 'grid',
+                  gridTemplateColumns: `repeat(${cells.length}, 1fr)`,
+                  gap: 4,
+                  marginBottom: 14,
                 }}>
-                  <div style={{ textAlign: 'center', padding: '8px 4px', backgroundColor: 'var(--bg)', borderRadius: 'var(--radius-sm)' }}>
-                    <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)' }}>{trip.flights.length}</div>
-                    <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Flights</div>
-                  </div>
-                  <div style={{ textAlign: 'center', padding: '8px 4px', backgroundColor: 'var(--bg)', borderRadius: 'var(--radius-sm)' }}>
-                    <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)' }}>{itinCount}</div>
-                    <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Itineraries</div>
-                  </div>
-                  {minCash !== null && (
-                    <div style={{ textAlign: 'center', padding: '8px 4px', backgroundColor: 'var(--bg)', borderRadius: 'var(--radius-sm)' }}>
-                      <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--success)' }}>${minCash.toLocaleString()}</div>
-                      <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Best Cash</div>
+                  {cells.map((c, i) => (
+                    <div key={i} style={{ textAlign: 'center', padding: '6px 2px' }}>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: c.color || 'var(--text)' }}>{c.value}</div>
+                      <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{c.label}</div>
                     </div>
-                  )}
-                  {minPoints !== null && (
-                    <div style={{ textAlign: 'center', padding: '8px 4px', backgroundColor: 'var(--bg)', borderRadius: 'var(--radius-sm)' }}>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--primary)' }}>{minPoints.toLocaleString()}</div>
-                      <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Best Pts</div>
-                    </div>
-                  )}
+                  ))}
                 </div>
               )
             })()}
 
-            {/* Route timeline */}
-            <div style={{ marginBottom: 18 }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>
-                Route
+            {/* Multi-city stop list (only if relevant) */}
+            {trip.legs.length > 2 && (
+              <div style={{
+                marginBottom: 12, padding: '8px 12px',
+                backgroundColor: 'var(--bg)', borderRadius: 'var(--radius-sm)',
+                border: '1px solid var(--border-light)',
+                fontSize: 12, color: 'var(--text-secondary)',
+              }}>
+                <span style={{ fontWeight: 600, color: 'var(--text-muted)', marginRight: 6 }}>Stops:</span>
+                {trip.legs.slice(1).map((l: any) => l.from).join(' \u2192 ')}
               </div>
-              {trip.legs.map((leg: any, i: number) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'stretch', gap: 10 }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: 16, flexShrink: 0 }}>
-                    <div style={{
-                      width: 10, height: 10, borderRadius: '50%', flexShrink: 0,
-                      backgroundColor: 'var(--primary)', border: '2px solid var(--primary)',
-                    }} />
-                    <div style={{ width: 2, flex: 1, backgroundColor: 'var(--border)', margin: '2px 0' }} />
-                  </div>
-                  <div style={{ paddingBottom: 14, flex: 1 }}>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>
-                      {getCityName(leg.from) || leg.from}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                      <span style={{
-                        display: 'inline-block', padding: '1px 6px',
-                        backgroundColor: 'var(--primary-light)', borderRadius: 8,
-                        fontSize: 11, fontWeight: 600, color: 'var(--primary)',
-                      }}>
-                        {leg.from} &rarr; {leg.to}
-                      </span>
-                      {i === 0 && trip.departureDate && (
-                        <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>
-                          {formatShortDate(trip.departureDate)}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {/* Final destination */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{ display: 'flex', justifyContent: 'center', width: 16, flexShrink: 0 }}>
-                  <div style={{
-                    width: 10, height: 10, borderRadius: '50%',
-                    backgroundColor: 'var(--primary)', border: '2px solid var(--primary)',
-                  }} />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>
-                    {getCityName(trip.legs[trip.legs.length - 1]?.to) || trip.legs[trip.legs.length - 1]?.to}
-                  </div>
-                  {trip.returnDate && trip.tripType === 'roundtrip' && (
-                    <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>
-                      {formatShortDate(trip.returnDate)}
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Trip details section */}
-            <div style={{
-              marginBottom: 18, padding: '14px 16px',
-              backgroundColor: 'var(--bg)', borderRadius: 'var(--radius-sm)',
-              border: '1px solid var(--border-light)',
-            }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>
-                Trip Details
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {/* Departure date */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ fontSize: 14, width: 18, textAlign: 'center', color: 'var(--text-muted)' }}>&#128197;</span>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>Departure</div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
-                      {trip.departureDate ? new Date(trip.departureDate + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : 'Not set'}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Return date */}
-                {trip.tripType !== 'oneway' && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ fontSize: 14, width: 18, textAlign: 'center', color: 'var(--text-muted)' }}>&#128197;</span>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>Return</div>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
-                        {trip.returnDate ? new Date(trip.returnDate + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : 'Not set'}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Trip duration */}
-                {trip.departureDate && trip.returnDate && (() => {
-                  const dep = new Date(trip.departureDate + 'T00:00:00')
-                  const ret = new Date(trip.returnDate + 'T00:00:00')
-                  const days = Math.round((ret.getTime() - dep.getTime()) / (1000 * 60 * 60 * 24))
-                  return days > 0 ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <span style={{ fontSize: 14, width: 18, textAlign: 'center', color: 'var(--text-muted)' }}>&#128339;</span>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>Duration</div>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
-                          {days} day{days !== 1 ? 's' : ''}
-                        </div>
-                      </div>
-                    </div>
-                  ) : null
-                })()}
-
-                {/* Travelers */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ fontSize: 14, width: 18, textAlign: 'center', color: 'var(--text-muted)' }}>&#128100;</span>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>Travelers</div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
-                      {trip.travelers} traveler{trip.travelers > 1 ? 's' : ''}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Date flexibility */}
-                {trip.dateFlexibility && trip.dateFlexibility !== 'exact' && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ fontSize: 14, width: 18, textAlign: 'center', color: 'var(--text-muted)' }}>&#8596;</span>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>Flexibility</div>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
-                        {trip.dateFlexibility === 'plus_minus_1' ? '\u00B1 1 day' :
-                         trip.dateFlexibility === 'plus_minus_2' ? '\u00B1 2 days' :
-                         trip.dateFlexibility === 'plus_minus_3' ? '\u00B1 3 days' :
-                         trip.dateFlexibility === 'flexible' ? 'Flexible' : trip.dateFlexibility}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Price range card */}
-            {trip.flights.length > 0 && (() => {
-              const cashFlights = trip.flights.filter((f: any) => f.paymentType === 'cash' && f.cashAmount)
-              const pointsFlights = trip.flights.filter((f: any) => f.paymentType === 'points' && f.pointsAmount)
-              if (cashFlights.length === 0 && pointsFlights.length === 0) return null
-
-              const minCash = cashFlights.length > 0 ? Math.min(...cashFlights.map((f: any) => f.cashAmount)) : null
-              const maxCash = cashFlights.length > 0 ? Math.max(...cashFlights.map((f: any) => f.cashAmount)) : null
-              const minPoints = pointsFlights.length > 0 ? Math.min(...pointsFlights.map((f: any) => f.pointsAmount)) : null
-              const maxPoints = pointsFlights.length > 0 ? Math.max(...pointsFlights.map((f: any) => f.pointsAmount)) : null
-
-              return (
-                <div style={{
-                  marginBottom: 18, padding: '14px 16px',
-                  backgroundColor: 'var(--bg)', borderRadius: 'var(--radius-sm)',
-                  border: '1px solid var(--border-light)',
-                }}>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>
-                    Price Range
-                  </div>
-                  {minCash !== null && maxCash !== null && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: pointsFlights.length > 0 ? 8 : 0 }}>
-                      <span style={{ fontSize: 14, width: 18, textAlign: 'center', color: 'var(--success)' }}>&#128176;</span>
-                      <div>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--success)' }}>
-                          ${minCash.toLocaleString()}{minCash !== maxCash ? ` \u2013 $${maxCash.toLocaleString()}` : ''}
-                        </div>
-                        <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
-                          {cashFlights.length} cash option{cashFlights.length !== 1 ? 's' : ''}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  {minPoints !== null && maxPoints !== null && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontSize: 14, width: 18, textAlign: 'center', color: 'var(--primary)' }}>&#9733;</span>
-                      <div>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--primary)' }}>
-                          {minPoints.toLocaleString()}{minPoints !== maxPoints ? ` \u2013 ${maxPoints.toLocaleString()}` : ''} pts
-                        </div>
-                        <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
-                          {pointsFlights.length} points option{pointsFlights.length !== 1 ? 's' : ''}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )
-            })()}
+            )}
 
             {/* Edit button */}
             <button
               onClick={startEditing}
               style={{
-                width: '100%', padding: '10px 0',
+                width: '100%', padding: '8px 0',
                 border: '1.5px solid var(--border)', borderRadius: 'var(--radius-sm)',
                 cursor: 'pointer', backgroundColor: 'var(--bg-card)',
                 fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)',
@@ -885,17 +719,17 @@ export default function TripDetail() {
         <>
           {trip.flights.length === 0 && !showAddFlight ? (
             <div style={{
-              textAlign: 'center', padding: 48,
+              textAlign: 'center', padding: '40px 24px',
               backgroundColor: 'var(--bg-card)',
               borderRadius: 'var(--radius)',
               border: '1px dashed var(--border)',
             }}>
-              <div style={{ fontSize: 32, marginBottom: 8 }}>✈️</div>
-              <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 16 }}>No flights added yet</p>
+              <div style={{ fontSize: 28, marginBottom: 6 }}>✈️</div>
+              <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 14 }}>No flights added yet</p>
               <button
                 onClick={() => setShowAddFlight(true)}
                 style={{
-                  padding: '10px 24px',
+                  padding: '9px 22px',
                   background: 'linear-gradient(135deg, var(--primary), var(--primary-hover))',
                   color: 'var(--text-inverse)',
                   border: 'none', borderRadius: 'var(--radius-sm)',
@@ -907,55 +741,49 @@ export default function TripDetail() {
             </div>
           ) : (
             <>
-              {/* Summary bar */}
-              {trip.flights.length > 0 && !editingFlightId && (
-                <div style={{
-                  display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap',
-                  padding: '10px 16px', marginBottom: 14,
-                  backgroundColor: 'var(--bg-card)', borderRadius: 'var(--radius)',
-                  border: '1px solid var(--border-light)',
-                }}>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
-                    {trip.flights.length} flight{trip.flights.length !== 1 ? 's' : ''}
-                  </span>
-                  {(() => {
-                    const cashFlights = trip.flights.filter((f: any) => f.paymentType === 'cash' && f.cashAmount)
-                    const lowest = cashFlights.length > 0 ? Math.min(...cashFlights.map((f: any) => f.cashAmount)) : null
-                    return lowest !== null ? (
-                      <span style={{ fontSize: 13, color: 'var(--success)', fontWeight: 600 }}>
-                        From ${lowest.toLocaleString()}
-                      </span>
-                    ) : null
-                  })()}
-                  {(() => {
-                    const pointsFlights = trip.flights.filter((f: any) => f.paymentType === 'points' && f.pointsAmount)
-                    const lowest = pointsFlights.length > 0 ? Math.min(...pointsFlights.map((f: any) => f.pointsAmount)) : null
-                    return lowest !== null ? (
-                      <span style={{ fontSize: 13, color: 'var(--primary)', fontWeight: 600 }}>
-                        From {lowest.toLocaleString()} pts
-                      </span>
-                    ) : null
-                  })()}
-                </div>
-              )}
-
+              {/* Inline action row: summary + add button on one line */}
               {!editingFlightId && (
-                <button
-                  onClick={() => setShowAddFlight(true)}
-                  style={{
-                    width: '100%', padding: 14, marginBottom: 14,
-                    background: 'linear-gradient(135deg, var(--primary), var(--primary-hover))',
-                    color: 'var(--text-inverse)',
-                    border: 'none', borderRadius: 'var(--radius)',
-                    cursor: 'pointer', fontSize: 15, fontWeight: 600,
-                    boxShadow: '0 2px 8px rgba(67, 56, 202, 0.3)',
-                    transition: 'transform 0.15s, box-shadow 0.15s',
-                  }}
-                  onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(67, 56, 202, 0.4)' }}
-                  onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(67, 56, 202, 0.3)' }}
-                >
-                  + Add Flight
-                </button>
+                <div style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  gap: 12, marginBottom: 14, flexWrap: 'wrap',
+                }}>
+                  <div style={{ display: 'flex', gap: 14, alignItems: 'baseline', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>
+                      {trip.flights.length} flight{trip.flights.length !== 1 ? 's' : ''}
+                    </span>
+                    {(() => {
+                      const cashFlights = trip.flights.filter((f: any) => f.paymentType === 'cash' && f.cashAmount)
+                      const lowest = cashFlights.length > 0 ? Math.min(...cashFlights.map((f: any) => f.cashAmount)) : null
+                      return lowest !== null ? (
+                        <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                          from <span style={{ color: 'var(--success)', fontWeight: 600 }}>${lowest.toLocaleString()}</span>
+                        </span>
+                      ) : null
+                    })()}
+                    {(() => {
+                      const pointsFlights = trip.flights.filter((f: any) => f.paymentType === 'points' && f.pointsAmount)
+                      const lowest = pointsFlights.length > 0 ? Math.min(...pointsFlights.map((f: any) => f.pointsAmount)) : null
+                      return lowest !== null ? (
+                        <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                          or <span style={{ color: 'var(--primary)', fontWeight: 600 }}>{lowest.toLocaleString()} pts</span>
+                        </span>
+                      ) : null
+                    })()}
+                  </div>
+                  <button
+                    onClick={() => setShowAddFlight(true)}
+                    style={{
+                      padding: '8px 16px',
+                      background: 'linear-gradient(135deg, var(--primary), var(--primary-hover))',
+                      color: 'var(--text-inverse)',
+                      border: 'none', borderRadius: 'var(--radius-sm)',
+                      cursor: 'pointer', fontSize: 13, fontWeight: 600,
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    + Add Flight
+                  </button>
+                </div>
               )}
 
               {/* Flight cards grid */}
