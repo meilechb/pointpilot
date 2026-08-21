@@ -78,6 +78,25 @@ function itinerariesToRows(trip: any, userId: string) {
   }))
 }
 
+// Derive the trip's endpoints from its legs. Only legs are persisted, so this
+// is the single source of truth for turning them back into the app shape.
+//
+// The destination is NOT the last leg's arrival: a roundtrip's last leg flies
+// home, so legs[last].to is the DEPARTURE city. Only multicity ends where it
+// is going.
+//   oneway    A→B                    legs: [A→B]              dest B
+//   roundtrip A→B→A                  legs: [A→B, B→A]         dest B
+//   multicity A→S1→S2→B              legs: [A→S1, S1→S2, S2→B] dest B, stops [S1, S2]
+export function tripEndpoints(tripType: string, legs: { from: string; to: string }[]) {
+  const isMulticity = tripType === 'multicity'
+  return {
+    departureCity: legs[0]?.from || '',
+    destinationCity: (isMulticity ? legs[legs.length - 1]?.to : legs[0]?.to) || '',
+    // Every leg after the first departs from a stop.
+    stops: isMulticity ? legs.slice(1).map(l => l.from).filter(Boolean) : [],
+  }
+}
+
 function assembleTrip(tripRow: any, legRows: any[], flightRows: any[], itinRows: any[]): any {
   const legs = [...legRows]
     .sort((a, b) => a.leg_order - b.leg_order)
@@ -111,11 +130,7 @@ function assembleTrip(tripRow: any, legRows: any[], flightRows: any[], itinRows:
   }))
 
   // Reconstruct departureCity / destinationCity / stops from legs
-  const departureCity = legs[0]?.from || ''
-  const destinationCity = legs[legs.length - 1]?.to || ''
-  const stops = tripRow.trip_type === 'multicity' && legs.length > 2
-    ? legs.slice(1, -1).map((l: any) => l.from)
-    : []
+  const { departureCity, destinationCity, stops } = tripEndpoints(tripRow.trip_type, legs)
 
   return {
     id: tripRow.id,
@@ -205,7 +220,26 @@ export async function loadTrips(): Promise<any[]> {
   return JSON.parse(localStorage.getItem(tripsKey()) || '[]')
 }
 
+// Serialize saves per trip. Each save replaces the trip's legs, flights and
+// itineraries with delete-then-insert, so two overlapping saves can collide on
+// the deterministic leg ids (`<tripId>_leg_<n>`) — the later insert fails on a
+// duplicate key and its edit is silently lost — or leave the trip with no rows
+// in the window between delete and insert. Callers fire-and-forget, so without
+// this a quick second edit can land on top of the first.
+const saveChains = new Map<string, Promise<unknown>>()
+
 export async function saveTrip(trip: any): Promise<void> {
+  const previous = saveChains.get(trip.id) || Promise.resolve()
+  const chain = previous.then(() => saveTripNow(trip))
+  const tail: Promise<unknown> = chain.catch(() => {}).finally(() => {
+    // Only the newest save clears the slot, so a queued save is never dropped.
+    if (saveChains.get(trip.id) === tail) saveChains.delete(trip.id)
+  })
+  saveChains.set(trip.id, tail)
+  return chain
+}
+
+async function saveTripNow(trip: any): Promise<void> {
   const user = await getUser()
 
   // localStorage cache (scoped by user)

@@ -15,7 +15,7 @@ import { analyzeItinerary } from '@/utils/bookingAnalyzer'
 import { optimizeTrip, getRelevantSweetSpots, type BookingStrategy } from '@/utils/tripOptimizer'
 import ItineraryBuilder from '@/components/ItineraryBuilder'
 import SavePrompt from '@/components/SavePrompt'
-import { loadTripById, saveTrip as saveTripRemote, loadWallet, loadTransferBonuses } from '@/lib/dataService'
+import { loadTripById, saveTrip as saveTripRemote, loadWallet, loadTransferBonuses, tripEndpoints } from '@/lib/dataService'
 
 function formatShortDate(dateStr: string): string {
   if (!dateStr) return ''
@@ -115,9 +115,10 @@ export default function TripDetail() {
   const startEditing = () => {
     setEditName(trip.tripName || '')
     setEditTripType(trip.tripType || 'roundtrip')
-    setEditDepartureCity(trip.departureCity || trip.legs?.[0]?.from || '')
-    setEditDestinationCity(trip.destinationCity || trip.legs?.[trip.legs.length - 1]?.to || '')
-    setEditStops(trip.stops || [])
+    const derived = tripEndpoints(trip.tripType, trip.legs || [])
+    setEditDepartureCity(trip.departureCity || derived.departureCity)
+    setEditDestinationCity(trip.destinationCity || derived.destinationCity)
+    setEditStops(trip.stops?.length ? trip.stops : derived.stops)
     setEditDepartureDate(parseDate(trip.departureDate))
     setEditReturnDate(parseDate(trip.returnDate))
     setEditTravelers(trip.travelers || 1)
@@ -156,6 +157,12 @@ export default function TripDetail() {
     }
 
     if (legsChanged) {
+      // Changing the route invalidates every flight-to-leg assignment, so it
+      // throws away saved itineraries. Say so before doing it.
+      const losing = (trip.itineraries?.length || 0) > 0 || trip.flights.some((f: { legIndex?: number | null }) => f.legIndex !== null && f.legIndex !== undefined)
+      if (losing && !confirm('Changing the route unassigns your flights and deletes saved itineraries for this trip. Continue?')) {
+        return
+      }
       updatedTrip.flights = updatedTrip.flights.map((f: any) => ({ ...f, legIndex: null }))
       updatedTrip.planAssignments = {}
       updatedTrip.itineraries = []
@@ -165,7 +172,9 @@ export default function TripDetail() {
     setIsEditing(false)
   }
 
+  // Departure === destination would build A→A legs and destroy the route.
   const canSaveEdit = editDepartureCity && editDestinationCity && editDepartureDate
+    && editDepartureCity.trim().toUpperCase() !== editDestinationCity.trim().toUpperCase()
 
   const handleSaveFlight = (flight: any) => {
     const updatedTrip = { ...trip }
@@ -336,6 +345,9 @@ export default function TripDetail() {
     </div>
   )
 
+  // A roundtrip's last leg flies home, so legs[last].to is the departure city.
+  const headerDestination = trip.destinationCity || tripEndpoints(trip.tripType, trip.legs || []).destinationCity
+
   const tabs = [
     { key: 'flights', label: 'Flights', count: trip.flights.length || null },
     { key: 'builder', label: 'Builder', count: null },
@@ -362,12 +374,12 @@ export default function TripDetail() {
               </span>
               <span style={{ fontSize: 20, color: 'rgba(255,255,255,0.6)' }}>{trip.tripType === 'roundtrip' ? '\u21C4' : '\u2192'}</span>
               <span style={{ fontSize: 26, fontWeight: 800, letterSpacing: '0.02em', color: 'var(--text-inverse)' }}>
-                {trip.legs?.[trip.legs.length - 1]?.to || '\u2014'}
+                {headerDestination || '\u2014'}
               </span>
             </div>
             <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', marginBottom: 10 }}>
               {[getCityName(trip.legs?.[0]?.from) || trip.legs?.[0]?.from,
-                getCityName(trip.legs?.[trip.legs.length - 1]?.to) || trip.legs?.[trip.legs.length - 1]?.to]
+                getCityName(headerDestination) || headerDestination]
                 .filter(Boolean).join(' \u2022 ')}
             </div>
             {trip.tripType && (
