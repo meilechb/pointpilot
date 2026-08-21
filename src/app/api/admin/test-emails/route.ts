@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
-import { sendSubscriptionEmail, sendAdminGrantEmail, wrapEmail } from '@/lib/email'
 
 const ADMIN_EMAIL = 'meilechbiller18@gmail.com'
 
@@ -31,51 +30,7 @@ export async function POST(req: NextRequest) {
   const results: { template: string; success: boolean; error?: string }[] = []
   const sendAll = !templates || templates.length === 0
 
-  // 1. Pro Welcome (Stripe checkout)
-  if (sendAll || templates.includes('welcome')) {
-    try {
-      await sendSubscriptionEmail(to, 'welcome', {
-        nextBillingDate: new Date(Date.now() + 30 * 86400000).toISOString(),
-      })
-      results.push({ template: 'welcome', success: true })
-    } catch (e: any) {
-      results.push({ template: 'welcome', success: false, error: e.message })
-    }
-  }
-
-  // 2. Subscription Canceled
-  if (sendAll || templates.includes('canceled')) {
-    try {
-      await sendSubscriptionEmail(to, 'canceled', {
-        nextBillingDate: new Date(Date.now() + 15 * 86400000).toISOString(),
-      })
-      results.push({ template: 'canceled', success: true })
-    } catch (e: any) {
-      results.push({ template: 'canceled', success: false, error: e.message })
-    }
-  }
-
-  // 3. Admin Grant Pro
-  if (sendAll || templates.includes('admin-granted')) {
-    try {
-      await sendAdminGrantEmail(to, 'granted', { adminName: 'Meilech' })
-      results.push({ template: 'admin-granted', success: true })
-    } catch (e: any) {
-      results.push({ template: 'admin-granted', success: false, error: e.message })
-    }
-  }
-
-  // 4. Admin Revoke Pro
-  if (sendAll || templates.includes('admin-revoked')) {
-    try {
-      await sendAdminGrantEmail(to, 'revoked', { adminName: 'Meilech' })
-      results.push({ template: 'admin-revoked', success: true })
-    } catch (e: any) {
-      results.push({ template: 'admin-revoked', success: false, error: e.message })
-    }
-  }
-
-  // 5. Itinerary Share (sample)
+  // Itinerary Share (sample)
   if (sendAll || templates.includes('itinerary')) {
     try {
       const sampleHtml = buildSampleItineraryEmail()

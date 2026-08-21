@@ -38,14 +38,10 @@ type AppUser = {
   email: string
   name: string
   created_at: string
-  plan: string
-  status: string
 }
 
 type Stats = {
   totalUsers: number
-  proUsers: number
-  freeUsers: number
   newUsersThisMonth: number
   newUsersThisWeek: number
   totalTrips: number
@@ -80,10 +76,6 @@ const cardStyle: React.CSSProperties = {
 const ADMIN_EMAIL = 'meilechbiller18@gmail.com'
 
 const EMAIL_TEMPLATES = [
-  { id: 'welcome', name: 'Pro Welcome', desc: 'Sent after Stripe checkout' },
-  { id: 'canceled', name: 'Subscription Canceled', desc: 'Sent when sub is canceled' },
-  { id: 'admin-granted', name: 'Admin Grant Pro', desc: 'Sent when you grant Pro' },
-  { id: 'admin-revoked', name: 'Admin Revoke Pro', desc: 'Sent when you revoke Pro' },
   { id: 'itinerary', name: 'Itinerary Share', desc: 'Sample shared itinerary' },
 ]
 
@@ -146,9 +138,7 @@ export default function AdminPage() {
   // Users state
   const [users, setUsers] = useState<AppUser[]>([])
   const [usersLoading, setUsersLoading] = useState(true)
-  const [togglingUserId, setTogglingUserId] = useState<string | null>(null)
   const [userSearch, setUserSearch] = useState('')
-  const [userFilter, setUserFilter] = useState<'all' | 'pro' | 'free'>('all')
   const [userSort, setUserSort] = useState<'newest' | 'oldest' | 'email'>('newest')
 
   // Email test state
@@ -197,22 +187,6 @@ export default function AdminPage() {
     setUsersLoading(false)
   }
 
-  const toggleUserPlan = async (userId: string, currentPlan: string) => {
-    setTogglingUserId(userId)
-    const newPlan = currentPlan === 'pro' ? 'free' : 'pro'
-    const token = await getToken()
-    if (!token) { setTogglingUserId(null); return }
-    const res = await fetch('/api/admin/users', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId, plan: newPlan }),
-    })
-    if (res.ok) {
-      setUsers(users.map(u => u.id === userId ? { ...u, plan: newPlan, status: newPlan === 'pro' ? 'active' : 'free' } : u))
-    }
-    setTogglingUserId(null)
-  }
-
   const sendTestEmails = async () => {
     setSendingEmails(true)
     setEmailResults(null)
@@ -254,13 +228,11 @@ export default function AdminPage() {
         (u.name && u.name.toLowerCase().includes(q))
       )
     }
-    if (userFilter === 'pro') result = result.filter(u => u.plan === 'pro')
-    if (userFilter === 'free') result = result.filter(u => u.plan !== 'pro')
     if (userSort === 'newest') result = [...result].sort((a, b) => b.created_at.localeCompare(a.created_at))
     if (userSort === 'oldest') result = [...result].sort((a, b) => a.created_at.localeCompare(b.created_at))
     if (userSort === 'email') result = [...result].sort((a, b) => a.email.localeCompare(b.email))
     return result
-  }, [users, userSearch, userFilter, userSort])
+  }, [users, userSearch, userSort])
 
   if (authLoading) {
     return <div style={{ maxWidth: 800, margin: '0 auto', padding: '40px 20px', color: 'var(--text-muted)' }}>Loading...</div>
@@ -607,8 +579,6 @@ export default function AdminPage() {
               <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Users</p>
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
                 <StatCard label="Total Users" value={stats.totalUsers} />
-                <StatCard label="Pro Users" value={stats.proUsers} />
-                <StatCard label="Free Users" value={stats.freeUsers} />
                 <StatCard label="New This Week" value={stats.newUsersThisWeek} />
                 <StatCard label="New This Month" value={stats.newUsersThisMonth} />
               </div>
@@ -666,15 +636,6 @@ export default function AdminPage() {
               style={{ flex: '1 1 200px', padding: '8px 12px', fontSize: 14 }}
             />
             <select
-              value={userFilter}
-              onChange={(e) => setUserFilter(e.target.value as typeof userFilter)}
-              style={{ padding: '8px 12px', fontSize: 13, borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', backgroundColor: 'var(--bg-card)', cursor: 'pointer' }}
-            >
-              <option value="all">All Plans</option>
-              <option value="pro">Pro Only</option>
-              <option value="free">Free Only</option>
-            </select>
-            <select
               value={userSort}
               onChange={(e) => setUserSort(e.target.value as typeof userSort)}
               style={{ padding: '8px 12px', fontSize: 13, borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', backgroundColor: 'var(--bg-card)', cursor: 'pointer' }}
@@ -709,30 +670,8 @@ export default function AdminPage() {
                   <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
                     Joined {new Date(u.created_at).toLocaleDateString()}
                   </span>
-                  <span style={{
-                    padding: '1px 7px', borderRadius: 10, fontSize: 11, fontWeight: 600,
-                    backgroundColor: u.plan === 'pro' ? 'var(--success-bg)' : 'var(--bg-accent)',
-                    color: u.plan === 'pro' ? 'var(--success)' : 'var(--text-muted)',
-                  }}>
-                    {u.plan === 'pro' ? 'Pro' : 'Free'}
-                  </span>
                 </div>
               </div>
-              <button
-                onClick={() => toggleUserPlan(u.id, u.plan)}
-                disabled={togglingUserId === u.id}
-                style={{
-                  padding: '7px 14px', borderRadius: 'var(--radius-sm)',
-                  border: 'none', cursor: togglingUserId === u.id ? 'default' : 'pointer',
-                  fontWeight: 600, fontSize: 12, flexShrink: 0, marginLeft: 12,
-                  background: u.plan === 'pro'
-                    ? 'var(--bg-accent)'
-                    : 'linear-gradient(135deg, var(--primary), var(--primary-hover))',
-                  color: u.plan === 'pro' ? 'var(--text-secondary)' : 'var(--text-inverse)',
-                }}
-              >
-                {togglingUserId === u.id ? '...' : u.plan === 'pro' ? 'Revoke Pro' : 'Grant Pro'}
-              </button>
             </div>
           ))}
         </>
