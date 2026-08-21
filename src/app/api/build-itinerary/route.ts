@@ -126,33 +126,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  // Subscription check (same pattern as parse-flights)
-  const { data: sub } = await supabase
-    .from('subscriptions')
-    .select('plan, status, current_period_end')
-    .eq('user_id', user.id)
-    .single()
-
-  const isPro = sub && (sub.status === 'active' || sub.status === 'past_due') && sub.plan === 'pro'
-  const isCanceledButActive = sub?.status === 'canceled' && sub?.plan === 'pro' && sub?.current_period_end && new Date(sub.current_period_end) > new Date()
-
-  if (!isPro && !isCanceledButActive) {
-    const now = new Date()
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
-    const { count } = await supabase
-      .from('scan_usage')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', user.id)
-      .gte('scanned_at', monthStart)
-
-    if ((count || 0) >= 1) {
-      return NextResponse.json({
-        itineraries: [],
-        error: 'scan_limit',
-        message: 'Free plan limit reached (1 scan/month). Upgrade to Pro for unlimited AI features.',
-      })
-    }
-  }
+  // No plan gate: the AI itinerary builder is free and unlimited for every
+  // signed-in user. (The Pro tier is gone; /pricing says "Free forever.
+  // Unlimited scans.") Usage is still recorded below, for analytics only.
 
   let body
   try { body = await request.json() } catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }) }
@@ -174,8 +150,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ itineraries: [], error: 'No trip data or flights provided' })
   }
 
-  // Record usage
-  await supabase.from('scan_usage').insert({ user_id: user.id, page_url: 'build-itinerary' })
+  // Record usage for the admin dashboard's counters. Never gates the request:
+  // a failure here must not stop the user getting their itineraries.
+  const { error: usageError } = await supabase
+    .from('scan_usage')
+    .insert({ user_id: user.id, page_url: 'build-itinerary' })
+  if (usageError) console.error('[build-itinerary] usage log failed:', usageError.message)
 
   const apiKey = process.env.GEMINI_API_KEY
   if (!apiKey) {

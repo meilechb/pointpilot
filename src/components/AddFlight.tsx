@@ -132,12 +132,19 @@ export default function AddFlight({ legs, onSave, onCancel, editingFlight }: Pro
     setLookupError('')
     try {
       const dateStr = toDateStr(lookupDate)
-      const res = await fetch(`/api/flights?flight=${lookupCode}&date=${dateStr}`, {
+      const params = new URLSearchParams({ flight: lookupCode.trim() })
+      if (dateStr) params.set('date', dateStr)
+      const res = await fetch(`/api/flights?${params.toString()}`, {
         headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
       })
-      const data = await res.json()
-      if (data.error) {
-        setLookupError(data.error)
+      const data = await res.json().catch(() => null)
+      if (!res.ok || !data || data.error) {
+        setLookupError(data?.error || 'Flight lookup failed. Enter the flight manually instead.')
+        setLookupLoading(false)
+        return
+      }
+      if (!data.departureAirport && !data.arrivalAirport && !data.departureTime) {
+        setLookupError('No details found for that flight. Enter it manually instead.')
         setLookupLoading(false)
         return
       }

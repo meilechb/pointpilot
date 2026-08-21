@@ -166,13 +166,6 @@ export default function ItineraryBuilder({ trip, session, wallet = [], transferB
 
       const data = await res.json()
 
-      if (data.error === 'scan_limit') {
-        setError(data.message || 'Free plan limit reached. Upgrade to Pro for unlimited AI features.')
-        setHasRun(true)
-        setLoading(false)
-        return
-      }
-
       if (data.error && !data.itineraries?.length) {
         setError(data.error)
         setHasRun(true)
@@ -242,8 +235,23 @@ export default function ItineraryBuilder({ trip, session, wallet = [], transferB
     })
   }
 
+  // Rendering nothing here left the AI Builder tab completely blank, with no
+  // hint that flights are the missing ingredient.
   if (!hasFlights) {
-    return null
+    return (
+      <div style={{
+        textAlign: 'center', padding: '40px 24px',
+        backgroundColor: 'var(--bg-card)', borderRadius: 'var(--radius)',
+        border: '1px dashed var(--border)',
+      }}>
+        <div style={{ fontSize: 28, marginBottom: 10 }}>&#10024;</div>
+        <p style={{ fontWeight: 700, fontSize: 15, marginBottom: 6 }}>Add flights first</p>
+        <p style={{ color: 'var(--text-muted)', fontSize: 13, lineHeight: 1.5 }}>
+          The AI builder combines the flights you&apos;ve saved into complete itineraries.
+          Add at least one flight on the Flights tab, then come back.
+        </p>
+      </div>
+    )
   }
 
   const gridClass = `builder-suggestions-grid${suggestions.length === 2 ? ' count-2' : suggestions.length === 1 ? ' count-1' : ''}`

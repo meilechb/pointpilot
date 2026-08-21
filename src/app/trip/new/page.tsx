@@ -101,7 +101,9 @@ export default function NewTrip() {
     router.push(`/trip/${trip.id}`)
   }
 
+  // Departure === destination would build A→A legs with no real route.
   const canCreate = departureCity && destinationCity && departureDate
+    && departureCity.trim().toUpperCase() !== destinationCity.trim().toUpperCase()
 
   const tripTypes = [
     { value: 'roundtrip', label: 'Round Trip' },
