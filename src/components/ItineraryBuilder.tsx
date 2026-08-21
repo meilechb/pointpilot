@@ -166,13 +166,6 @@ export default function ItineraryBuilder({ trip, session, wallet = [], transferB
 
       const data = await res.json()
 
-      if (data.error === 'scan_limit') {
-        setError(data.message || 'Free plan limit reached. Upgrade to Pro for unlimited AI features.')
-        setHasRun(true)
-        setLoading(false)
-        return
-      }
-
       if (data.error && !data.itineraries?.length) {
         setError(data.error)
         setHasRun(true)
