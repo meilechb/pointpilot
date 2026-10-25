@@ -7,6 +7,6 @@ export default function robots(): MetadataRoute.Robots {
       allow: '/',
       disallow: ['/api/', '/trip/', '/admin/'],
     },
-    sitemap: 'https://pointtripper.com/sitemap.xml',
+    sitemap: 'https://www.pointtripper.com/sitemap.xml',
   }
 }

@@ -2,7 +2,8 @@ import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
   title: 'Privacy Policy',
-  description: 'Point Tripper privacy policy — how we handle your data.',
+  description: 'Point Tripper privacy policy: what account and trip data we collect, how your trips and points wallet are stored, and your rights over your data.',
+  alternates: { canonical: '/privacy' },
 }
 
 const sectionTitle: React.CSSProperties = {

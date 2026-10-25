@@ -16,7 +16,7 @@ const fieldInput: React.CSSProperties = {
 
 export default function LoginPage() {
   return (
-    <Suspense>
+    <Suspense fallback={<h1 style={{ fontSize: 22, fontWeight: 700, textAlign: 'center', padding: '60px 20px' }}>Sign in to Point Tripper</h1>}>
       <LoginForm />
     </Suspense>
   )

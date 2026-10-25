@@ -17,7 +17,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     .single()
 
   if (!article) {
-    return { title: 'Article Not Found' }
+    return { title: 'Article Not Found', robots: { index: false, follow: true } }
   }
 
   const title = article.meta_title || article.title
@@ -30,7 +30,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       title,
       description,
       type: 'article',
-      url: `https://pointpilot-delta.vercel.app/news/${slug}`,
+      url: `https://www.pointtripper.com/news/${slug}`,
     },
     twitter: {
       card: 'summary_large_image',
@@ -44,9 +44,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     metadata.twitter!.images = [article.og_image]
   }
 
-  if (article.canonical_url) {
-    metadata.alternates = { canonical: article.canonical_url }
-  }
+  metadata.alternates = { canonical: article.canonical_url || `/news/${slug}` }
 
   if (article.keywords) {
     metadata.keywords = article.keywords.split(',').map((k: string) => k.trim())

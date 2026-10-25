@@ -62,7 +62,7 @@ export default function Home() {
     '@context': 'https://schema.org',
     '@type': 'WebApplication',
     name: 'Point Tripper',
-    url: 'https://pointtripper.com',
+    url: 'https://www.pointtripper.com',
     description: 'Organize flight options, compare cash vs. points, and get step-by-step booking instructions using your credit card rewards.',
     applicationCategory: 'TravelApplication',
     operatingSystem: 'Web',
